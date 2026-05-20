@@ -4,6 +4,8 @@
 
 🇬🇧 [Read in English](README.md)
 
+![demo](demo.gif)
+
 ```
 texto.md  •  47 oraciones  •  smell: 31% (moderado)
 

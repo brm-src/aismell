@@ -4,6 +4,8 @@
 
 🇪🇸 [Léeme en español](README.es.md)
 
+![demo](demo.gif)
+
 ```
 text.md  •  47 sentences  •  smell: 31% (moderate)
 
