@@ -1,15 +1,69 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 """Standalone bin entry — works without pip install.
 
-Hardcoded to /usr/bin/python3 (system Python) to avoid PATH-based
-collisions with venvs that may not have PyYAML installed.
+Self-heals against missing PyYAML in the active python by re-execing
+into a system python that has it, before falling back to a clear
+install-instructions error.
 """
+
+import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
-# Allow running from repo without install
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
+# Try to import yaml; if missing, try to find a python that has it.
+try:
+    import yaml  # noqa: F401
+except ImportError:
+    _MARKER = "_AISMELL_REEXECED"
+    if os.environ.get(_MARKER) != "1":
+        # Search for a python interpreter that has PyYAML available.
+        candidates: list[str] = []
+        # Common system locations first (where distro package managers install).
+        for fixed in ("/usr/bin/python3", "/usr/local/bin/python3", "/opt/homebrew/bin/python3"):
+            if Path(fixed).exists() and fixed != sys.executable:
+                candidates.append(fixed)
+        # Anything else on PATH.
+        for name in ("python3", "python"):
+            found = shutil.which(name)
+            if found and found not in candidates and found != sys.executable:
+                candidates.append(found)
+
+        for py in candidates:
+            try:
+                subprocess.check_call(
+                    [py, "-c", "import yaml"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                continue
+            # Re-exec with that python; mark to prevent loops.
+            env = dict(os.environ)
+            env[_MARKER] = "1"
+            os.execve(py, [py, str(Path(__file__).resolve()), *sys.argv[1:]], env)
+
+    # No interpreter with yaml found. Print a helpful, OS-aware message.
+    msg = [
+        "aismell needs PyYAML.",
+        "",
+        "Install one of these and try again:",
+        "  Arch / Manjaro:    sudo pacman -S python-yaml",
+        "  Debian / Ubuntu:   sudo apt install python3-yaml",
+        "  Fedora:            sudo dnf install python3-pyyaml",
+        "  macOS (brew):      brew install pyyaml",
+        "  Any system (pip):  pip install --user pyyaml",
+        "",
+        "If you have it installed but aismell still complains, your shell's",
+        "active python doesn't see it. Try:  python3 -m pip install --user pyyaml",
+    ]
+    print("\n".join(msg), file=sys.stderr)
+    sys.exit(1)
+
+sys.path.insert(0, str(REPO_ROOT))
 from aismell.cli import main  # noqa: E402
 
 if __name__ == "__main__":
