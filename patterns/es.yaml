@@ -151,7 +151,7 @@ patterns:
   - id: es.espero_sirva
     kind: regex
     severity: 3
-    pattern: '(?i)espero que (esto |te |le )?(sirva|ayude|haya sido útil)'
+    pattern: '(?i)espero que .{1,30}(sirva|ayude|haya sido útil|funcione)'
     message: artefacto de chatbot
     suggestion: borrar
 

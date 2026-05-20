@@ -62,6 +62,9 @@ aismell post.md
 # desde stdin
 cat borrador.txt | aismell
 
+# anotar un Word .docx — highlights amarillos + comentarios laterales
+aismell mi-tesis.docx --docx-out mi-tesis-marcado.docx
+
 # solo hallazgos de alta confianza
 aismell --strict post.md
 

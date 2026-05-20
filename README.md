@@ -62,6 +62,9 @@ aismell post.md
 # pipe stdin
 cat draft.txt | aismell
 
+# annotate a Word .docx — yellow highlights + sidebar comments
+aismell mi-tesis.docx --docx-out mi-tesis-marcado.docx
+
 # only show high-confidence findings
 aismell --strict post.md
 

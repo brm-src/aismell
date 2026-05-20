@@ -41,7 +41,41 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="disable ANSI colors",
     )
+    parser.add_argument(
+        "--docx-out",
+        metavar="PATH",
+        help="instead of printing, read input as .docx and write a marked-up copy with yellow highlights + review comments to PATH",
+    )
     args = parser.parse_args(argv)
+
+    if args.docx_out:
+        # Bypass stdin/text path; the input must be a real .docx file.
+        if not args.path:
+            print("aismell: --docx-out requires an input .docx path", file=sys.stderr)
+            return 2
+        from .docx import annotate_docx
+
+        try:
+            result = annotate_docx(
+                in_path=Path(args.path),
+                out_path=Path(args.docx_out),
+                lang=None if args.lang == "auto" else args.lang,
+                strict=args.strict,
+            )
+        except FileNotFoundError as exc:
+            print(f"aismell: {exc}", file=sys.stderr)
+            return 2
+        except ValueError as exc:
+            print(f"aismell: {exc}", file=sys.stderr)
+            return 2
+        pct = int(result.score * 100)
+        print(
+            f"{result.output_path}  •  {result.sentences} sentences  •  "
+            f"smell: {pct}% ({result.severity_label})  •  "
+            f"{result.findings} comments added",
+            file=sys.stderr,
+        )
+        return 1 if result.findings else 0
 
     if args.no_color:
         # rebind module flag
