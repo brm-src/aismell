@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aismell"
+version = "0.1.0"
+description = "Sniff AI-smell in your text. Bilingual ES/EN. CLI, offline, opinionated."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "brm-src", email = "caaq.x@gmail.com" }]
+requires-python = ">=3.9"
+keywords = ["writing", "ai-detection", "humanizer", "anti-slop", "cli", "spanish", "english"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Natural Language :: Spanish",
+    "Operating System :: POSIX",
+    "Programming Language :: Python :: 3",
+    "Topic :: Text Processing :: Linguistic",
+]
+dependencies = ["pyyaml>=6.0"]
+
+[project.scripts]
+aismell = "aismell.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/brm-src/aismell"
+Issues = "https://github.com/brm-src/aismell/issues"
+
+[tool.setuptools]
+packages = ["aismell"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+aismell = ["../patterns/*.yaml"]

@@ -1,0 +1,215 @@
+# Patrones AI-smell — Español
+# kind: phrase | regex | structure
+# severity: 1 (sospecha) | 2 (probable) | 3 (casi seguro)
+
+patterns:
+  # ---- Estructura paralela negativa ----
+  - id: es.no_solo_sino
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bno se trata solo de\b|\bno es solo\b.{1,40}\bsino\b|\bno solo\b.{1,40}\bsino que también\b'
+    message: estructura paralela negativa típica de IA
+    suggestion: di la idea positiva sin el contraste de relleno
+
+  - id: es.mas_que
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bes más que\b.{1,40}\bes\b'
+    message: '"es más que X, es Y" patrón inflado'
+    suggestion: afirma directamente lo que es
+
+  # ---- Muletillas de relleno ----
+  - id: es.vale_pena_destacar
+    kind: phrase
+    severity: 3
+    pattern: vale la pena destacar
+    message: muletilla AI clásica
+    suggestion: solo destácalo
+
+  - id: es.cabe_mencionar
+    kind: phrase
+    severity: 3
+    pattern: cabe mencionar
+    message: muletilla AI clásica
+    suggestion: menciónalo sin anunciarlo
+
+  - id: es.es_importante_notar
+    kind: phrase
+    severity: 3
+    pattern: es importante (notar|señalar|destacar|mencionar)
+    message: anuncio meta innecesario
+    suggestion: borra y pasa directo al punto
+
+  - id: es.en_ultima_instancia
+    kind: phrase
+    severity: 2
+    pattern: en última instancia
+    message: muletilla de cierre AI
+    suggestion: '"al final" o simplemente borrar'
+
+  - id: es.en_este_sentido
+    kind: phrase
+    severity: 2
+    pattern: en este sentido
+    message: conector de relleno
+    suggestion: borrar o reemplazar por "así"
+
+  - id: es.por_otro_lado
+    kind: phrase
+    severity: 1
+    pattern: por otro lado
+    message: conector binario sobreusado
+    suggestion: solo si hay contraste real
+
+  - id: es.dicho_esto
+    kind: phrase
+    severity: 2
+    pattern: dicho esto
+    message: pivote artificial
+    suggestion: borrar, la transición ya se entiende
+
+  - id: es.en_resumen
+    kind: phrase
+    severity: 2
+    pattern: en (resumen|definitiva|síntesis)
+    message: cierre formulario AI
+    suggestion: deja que el último párrafo cierre solo
+
+  # ---- Inflación de importancia ----
+  - id: es.se_erige
+    kind: phrase
+    severity: 3
+    pattern: se (erige|posiciona|consolida|establece) como
+    message: copula avoidance, inflación
+    suggestion: usa "es"
+
+  - id: es.constituye_testimonio
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(constituye|representa|es) un (testimonio|reflejo|símbolo)\b'
+    message: inflación de significado
+    suggestion: borra, di qué hace o significa concretamente
+
+  - id: es.juega_papel
+    kind: regex
+    severity: 2
+    pattern: '(?i)juega un papel (crucial|fundamental|clave|vital|importante)'
+    message: muletilla AI de importancia inflada
+    suggestion: di qué hace específicamente
+
+  - id: es.momento_clave
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(marca|representa) un (momento|punto) (clave|crucial|pivotal|decisivo)'
+    message: inflación de momento histórico
+    suggestion: di la fecha y lo que pasó
+
+  - id: es.panorama
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(panorama|paisaje|horizonte) (en evolución|cambiante|dinámico)\b'
+    message: metáfora abstracta AI
+    suggestion: di el contexto concreto
+
+  # ---- Vocabulario AI alto ----
+  - id: es.profundizar
+    kind: phrase
+    severity: 2
+    pattern: profundizar en (las complejidades|los matices|los detalles)
+    message: equivalente a "delve" en EN
+    suggestion: '"explorar" o entrar al tema directo'
+
+  - id: es.tejido
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(rico|complejo|intrincado) tejido\b'
+    message: metáfora AI sobreusada
+    suggestion: describe lo concreto
+
+  - id: es.fascinante_mundo
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(fascinante|apasionante|cautivador) mundo de\b'
+    message: hype editorial AI
+    suggestion: borra el adjetivo
+
+  - id: es.en_el_corazon
+    kind: phrase
+    severity: 2
+    pattern: en el (corazón|centro) de
+    message: cliché AI
+    suggestion: usa la palabra concreta
+
+  - id: es.rico_en
+    kind: regex
+    severity: 1
+    pattern: '(?i)\brico en (historia|cultura|tradición|sabor)\b'
+    message: promo turística AI
+    suggestion: di qué tiene específicamente
+
+  # ---- Tono servil / chatbot ----
+  - id: es.espero_sirva
+    kind: regex
+    severity: 3
+    pattern: '(?i)espero que (esto |te |le )?(sirva|ayude|haya sido útil)'
+    message: artefacto de chatbot
+    suggestion: borrar
+
+  - id: es.claro_por_supuesto
+    kind: regex
+    severity: 3
+    pattern: '(?i)^(¡)?(claro|por supuesto|desde luego|con gusto)(!|,)'
+    message: apertura servil de chatbot
+    suggestion: borrar y arrancar con el contenido
+
+  - id: es.gran_pregunta
+    kind: regex
+    severity: 3
+    pattern: '(?i)(¡)?(qué|gran) (gran |buena )?pregunta'
+    message: apertura sycophantic
+    suggestion: borrar
+
+  - id: es.absolutamente_correcto
+    kind: phrase
+    severity: 3
+    pattern: tienes (toda la |)razón
+    message: validación servil
+    suggestion: borrar
+
+  # ---- Cierres genéricos ----
+  - id: es.futuro_brillante
+    kind: regex
+    severity: 3
+    pattern: '(?i)el futuro (se ve |luce |parece )?(brillante|prometedor)'
+    message: cierre AI vacío
+    suggestion: di qué pasará concretamente
+
+  - id: es.tiempos_emocionantes
+    kind: regex
+    severity: 3
+    pattern: '(?i)(tiempos|momentos) emocionantes'
+    message: cierre AI vacío
+    suggestion: borrar
+
+  - id: es.viaje_excelencia
+    kind: regex
+    severity: 2
+    pattern: '(?i)camino|viaje|trayecto.{1,20}excelencia'
+    message: cliché motivacional AI
+    suggestion: borrar
+
+  # ---- Hedging excesivo ----
+  - id: es.podria_potencialmente
+    kind: regex
+    severity: 2
+    pattern: '(?i)podría (potencialmente|posiblemente|tal vez)'
+    message: hedging redundante
+    suggestion: usa solo "podría" o sé directo
+
+  # ---- Disclaimer cutoff ----
+  - id: es.informacion_limitada
+    kind: regex
+    severity: 3
+    pattern: '(?i)(información (es |)limitada|detalles específicos.{0,20}escasos|según (la |)información disponible)'
+    message: disclaimer de cutoff AI
+    suggestion: borrar

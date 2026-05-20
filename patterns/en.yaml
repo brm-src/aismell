@@ -1,0 +1,242 @@
+# AI-smell patterns — English
+# kind: phrase | regex | structure
+# severity: 1 (suspect) | 2 (probable) | 3 (almost certain)
+
+patterns:
+  # ---- Negative parallel structure ----
+  - id: en.not_just
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\bit'?s not just\\b.{1,40}\\bit'?s\\b|\\bnot only\\b.{1,40}\\bbut also\\b"
+    message: AI's signature negative parallelism
+    suggestion: state the positive idea directly
+
+  - id: en.more_than
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bis more than (just )?\\b.{1,40}\\bit('?s| is)\\b"
+    message: '"more than X, it''s Y" inflation'
+    suggestion: just say what it is
+
+  # ---- Filler / hedging phrases ----
+  - id: en.it_is_worth_noting
+    kind: phrase
+    severity: 3
+    pattern: it (is|'s) worth noting
+    message: classic AI filler
+    suggestion: just note it
+
+  - id: en.important_to_note
+    kind: phrase
+    severity: 3
+    pattern: (it is|it's) important to (note|mention|highlight)
+    message: meta-announcement
+    suggestion: delete and state the point
+
+  - id: en.in_today_landscape
+    kind: regex
+    severity: 3
+    pattern: "(?i)in today'?s (rapidly )?(evolving|changing|dynamic) (landscape|world|environment)"
+    message: AI scene-setter
+    suggestion: skip it, get to the point
+
+  - id: en.ultimately
+    kind: phrase
+    severity: 1
+    pattern: ultimately
+    message: AI conclusion filler
+    suggestion: usually deletable
+
+  - id: en.that_being_said
+    kind: phrase
+    severity: 2
+    pattern: that being said
+    message: artificial pivot
+    suggestion: delete
+
+  - id: en.in_conclusion
+    kind: phrase
+    severity: 2
+    pattern: in conclusion
+    message: formulaic closing
+    suggestion: let the last paragraph close itself
+
+  # ---- AI vocabulary ----
+  - id: en.delve
+    kind: phrase
+    severity: 3
+    pattern: delve into
+    message: the most flagged AI word of 2024
+    suggestion: 'use "explore", "look at", or just dig in'
+
+  - id: en.tapestry
+    kind: phrase
+    severity: 3
+    pattern: tapestry
+    message: AI metaphor cliché
+    suggestion: describe what's actually there
+
+  - id: en.navigate_complexities
+    kind: phrase
+    severity: 3
+    pattern: navigate the complexities
+    message: AI cliché
+    suggestion: be specific about which parts are hard
+
+  - id: en.testament
+    kind: phrase
+    severity: 3
+    pattern: (a|stands as a) testament
+    message: significance inflation
+    suggestion: skip it
+
+  - id: en.serves_as
+    kind: phrase
+    severity: 2
+    pattern: serves as
+    message: copula avoidance
+    suggestion: 'use "is"'
+
+  - id: en.pivotal
+    kind: phrase
+    severity: 2
+    pattern: pivotal (moment|role)
+    message: AI inflation
+    suggestion: be concrete about what changed
+
+  - id: en.vibrant
+    kind: phrase
+    severity: 2
+    pattern: vibrant
+    message: AI promotional adjective
+    suggestion: describe what makes it lively
+
+  - id: en.nestled
+    kind: phrase
+    severity: 3
+    pattern: nestled (in|within|between)
+    message: AI travel-brochure verb
+    suggestion: 'use "in", "near", "located in"'
+
+  - id: en.groundbreaking
+    kind: phrase
+    severity: 2
+    pattern: groundbreaking
+    message: AI hype word
+    suggestion: say what's actually new
+
+  - id: en.in_the_heart
+    kind: phrase
+    severity: 2
+    pattern: in the heart of
+    message: cliché
+    suggestion: 'use "in" or be specific'
+
+  - id: en.rich_history
+    kind: regex
+    severity: 1
+    pattern: '(?i)\brich (history|culture|heritage|tradition)\b'
+    message: tourism-AI cliché
+    suggestion: name a specific event or detail
+
+  - id: en.underscores
+    kind: phrase
+    severity: 2
+    pattern: underscores (the|its)
+    message: AI emphasis verb
+    suggestion: 'use "shows" or just state the fact'
+
+  - id: en.highlights_importance
+    kind: regex
+    severity: 2
+    pattern: '(?i)highlights (the |its )?(importance|significance)'
+    message: telling-not-showing
+    suggestion: just show why it matters
+
+  - id: en.evolving_landscape
+    kind: phrase
+    severity: 2
+    pattern: evolving landscape
+    message: AI scene-setter
+    suggestion: name the actual context
+
+  # ---- Sycophantic / chatbot ----
+  - id: en.hope_this_helps
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(i |)hope (this |)helps\b'
+    message: chatbot artifact
+    suggestion: delete
+
+  - id: en.let_me_know
+    kind: regex
+    severity: 3
+    pattern: '(?i)let me know if (you|there)'
+    message: chatbot artifact
+    suggestion: delete
+
+  - id: en.great_question
+    kind: regex
+    severity: 3
+    pattern: '(?i)^(that''?s a |)great question'
+    message: sycophantic opener
+    suggestion: delete
+
+  - id: en.absolutely_right
+    kind: regex
+    severity: 3
+    pattern: "(?i)you'?re (absolutely |)right"
+    message: servile validation
+    suggestion: delete
+
+  - id: en.certainly
+    kind: regex
+    severity: 2
+    pattern: "(?i)^(certainly|of course)(!|,)"
+    message: chatbot opener
+    suggestion: delete and start with the content
+
+  # ---- Generic conclusions ----
+  - id: en.future_looks_bright
+    kind: regex
+    severity: 3
+    pattern: "(?i)the future (looks |is )(bright|promising)"
+    message: empty AI closer
+    suggestion: state what will actually happen
+
+  - id: en.exciting_times
+    kind: phrase
+    severity: 3
+    pattern: exciting times (lie ahead|ahead)
+    message: empty AI closer
+    suggestion: delete
+
+  - id: en.journey_excellence
+    kind: regex
+    severity: 2
+    pattern: "(?i)journey (toward|to|of) excellence"
+    message: AI motivational cliché
+    suggestion: delete
+
+  # ---- Cutoff disclaimers ----
+  - id: en.based_on_available
+    kind: regex
+    severity: 3
+    pattern: "(?i)based on (the |)available information"
+    message: AI cutoff disclaimer
+    suggestion: delete
+
+  - id: en.specific_details_limited
+    kind: regex
+    severity: 3
+    pattern: "(?i)(specific )?details (are |)(limited|scarce)"
+    message: AI cutoff disclaimer
+    suggestion: delete
+
+  # ---- Excessive hedging ----
+  - id: en.could_potentially
+    kind: regex
+    severity: 2
+    pattern: "(?i)could (potentially|possibly)"
+    message: redundant hedging
+    suggestion: 'use only "could" or be direct'
