@@ -1,5 +1,9 @@
-#!/usr/bin/env python3
-"""Standalone bin entry — works without pip install."""
+#!/usr/bin/python3
+"""Standalone bin entry — works without pip install.
+
+Hardcoded to /usr/bin/python3 (system Python) to avoid PATH-based
+collisions with venvs that may not have PyYAML installed.
+"""
 import sys
 from pathlib import Path
 
