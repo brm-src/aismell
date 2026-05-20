@@ -240,3 +240,210 @@ patterns:
     pattern: "(?i)could (potentially|possibly)"
     message: redundant hedging
     suggestion: 'use only "could" or be direct'
+
+  # ---- Inflated verbs (Pangram taxonomy) ----
+  - id: en.embark
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bembark(s|ed|ing)? (on|upon)'
+    message: epic AI verb
+    suggestion: '"start", "begin"'
+
+  - id: en.navigate
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bnavigat(e|es|ed|ing) (the |through |)\b(complex|landscape|world|realm)'
+    message: AI cliché verb
+    suggestion: be specific about what is hard
+
+  - id: en.augment
+    kind: phrase
+    severity: 1
+    pattern: augment
+    message: AI verb
+    suggestion: '"add to", "boost"'
+
+  - id: en.facilitate
+    kind: phrase
+    severity: 1
+    pattern: facilitate
+    message: AI corporate verb
+    suggestion: say what it does concretely
+
+  - id: en.utilize
+    kind: regex
+    severity: 2
+    pattern: '(?i)\butiliz(e|es|ed|ing)\b'
+    message: classic LLM bloat for "use"
+    suggestion: '"use"'
+
+  - id: en.optimize
+    kind: regex
+    severity: 1
+    pattern: '(?i)\boptimiz(e|es|ed|ing) (the |a |our )?'
+    message: AI verb
+    suggestion: '"improve" or be specific'
+
+  - id: en.glean
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bglean(s|ed|ing)?\b'
+    message: AI verb
+    suggestion: '"get", "learn", "find"'
+
+  - id: en.leverage
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bleverag(e|es|ed|ing)\b'
+    message: AI corporate verb
+    suggestion: '"use"'
+
+  # ---- Inflated abstract nouns ----
+  - id: en.realm
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(in |across |throughout |within )?(the |a |this |that )?realm( of)?\b'
+    message: epic AI metaphor
+    suggestion: '"in", "field", "area"'
+
+  - id: en.nuance
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bnuances? (of|in)\b'
+    message: abstract AI noun
+    suggestion: name the specific details
+
+  - id: en.synergy
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bsynerg(y|ies)\b'
+    message: AI corporate jargon
+    suggestion: say how things actually relate
+
+  - id: en.paradigm
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(a |the |new )?paradigm\b'
+    message: inflated AI noun
+    suggestion: '"way", "model", "approach"'
+
+  - id: en.framework_robust
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(a |the |our )?(robust|comprehensive|holistic) framework\b'
+    message: '"framework" + AI modifier'
+    suggestion: say what it is and does
+
+  # ---- AI modifiers ----
+  - id: en.bustling
+    kind: phrase
+    severity: 2
+    pattern: bustling
+    message: AI travel-brochure adjective
+    suggestion: '"busy", or describe the activity'
+
+  - id: en.multifaceted
+    kind: phrase
+    severity: 2
+    pattern: multifaceted
+    message: abstract AI adjective
+    suggestion: name the actual facets
+
+  - id: en.meticulous
+    kind: phrase
+    severity: 1
+    pattern: meticulous
+    message: AI adjective
+    suggestion: '"careful", "detailed"'
+
+  - id: en.robust
+    kind: regex
+    severity: 1
+    pattern: '(?i)\brobust\b(?! (model|growth|to))'
+    message: AI corporate adjective
+    suggestion: '"strong", "solid", or be specific'
+
+  - id: en.seamless
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bseamless(ly)?\b'
+    message: AI adjective
+    suggestion: '"smooth", "connected"'
+
+  - id: en.transformative
+    kind: regex
+    severity: 2
+    pattern: '(?i)\btransformative\b'
+    message: epic AI adjective
+    suggestion: say what changes
+
+  - id: en.paramount
+    kind: phrase
+    severity: 2
+    pattern: paramount
+    message: AI inflation adjective
+    suggestion: '"most important", "key"'
+
+  - id: en.crucial
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bcrucial\b'
+    message: overused AI adjective
+    suggestion: '"important", "needed", or be specific'
+
+  # ---- Formal connectors at paragraph starts ----
+  - id: en.furthermore_start
+    kind: regex
+    severity: 2
+    pattern: '(?im)^furthermore[,\s]'
+    message: formal AI connector at line start
+    suggestion: drop the connector
+
+  - id: en.moreover_start
+    kind: regex
+    severity: 2
+    pattern: '(?im)^moreover[,\s]'
+    message: formal AI connector at line start
+    suggestion: drop the connector
+
+  - id: en.additionally_start
+    kind: regex
+    severity: 2
+    pattern: '(?im)^additionally[,\s]'
+    message: formal AI connector at line start
+    suggestion: drop the connector
+
+  - id: en.consequently
+    kind: phrase
+    severity: 2
+    pattern: consequently
+    message: formal AI connector
+    suggestion: '"so", "as a result"'
+
+  - id: en.hence
+    kind: phrase
+    severity: 1
+    pattern: hence
+    message: formal AI connector
+    suggestion: '"so"'
+
+  - id: en.nonetheless
+    kind: phrase
+    severity: 2
+    pattern: nonetheless
+    message: formal AI connector
+    suggestion: '"still", "but"'
+
+  - id: en.subsequently
+    kind: phrase
+    severity: 2
+    pattern: subsequently
+    message: formal AI connector
+    suggestion: '"then", "after"'
+
+  - id: en.firstly
+    kind: regex
+    severity: 2
+    pattern: '(?im)^firstly[,\s]'
+    message: enumeration AI marker
+    suggestion: just start with the point

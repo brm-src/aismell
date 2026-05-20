@@ -213,3 +213,198 @@ patterns:
     pattern: '(?i)(información (es |)limitada|detalles específicos.{0,20}escasos|según (la |)información disponible)'
     message: disclaimer de cutoff AI
     suggestion: borrar
+
+  # ---- Verbos inflados (RLHF bloat — taxonomía Pangram) ----
+  - id: es.profundizar_verbo
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(profundizar|adentrarse|sumergirse) en\b'
+    message: equivalente ES de "delve" — marcador AI #1
+    suggestion: '"explorar", "ver", o entrar al tema directo'
+
+  - id: es.embarcarse
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(embarcarse|emprender un viaje) (en|hacia)\b'
+    message: verbo épico AI ("embark")
+    suggestion: '"empezar" o "comenzar"'
+
+  - id: es.navegar_complejidades
+    kind: regex
+    severity: 3
+    pattern: '(?i)navega(r|ndo) (las |por las |a través de las )(complejidades|aristas|dificultades)'
+    message: cliché AI ("navigate the complexities")
+    suggestion: di qué partes son difíciles específicamente
+
+  - id: es.facilitar
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bfacilita(r|n)? (la |el )?(proceso|comprensión|interacción)'
+    message: verbo abstracto AI
+    suggestion: di qué hace concretamente
+
+  - id: es.optimizar
+    kind: regex
+    severity: 1
+    pattern: '(?i)\boptimiza(r|ndo|do) (la |el |los |las )?'
+    message: verbo AI sobreusado
+    suggestion: '"mejorar" o ser específico'
+
+  - id: es.aprovechar
+    kind: regex
+    severity: 1
+    pattern: '(?i)\baprovech(ar|ando|amos) (al máximo |plenamente |)?(el |la |los |las )?(potencial|capacidades|sinergias)'
+    message: verbo AI corporativo
+    suggestion: di qué se hace exactamente
+
+  # ---- Sustantivos abstractos (inflación semántica) ----
+  - id: es.matiz
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(los |las )?(matices|sutilezas) (de|del|en)\b'
+    message: '"nuance" — sustantivo abstracto AI'
+    suggestion: nombra los detalles específicos
+
+  - id: es.sinergia
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bsinergia(s)? entre\b'
+    message: jerga corporativa AI ("synergy")
+    suggestion: di cómo se relacionan en concreto
+
+  - id: es.paradigma
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(un |el |nuevo )?paradigma\b'
+    message: sustantivo AI inflado
+    suggestion: '"forma de hacer", "modelo"'
+
+  - id: es.marco_robusto
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(un |el |su )?marco (robusto|integral|sólido|completo)\b'
+    message: '"framework" + adjetivo AI'
+    suggestion: di qué es y qué hace
+
+  - id: es.reino
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(en |del |al )?reino (de|digital|virtual|tecnológico)'
+    message: '"realm" — metáfora épica AI'
+    suggestion: '"campo", "área", o ser específico'
+
+  # ---- Adjetivos AI (taxonomía Pangram) ----
+  - id: es.vibrante
+    kind: phrase
+    severity: 2
+    pattern: vibrante
+    message: adjetivo promocional AI
+    suggestion: describe qué lo hace vivo
+
+  - id: es.multifacetico
+    kind: phrase
+    severity: 2
+    pattern: multifacético
+    message: adjetivo abstracto AI
+    suggestion: nombra las facetas concretas
+
+  - id: es.meticuloso
+    kind: phrase
+    severity: 1
+    pattern: meticuloso
+    message: adjetivo AI
+    suggestion: '"cuidadoso", "detallado"'
+
+  - id: es.robusto
+    kind: regex
+    severity: 1
+    pattern: '(?i)\brobusto(s|a|as)?\b(?! (modelo|crecimiento))'
+    message: adjetivo AI técnico-corporativo
+    suggestion: '"sólido", "fuerte", o algo concreto'
+
+  - id: es.sin_fisuras
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(sin fisuras|impecable|perfectamente integrado)'
+    message: '"seamless" — adjetivo AI'
+    suggestion: '"que funciona junto", "que conecta"'
+
+  - id: es.transformador
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(experiencia |proceso |momento |poder )transformador'
+    message: adjetivo épico AI
+    suggestion: di qué cambia exactamente
+
+  - id: es.crucial
+    kind: regex
+    severity: 1
+    pattern: '(?i)\b(es |sea |son )?cruciales?\b'
+    message: adjetivo AI sobreusado
+    suggestion: '"importante", "necesario" o ser específico'
+
+  # ---- Conectores formales al inicio (firma fuerte AI) ----
+  # Severity 2 inline; el chequeo estructural los ve también globalmente
+  - id: es.ademas_inicio
+    kind: regex
+    severity: 2
+    pattern: '(?im)^además[,\s]'
+    message: conector formal AI al inicio de párrafo
+    suggestion: borra el conector, deja que la lógica fluya
+
+  - id: es.por_otra_parte
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bpor otra parte\b'
+    message: conector formal AI
+    suggestion: borrar o reemplazar por algo más natural
+
+  - id: es.adicionalmente
+    kind: phrase
+    severity: 2
+    pattern: adicionalmente
+    message: conector formal AI ("additionally")
+    suggestion: borrar
+
+  - id: es.en_consecuencia
+    kind: phrase
+    severity: 2
+    pattern: en consecuencia
+    message: conector formal AI ("consequently")
+    suggestion: '"así", "entonces"'
+
+  - id: es.por_lo_tanto
+    kind: phrase
+    severity: 1
+    pattern: por lo tanto
+    message: conector formal AI
+    suggestion: '"así", "entonces"'
+
+  - id: es.no_obstante
+    kind: phrase
+    severity: 2
+    pattern: no obstante
+    message: conector formal AI
+    suggestion: '"pero", "aunque"'
+
+  - id: es.posteriormente
+    kind: phrase
+    severity: 2
+    pattern: posteriormente
+    message: conector formal AI ("subsequently")
+    suggestion: '"después", "luego"'
+
+  - id: es.en_primer_lugar
+    kind: regex
+    severity: 2
+    pattern: '(?i)en primer lugar'
+    message: enumeración formal AI
+    suggestion: borrar la apertura, ir al punto
+
+  # ---- Cliché de panorama dinámico ----
+  - id: es.panorama_dinamico
+    kind: regex
+    severity: 3
+    pattern: '(?i)en (el |un )?(dinámico |actual |evolutivo |cambiante )?panorama( tecnológico| actual| dinámico)?'
+    message: scene-setter AI prototípico
+    suggestion: borrar la apertura, di el contexto concreto

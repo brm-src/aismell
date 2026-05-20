@@ -67,6 +67,68 @@ def test_split_sentences():
     assert len(split_sentences(text)) == 4
 
 
+def test_paragraph_connectors_caught():
+    text = (
+        "Primer párrafo de prueba con suficiente contenido para no ser filtrado.\n\n"
+        "Además, segundo párrafo abre con conector formal AI obvio detectable.\n\n"
+        "Por otra parte, tercer párrafo también abre con conector explícito.\n\n"
+        "En conclusión, cuarto párrafo cierra con marcador formal típico AI."
+    )
+    report, _ = analyze(text, lang="es")
+    kinds = [f.kind for f in report.structural]
+    assert "paragraph-connectors" in kinds
+
+
+def test_paragraph_symmetry_caught():
+    # Five paragraphs with near-identical word count
+    para = "Una oración larga con muchas palabras suficientes para tener masa textual y peso evidente. " * 2
+    text = "\n\n".join([para] * 5)
+    report, _ = analyze(text, lang="es")
+    kinds = [f.kind for f in report.structural]
+    assert "paragraph-symmetry" in kinds
+
+
+def test_paragraph_connectors_skipped_for_natural_text():
+    """Don't false-flag normal paragraph starts."""
+    text = (
+        "Ayer salí a caminar. El cielo estaba raro.\n\n"
+        "Me encontré con la María. Hablamos de los cabros.\n\n"
+        "Volví tarde y cansado."
+    )
+    report, _ = analyze(text, lang="es")
+    kinds = [f.kind for f in report.structural]
+    assert "paragraph-connectors" not in kinds
+
+
+def test_pdf_vocabulary_es():
+    """New Pangram-derived ES vocab catches the obvious words."""
+    text = (
+        "El nuevo paradigma multifacético facilita sinergias robustas. "
+        "Adicionalmente, sus capacidades sin fisuras transforman el reino digital."
+    )
+    report, _ = analyze(text, lang="es")
+    ids = {h.pattern.id for h in report.hits}
+    assert "es.paradigma" in ids
+    assert "es.multifacetico" in ids
+    assert "es.adicionalmente" in ids
+    assert "es.sin_fisuras" in ids
+
+
+def test_pdf_vocabulary_en():
+    """New Pangram-derived EN vocab catches the obvious words."""
+    text = (
+        "The robust framework leverages seamless synergies across the realm. "
+        "Furthermore, this transformative paradigm utilizes meticulous design."
+    )
+    report, _ = analyze(text, lang="en")
+    ids = {h.pattern.id for h in report.hits}
+    assert "en.framework_robust" in ids
+    assert "en.seamless" in ids
+    assert "en.realm" in ids
+    assert "en.transformative" in ids
+    assert "en.utilize" in ids
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in list(globals().items()):

@@ -79,11 +79,11 @@ Exit code is `0` when clean, `1` when findings are present. Useful for git hooks
 
 Three layers of detection.
 
-**1. Phrase patterns.** Things AI writes that humans rarely do: *"vale la pena destacar"*, *"delve into"*, *"stands as a testament"*, *"hope this helps"*. ~50 patterns shipped per language.
+**1. Phrase patterns.** Things AI writes that humans rarely do: *"vale la pena destacar"*, *"delve into"*, *"stands as a testament"*, *"hope this helps"*. ~80 patterns shipped per language, including the full Pangram-derived bloat lexicon: realm, paradigm, synergy, robust, seamless, transformative, multifaceted, paramount, plus formal connectors (Furthermore, Moreover, Additionally, Adicionalmente, En consecuencia, Por otra parte).
 
 **2. Structure patterns.** Tells beyond word choice: negative parallelisms (*"it's not just X, it's Y"*), copula avoidance (*"serves as"* instead of *"is"*), generic conclusions (*"the future looks bright"*), sycophantic openers.
 
-**3. Rhythm and density.** Sentence-length variance, em-dash density, list ratio, rule-of-three frequency. Calculated globally, not per-line.
+**3. Rhythm and shape.** Sentence-length variance, em-dash density, list ratio, rule-of-three frequency, **paragraph-length symmetry** (LLMs produce paragraphs of suspiciously similar length), and **opening-connector density** (Pangram research shows multiple paragraphs starting with explicit connectors is the single strongest AI tell).
 
 Scores are normalized to a 0–100 smell percentage. Above 60 is loud AI, 30–60 is mixed, below 30 is mostly clean.
 
@@ -118,7 +118,9 @@ Add a pattern, open a PR. No code changes needed for new rules.
 
 ## Related
 
-This project is built on top of the patterns documented in [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) and [blader/humanizer](https://github.com/blader/humanizer). Both are MIT, and so is this.
+This project is built on top of the patterns documented in [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) and [blader/humanizer](https://github.com/blader/humanizer). The bloat lexicon and structural checks are informed by [Pangram Labs research](https://arxiv.org/abs/2402.14873) (2024-2025), the [DAMAGE paper on AI humanizers](https://arxiv.org/html/2501.03437v1), and [EditLens](https://arxiv.org/abs/2510.03154). See [docs/research.md](docs/research.md) for the full breakdown.
+
+All sources MIT-compatible, and so is this.
 
 ## License
 

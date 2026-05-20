@@ -195,6 +195,90 @@ def _check_tricolon(sentences: list[str]) -> list[StructuralFinding]:
     return out
 
 
+_PARAGRAPH_CONNECTORS_ES = re.compile(
+    r"^(además|adicionalmente|por otra parte|por otro lado|en consecuencia|"
+    r"asimismo|posteriormente|en primer lugar|en segundo lugar|finalmente|"
+    r"en conclusión|en resumen)[,\s]",
+    re.IGNORECASE | re.MULTILINE,
+)
+_PARAGRAPH_CONNECTORS_EN = re.compile(
+    r"^(furthermore|moreover|additionally|consequently|hence|"
+    r"subsequently|firstly|secondly|finally|in conclusion|"
+    r"nonetheless|nevertheless|in summary)[,\s]",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _check_paragraph_connectors(text: str, lang: str) -> list[StructuralFinding]:
+    """Pangram research: AI signals strongest when each new paragraph
+    starts with an explicit logical connector. Flag if there are 2+."""
+    paragraphs = [p for p in re.split(r"\n\s*\n", text) if p.strip()]
+    if len(paragraphs) < 2:
+        return []
+    rx = _PARAGRAPH_CONNECTORS_ES if lang == "es" else _PARAGRAPH_CONNECTORS_EN
+    hits = sum(1 for p in paragraphs if rx.match(p.lstrip()))
+    if hits >= 2:
+        msg_es = (
+            f"{hits}/{len(paragraphs)} párrafos abren con conector formal — "
+            "firma fuerte de IA (Pangram)"
+        )
+        msg_en = (
+            f"{hits}/{len(paragraphs)} paragraphs open with a formal connector — "
+            "strong AI tell (Pangram)"
+        )
+        return [StructuralFinding(
+            line=0,
+            kind="paragraph-connectors",
+            severity=3,
+            message=msg_es if lang == "es" else msg_en,
+            suggestion=(
+                "borra los conectores de apertura, deja que la lógica fluya"
+                if lang == "es"
+                else "drop the opening connectors, let logic flow"
+            ),
+        )]
+    return []
+
+
+def _check_paragraph_symmetry(text: str, lang: str) -> list[StructuralFinding]:
+    """LLMs produce paragraphs of suspiciously similar length.
+    Flag when CV of word-count across 4+ paragraphs is below 0.25."""
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    if len(paragraphs) < 4:
+        return []
+    word_counts = [len(p.split()) for p in paragraphs]
+    if min(word_counts) < 20:
+        # Skip when there are very short ones (lists, headers); not interesting.
+        return []
+    mean = statistics.mean(word_counts)
+    try:
+        std = statistics.stdev(word_counts)
+    except statistics.StatisticsError:
+        return []
+    cv = std / mean if mean else 0
+    if cv < 0.25:
+        msg_es = (
+            f"{len(paragraphs)} párrafos con longitud casi idéntica (CV={cv:.2f}) — "
+            "simetría paramétrica AI"
+        )
+        msg_en = (
+            f"{len(paragraphs)} paragraphs of near-identical length (CV={cv:.2f}) — "
+            "AI parametric symmetry"
+        )
+        return [StructuralFinding(
+            line=0,
+            kind="paragraph-symmetry",
+            severity=2,
+            message=msg_es if lang == "es" else msg_en,
+            suggestion=(
+                "rompe la simetría: mezcla un párrafo largo con uno de una línea"
+                if lang == "es"
+                else "break symmetry: mix a long paragraph with a one-liner"
+            ),
+        )]
+    return []
+
+
 # ---------- main analyze ----------
 
 def analyze(
@@ -232,6 +316,8 @@ def analyze(
         report.structural.extend(_check_em_dashes(text, lines))
         report.structural.extend(_check_list_density(text))
         report.structural.extend(_check_tricolon(sentences))
+        report.structural.extend(_check_paragraph_connectors(text, lang))
+        report.structural.extend(_check_paragraph_symmetry(text, lang))
     report.structural.extend(_check_rhythm(sentences))
 
     # score

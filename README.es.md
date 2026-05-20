@@ -79,11 +79,11 @@ Sale con código `0` si está limpio, `1` si encuentra cosas. Sirve para hooks d
 
 Tres capas.
 
-**1. Patrones de frase.** Cosas que la IA dice y los humanos casi nunca: *"vale la pena destacar"*, *"se erige como"*, *"un testimonio de"*, *"espero que esto te sirva"*. ~50 patrones por idioma.
+**1. Patrones de frase.** Cosas que la IA dice y los humanos casi nunca: *"vale la pena destacar"*, *"se erige como"*, *"un testimonio de"*, *"espero que esto te sirva"*. ~80 patrones por idioma, incluyendo todo el léxico inflado de Pangram: reino, paradigma, sinergia, robusto, sin fisuras, transformador, multifacético, supremo, más conectores formales (Adicionalmente, En consecuencia, Por otra parte, Furthermore, Moreover, Additionally).
 
 **2. Patrones de estructura.** Pistas más allá de las palabras: paralelismos negativos (*"no se trata solo de X, sino de Y"*), copula avoidance (*"se erige como"* en vez de *"es"*), cierres genéricos (*"el futuro se ve brillante"*), aperturas serviles.
 
-**3. Ritmo y densidad.** Varianza de largo de oración, densidad de em-dashes, ratio de bullets, frecuencia de regla de tres. Cálculo global, no por línea.
+**3. Ritmo y forma.** Varianza de largo de oración, densidad de em-dashes, ratio de bullets, frecuencia de regla de tres, **simetría de largo de párrafos** (los LLMs producen párrafos de longitud sospechosamente parecida), y **densidad de conectores de apertura** (la investigación de Pangram muestra que varios párrafos arrancando con conectores explícitos es la señal más fuerte de IA).
 
 Los scores se normalizan a 0–100. Sobre 60 es IA fuerte, 30–60 es mezcla, bajo 30 está mayormente limpio.
 
@@ -118,7 +118,9 @@ Agrega un patrón, abre un PR. No necesitas tocar código para reglas nuevas.
 
 ## Créditos
 
-Este proyecto se apoya en los patrones documentados en [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) y [blader/humanizer](https://github.com/blader/humanizer). Ambos son MIT, y este también.
+Este proyecto se apoya en los patrones documentados en [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) y [blader/humanizer](https://github.com/blader/humanizer). El léxico inflado y los chequeos estructurales vienen de la investigación de [Pangram Labs](https://arxiv.org/abs/2402.14873) (2024-2025), el [paper DAMAGE sobre humanizadores](https://arxiv.org/html/2501.03437v1) y [EditLens](https://arxiv.org/abs/2510.03154). Detalle completo en [docs/research.md](docs/research.md).
+
+Todas las fuentes compatibles con MIT, y este también.
 
 ## Licencia
 
