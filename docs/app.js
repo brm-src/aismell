@@ -9,6 +9,13 @@ const I18N = {
     booting: "preparando aismell…",
     ready: "listo. pega tu texto y dale a analizar.",
     analyzing: "olfateando…",
+    analyzing_steps: [
+      "leyendo el texto…",
+      "buscando muletillas…",
+      "midiendo ritmo de oraciones…",
+      "olfateando conectores…",
+      "calculando smell…",
+    ],
     error: "algo se rompió:",
     lang: "idioma",
     strict: "solo alta confianza",
@@ -27,6 +34,12 @@ const I18N = {
     sentences: "oraciones",
     smell: "smell",
     findings: "hallazgos",
+    sev_high: "severidad alta",
+    sev_mod: "media",
+    sev_low: "baja",
+    density: "densidad",
+    density_text: "{n} de {total} oraciones con marca ({pct}%)",
+    top_patterns: "más repetidos:",
     label_high: "alto",
     label_mod: "moderado",
     label_low: "bajo",
@@ -56,6 +69,13 @@ const I18N = {
     booting: "warming up aismell…",
     ready: "ready. paste your text and hit analyze.",
     analyzing: "sniffing…",
+    analyzing_steps: [
+      "reading text…",
+      "matching filler phrases…",
+      "measuring sentence rhythm…",
+      "sniffing connectors…",
+      "scoring smell…",
+    ],
     error: "something broke:",
     lang: "language",
     strict: "high confidence only",
@@ -74,6 +94,12 @@ const I18N = {
     sentences: "sentences",
     smell: "smell",
     findings: "findings",
+    sev_high: "high severity",
+    sev_mod: "medium",
+    sev_low: "low",
+    density: "density",
+    density_text: "{n} of {total} sentences flagged ({pct}%)",
+    top_patterns: "most repeated:",
     label_high: "high",
     label_mod: "moderate",
     label_low: "low",
@@ -354,13 +380,82 @@ function render(report) {
   const pct = Math.round(report.score * 100);
   const sev = severityClass(report.score);
 
-  els.score.innerHTML = `
-    <div class="pct ${sev}">${pct}%</div>
-    <div class="meta">
-      <strong>${severityLabel(report.score)}</strong> · ${report.sentences} ${t.sentences} ·
-      ${report.hits.length + report.structural.length} ${t.findings} · ${report.lang}
-    </div>
-  `;
+  // Severity breakdown
+  let sevHigh = 0, sevMod = 0, sevLow = 0;
+  for (const h of report.hits) {
+    if (h.severity === 3) sevHigh++;
+    else if (h.severity === 2) sevMod++;
+    else sevLow++;
+  }
+  for (const s of report.structural) {
+    if (s.severity === 3) sevHigh++;
+    else if (s.severity === 2) sevMod++;
+    else sevLow++;
+  }
+
+  // Density: % of distinct lines with at least one inline hit
+  const flaggedLines = new Set();
+  for (const h of report.hits) flaggedLines.add(h.line);
+  const flagged = flaggedLines.size;
+  const denPct = report.sentences ? Math.round((flagged / report.sentences) * 100) : 0;
+
+  // Top repeated patterns (by id)
+  const counts = {};
+  for (const h of report.hits) {
+    counts[h.id] = (counts[h.id] || 0) + 1;
+  }
+  const top = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .filter(([, n]) => n >= 2)
+    .slice(0, 3);
+
+  const totalFindings = report.hits.length + report.structural.length;
+
+  let scoreHtml = `
+    <div class="score-top">
+      <div class="pct ${sev}">${pct}%</div>
+      <div class="meta">
+        <strong>${severityLabel(report.score)}</strong> · ${report.sentences} ${t.sentences} ·
+        ${totalFindings} ${t.findings} · ${report.lang}
+      </div>
+    </div>`;
+
+  if (totalFindings > 0) {
+    scoreHtml += `
+    <div class="score-bars">
+      <div class="score-bar s-high">
+        <div class="num">${sevHigh}</div>
+        <div class="lbl">${t.sev_high}</div>
+      </div>
+      <div class="score-bar s-mod">
+        <div class="num">${sevMod}</div>
+        <div class="lbl">${t.sev_mod}</div>
+      </div>
+      <div class="score-bar s-low">
+        <div class="num">${sevLow}</div>
+        <div class="lbl">${t.sev_low}</div>
+      </div>
+    </div>`;
+
+    if (flagged > 0 && report.sentences > 0) {
+      scoreHtml += `
+    <div class="score-density">
+      <span>${t.density_text.replace("{n}", flagged).replace("{total}", report.sentences).replace("{pct}", denPct)}</span>
+      <div class="track"><div class="fill" style="width: ${Math.min(100, denPct)}%"></div></div>
+    </div>`;
+    }
+
+    if (top.length > 0) {
+      const chips = top.map(([id, n]) => `<span class="chip"><span class="cnt">×${n}</span>${escapeHtml(id)}</span>`).join("");
+      scoreHtml += `
+    <div class="score-top-patterns">
+      <span>${t.top_patterns}</span>
+      ${chips}
+    </div>`;
+    }
+  }
+
+  els.score.innerHTML = scoreHtml;
 
   if (report.hits.length === 0 && report.structural.length === 0) {
     els.findings.innerHTML = `<div class="clean">${t.clean}</div>`;
@@ -389,11 +484,30 @@ async function analyze() {
     return;
   }
   els.analyzeBtn.disabled = true;
-  setStatus(`<span class="spin">●</span> ${I18N[UILANG].analyzing}`);
+
+  // Rotating animation messages — at least one cycle so it feels real
+  const steps = I18N[UILANG].analyzing_steps || [I18N[UILANG].analyzing];
+  let i = 0;
+  setStatus(`<span class="spin">●</span> ${steps[0]}`);
+  const ticker = setInterval(() => {
+    i = (i + 1) % steps.length;
+    setStatus(`<span class="spin">●</span> ${steps[i]}`);
+  }, 350);
+
+  // Run sync code in a microtask so the spinner renders first
+  await new Promise((r) => setTimeout(r, 50));
+  const startedAt = performance.now();
+
   try {
     const res = analyzeFn(text, els.langSel.value, els.strictSel.checked);
     const obj = res.toJs({ dict_converter: Object.fromEntries });
     res.destroy();
+
+    // Floor at ~1.2s so very short texts don't feel instant/fake
+    const elapsed = performance.now() - startedAt;
+    if (elapsed < 1200) await new Promise((r) => setTimeout(r, 1200 - elapsed));
+    clearInterval(ticker);
+
     render(obj);
     setStatus(null);
 
@@ -402,6 +516,7 @@ async function analyze() {
       await verifyBibliography(text);
     }
   } catch (err) {
+    clearInterval(ticker);
     setStatus(`${I18N[UILANG].error} ${err.message}`, true);
     console.error(err);
   } finally {
