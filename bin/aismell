@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Standalone bin entry — works without pip install.
 
-Self-heals against missing PyYAML in the active python by re-execing
-into a system python that has it, before falling back to a clear
-install-instructions error.
+Self-heals against missing PyYAML / PyMuPDF in the active python by
+re-execing into a system python that has them. This matters when the
+shell is inside a venv that doesn't include the user's pacman/apt
+packages (e.g. Hermes Agent's venv shadows /usr/bin/python3).
 """
 
 import os
@@ -14,39 +15,74 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# Try to import yaml; if missing, try to find a python that has it.
+# Modules we'd like to find together. yaml is required; fitz (PyMuPDF)
+# is optional but only useful for PDF mode, so we prefer a python that
+# has both when given a choice.
+REQUIRED = ["yaml"]
+PREFERRED = ["yaml", "fitz"]
+
+_MARKER = "_AISMELL_REEXECED"
+
+
+def _has_modules(py: str, mods: list[str]) -> bool:
+    code = "import " + ", ".join(mods)
+    try:
+        subprocess.check_call(
+            [py, "-c", code],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
+def _candidate_pythons() -> list[str]:
+    found: list[str] = []
+    for fixed in (
+        "/usr/bin/python3",
+        "/usr/local/bin/python3",
+        "/opt/homebrew/bin/python3",
+    ):
+        if Path(fixed).exists() and fixed != sys.executable and fixed not in found:
+            found.append(fixed)
+    for name in ("python3", "python"):
+        candidate = shutil.which(name)
+        if candidate and candidate != sys.executable and candidate not in found:
+            found.append(candidate)
+    return found
+
+
+def _maybe_reexec():
+    """If the current python is missing required modules — or is missing
+    optional ones we'd prefer — re-exec into a better python."""
+    if os.environ.get(_MARKER) == "1":
+        return  # already re-execed once; stop loops
+
+    current_has_required = _has_modules(sys.executable, REQUIRED)
+    current_has_preferred = _has_modules(sys.executable, PREFERRED)
+    if current_has_preferred:
+        return  # we're already golden
+
+    candidates = _candidate_pythons()
+    # First pass: a python with everything.
+    target = next((py for py in candidates if _has_modules(py, PREFERRED)), None)
+    # Second pass (only if we don't have required): one with at least yaml.
+    if target is None and not current_has_required:
+        target = next((py for py in candidates if _has_modules(py, REQUIRED)), None)
+    if target is None:
+        return  # nothing better; let the natural error happen below
+
+    env = dict(os.environ)
+    env[_MARKER] = "1"
+    os.execve(target, [target, str(Path(__file__).resolve()), *sys.argv[1:]], env)
+
+
+_maybe_reexec()
+
 try:
     import yaml  # noqa: F401
 except ImportError:
-    _MARKER = "_AISMELL_REEXECED"
-    if os.environ.get(_MARKER) != "1":
-        # Search for a python interpreter that has PyYAML available.
-        candidates: list[str] = []
-        # Common system locations first (where distro package managers install).
-        for fixed in ("/usr/bin/python3", "/usr/local/bin/python3", "/opt/homebrew/bin/python3"):
-            if Path(fixed).exists() and fixed != sys.executable:
-                candidates.append(fixed)
-        # Anything else on PATH.
-        for name in ("python3", "python"):
-            found = shutil.which(name)
-            if found and found not in candidates and found != sys.executable:
-                candidates.append(found)
-
-        for py in candidates:
-            try:
-                subprocess.check_call(
-                    [py, "-c", "import yaml"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            except (subprocess.CalledProcessError, FileNotFoundError):
-                continue
-            # Re-exec with that python; mark to prevent loops.
-            env = dict(os.environ)
-            env[_MARKER] = "1"
-            os.execve(py, [py, str(Path(__file__).resolve()), *sys.argv[1:]], env)
-
-    # No interpreter with yaml found. Print a helpful, OS-aware message.
     msg = [
         "aismell needs PyYAML.",
         "",
