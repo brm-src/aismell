@@ -212,6 +212,80 @@
   .scanning .stats .hits.alert { color: var(--hl); }
   @keyframes fadein { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
 
+  /* Verdict block (heuristic summary at the top of results) */
+  .verdict {
+    padding: 22px 24px 18px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+  }
+  .verdict-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .verdict-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    color: var(--dim);
+  }
+  .verdict-value {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+  .verdict.v-high .verdict-value { color: var(--red); }
+  .verdict.v-mid .verdict-value { color: var(--hl); }
+  .verdict.v-low .verdict-value { color: var(--grn, #6abf69); }
+  .verdict.v-clean .verdict-value { color: var(--grn, #6abf69); }
+  .verdict-conf {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--dim);
+    text-transform: lowercase;
+  }
+  .verdict-conf strong { color: var(--fg); font-weight: 600; }
+  .verdict-why { margin-top: 14px; }
+  .verdict-why-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--dim);
+    margin-bottom: 6px;
+  }
+  .verdict-why ul {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--fg);
+    font-size: 13.5px;
+    line-height: 1.55;
+  }
+  .verdict-why li { margin: 2px 0; }
+
+  /* Docx download bar (shown after annotateDocx finishes) */
+  .docx-download {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    border-bottom: 1px dashed var(--line);
+    background: rgba(245, 197, 24, 0.05);
+    flex-wrap: wrap;
+  }
+  .docx-download-text {
+    flex: 1;
+    min-width: 200px;
+    color: var(--fg);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .docx-download .btn {
+    padding: 8px 14px;
+    font-size: 13px;
+    text-decoration: none;
+  }
+
   /* Score */
   .score {
     padding: 18px;

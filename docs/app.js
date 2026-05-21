@@ -21,6 +21,25 @@ const I18N = {
       "armando reporte…",
     ],
     scan_hits: "{n} señales detectadas",
+    verdict_label: "veredicto",
+    verdict_ai: "probable IA",
+    verdict_mixed: "mixto / asistido",
+    verdict_human: "huele a humano",
+    verdict_clean: "limpio",
+    verdict_confidence: "confianza",
+    verdict_conf_high: "alta",
+    verdict_conf_med: "media",
+    verdict_conf_low: "baja",
+    verdict_summary_label: "por qué",
+    verdict_reasons: {
+      density: "densidad de marcas IA: {pct}% de las oraciones",
+      repeats: "patrón \"{id}\" repetido {n} veces",
+      structural: "{n} señales estructurales (encabezados, listas, dramatización)",
+      severe: "{n} marcas de alta severidad",
+      uniform_rhythm: "ritmo demasiado uniforme entre oraciones",
+      length: "texto muy corto · veredicto incierto",
+      clean: "no se detectaron patrones IA fuertes",
+    },
     error: "algo se rompió:",
     lang: "idioma",
     strict: "solo alta confianza",
@@ -113,6 +132,25 @@ const I18N = {
       "building report…",
     ],
     scan_hits: "{n} signals detected",
+    verdict_label: "verdict",
+    verdict_ai: "likely AI",
+    verdict_mixed: "mixed / assisted",
+    verdict_human: "smells human",
+    verdict_clean: "clean",
+    verdict_confidence: "confidence",
+    verdict_conf_high: "high",
+    verdict_conf_med: "medium",
+    verdict_conf_low: "low",
+    verdict_summary_label: "why",
+    verdict_reasons: {
+      density: "AI-marker density: {pct}% of sentences flagged",
+      repeats: "pattern \"{id}\" repeats {n} times",
+      structural: "{n} structural signals (headings, lists, dramatic fragments)",
+      severe: "{n} high-severity marks",
+      uniform_rhythm: "sentence rhythm suspiciously uniform",
+      length: "text too short — verdict uncertain",
+      clean: "no strong AI patterns detected",
+    },
     error: "something broke:",
     lang: "language",
     strict: "high confidence only",
@@ -236,6 +274,7 @@ let pyodide = null;
 let analyzeFn = null;
 let annotateDocxFn = null;
 let extractRefsFn = null;
+let extractDocxTextFn = null;
 
 function setStatus(msg, isError = false) {
   if (msg === null) {
@@ -418,10 +457,23 @@ def extract_refs(text):
             "author": r.author,
         })
     return out
+
+def extract_docx_text(input_bytes):
+    import io, zipfile
+    from xml.etree import ElementTree as ET
+    W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+    with zipfile.ZipFile(io.BytesIO(bytes(input_bytes))) as z:
+        xml = z.read("word/document.xml")
+    root = ET.fromstring(xml)
+    paras = []
+    for p in root.iter(W + "p"):
+        paras.append("".join(t.text or "" for t in p.iter(W + "t")))
+    return "\\n".join(paras)
 `);
     analyzeFn = pyodide.globals.get("run");
     annotateDocxFn = pyodide.globals.get("annotate_docx_bytes");
     extractRefsFn = pyodide.globals.get("extract_refs");
+    extractDocxTextFn = pyodide.globals.get("extract_docx_text");
     setStatus(I18N[UILANG].ready);
     els.analyzeBtn.disabled = false;
   } catch (err) {
@@ -539,6 +591,114 @@ function renderStructural(s, t) {
     </div>`;
 }
 
+function computeVerdict(report) {
+  const t = I18N[UILANG];
+  const reasons = [];
+  const sentences = report.sentences || 0;
+  const hits = report.hits || [];
+  const structural = report.structural || [];
+
+  // Density by sentence count (more reliable than by line — pasted text may be single-line).
+  // hits-per-sentence ratio, capped at 100%.
+  const denPct = sentences ? Math.min(100, (hits.length / sentences) * 100) : 0;
+
+  // Severe count
+  let severe = 0;
+  for (const h of hits) if (h.severity === 3) severe++;
+  for (const s of structural) if (s.severity === 3) severe++;
+
+  // Repeated patterns (any id seen 3+ times = a tic)
+  const counts = {};
+  for (const h of hits) counts[h.id] = (counts[h.id] || 0) + 1;
+  const repeats = Object.entries(counts)
+    .filter(([, n]) => n >= 3)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2);
+
+  // Heuristic score (0..1)
+  let h = 0;
+  // Density: 0% -> 0, 30% -> 0.45, 60%+ -> 0.85
+  h += Math.min(0.85, denPct / 70);
+  // Repeats (each tic adds up to 0.15)
+  h += Math.min(0.30, repeats.length * 0.15);
+  // Severe marks
+  h += Math.min(0.25, severe * 0.05);
+  // Structural signals
+  h += Math.min(0.20, structural.length * 0.05);
+  // Blend with rule-based score
+  h = h * 0.7 + report.score * 0.3;
+  h = Math.max(0, Math.min(1, h));
+
+  // Build reasons
+  if (denPct >= 15 && hits.length >= 3) {
+    reasons.push(t.verdict_reasons.density.replace("{pct}", Math.round(denPct)));
+  }
+  for (const [id, n] of repeats) {
+    reasons.push(t.verdict_reasons.repeats.replace("{id}", id).replace("{n}", n));
+  }
+  if (structural.length >= 2) {
+    reasons.push(t.verdict_reasons.structural.replace("{n}", structural.length));
+  }
+  if (severe >= 2 && reasons.length < 3) {
+    reasons.push(t.verdict_reasons.severe.replace("{n}", severe));
+  }
+
+  // Verdict label + confidence
+  let label, klass, conf, confKey;
+  if (sentences < 3) {
+    label = t.verdict_human;
+    klass = "v-low";
+    conf = t.verdict_conf_low;
+    confKey = "low";
+    reasons.length = 0;
+    reasons.push(t.verdict_reasons.length);
+  } else if (h >= 0.55) {
+    label = t.verdict_ai;
+    klass = "v-high";
+    if (h >= 0.72 && reasons.length >= 2) { conf = t.verdict_conf_high; confKey = "high"; }
+    else if (h >= 0.65) { conf = t.verdict_conf_med; confKey = "med"; }
+    else { conf = t.verdict_conf_low; confKey = "low"; }
+  } else if (h >= 0.28) {
+    label = t.verdict_mixed;
+    klass = "v-mid";
+    conf = reasons.length >= 2 ? t.verdict_conf_med : t.verdict_conf_low;
+    confKey = reasons.length >= 2 ? "med" : "low";
+  } else if (hits.length === 0 && structural.length === 0) {
+    label = t.verdict_clean;
+    klass = "v-clean";
+    conf = t.verdict_conf_med;
+    confKey = "med";
+    reasons.length = 0;
+    reasons.push(t.verdict_reasons.clean);
+  } else {
+    label = t.verdict_human;
+    klass = "v-low";
+    conf = t.verdict_conf_med;
+    confKey = "med";
+    if (reasons.length === 0) reasons.push(t.verdict_reasons.clean);
+  }
+
+  return { label, klass, conf, confKey, reasons: reasons.slice(0, 3), heur: h };
+}
+
+function renderVerdict(report) {
+  const t = I18N[UILANG];
+  const v = computeVerdict(report);
+  const reasonsHtml = v.reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join("");
+  return `
+    <div class="verdict ${v.klass}">
+      <div class="verdict-head">
+        <div class="verdict-label">${t.verdict_label}</div>
+        <div class="verdict-value">${escapeHtml(v.label)}</div>
+        <div class="verdict-conf">${t.verdict_confidence}: <strong>${escapeHtml(v.conf)}</strong></div>
+      </div>
+      <div class="verdict-why">
+        <div class="verdict-why-label">${t.verdict_summary_label}</div>
+        <ul>${reasonsHtml}</ul>
+      </div>
+    </div>`;
+}
+
 function render(report) {
   const t = I18N[UILANG];
   const pct = Math.round(report.score * 100);
@@ -575,7 +735,7 @@ function render(report) {
 
   const totalFindings = report.hits.length + report.structural.length;
 
-  let scoreHtml = `
+  let scoreHtml = renderVerdict(report) + `
     <div class="score-top">
       <div class="pct ${sev}">${pct}%</div>
       <div class="meta">
@@ -897,36 +1057,58 @@ async function handleFile(file) {
 
 async function annotateDocx(file) {
   const t = I18N[UILANG];
-  if (!annotateDocxFn) {
+  if (!annotateDocxFn || !analyzeFn) {
     setStatus(t.booting, true);
     return;
   }
   els.analyzeBtn.disabled = true;
 
-  // Same rotating animation as analyze() — feels alive while parsing the docx
-  const baseSteps = t.analyzing_steps || [t.analyzing];
-  const steps = [`${t.annotating} ${file.name}`, ...baseSteps];
-  let i = 0;
-  setStatus(`<span class="spin">●</span> ${steps[0]}`);
-  const ticker = setInterval(() => {
-    i = (i + 1) % steps.length;
-    setStatus(`<span class="spin">●</span> ${steps[i]}`);
-  }, 350);
+  // Big in-panel scanner — same animation as paste-text flow
+  const steps = t.analyzing_steps || [t.analyzing];
+  const minMs = 4500;
+  const targetMs = 9000;
+  const progress = startScanning(steps, { expectedMs: targetMs });
+  setStatus(null);
 
   await new Promise((r) => setTimeout(r, 50));
   const startedAt = performance.now();
 
   try {
     const buf = new Uint8Array(await file.arrayBuffer());
+
+    // 1) Extract plain text from the .docx so we can run the same analysis
+    //    as paste-text and show a real verdict.
+    let extractedText = "";
+    if (extractDocxTextFn) {
+      try {
+        extractedText = extractDocxTextFn(buf) || "";
+      } catch (e) {
+        console.warn("extract_docx_text failed", e);
+      }
+    }
+
+    // 2) Run analysis on the extracted text (drives the verdict + summary)
+    let report = null;
+    if (extractedText.trim()) {
+      const res = analyzeFn(extractedText, els.langSel.value, els.strictSel.checked);
+      report = res.toJs({ dict_converter: Object.fromEntries });
+      res.destroy();
+      const totalHits = (report.hits ? report.hits.length : 0) + (report.structural ? report.structural.length : 0);
+      progress.setHits(totalHits);
+    }
+
+    // 3) Annotate the .docx (highlights + comments)
     const py = annotateDocxFn(buf, els.langSel.value, els.strictSel.checked);
     const result = py.toJs({ dict_converter: Object.fromEntries });
     py.destroy();
 
-    // Floor at ~1.5s — docx parsing is usually fast, so we let the animation breathe
+    // Floor at minMs so the scanner animation breathes
     const elapsed = performance.now() - startedAt;
-    if (elapsed < 1500) await new Promise((r) => setTimeout(r, 1500 - elapsed));
-    clearInterval(ticker);
+    if (elapsed < minMs) await new Promise((r) => setTimeout(r, minMs - elapsed));
+    await progress.finish();
 
+    // 4) Render the same verdict/score panel as paste-text flow,
+    //    then add a docx-specific footer with the download link.
     const outBytes = new Uint8Array(result.bytes);
     const blob = new Blob([outBytes], {
       type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -934,42 +1116,56 @@ async function annotateDocx(file) {
     const url = URL.createObjectURL(blob);
     const outName = file.name.replace(/(\.docx)$/i, "-aismell$1");
 
-    // Auto-trigger the download.
+    if (report) {
+      // Stash the input text so the bibliography toggle works on .docx too.
+      els.input.value = extractedText;
+      render(report);
+    } else {
+      // Fallback: no extracted text — show minimal score panel
+      const pct = Math.round(result.score * 100);
+      const sev = severityClass(result.score);
+      els.score.innerHTML = `
+        <div class="score-top">
+          <div class="pct ${sev}">${pct}%</div>
+          <div class="meta">
+            <strong>${severityLabel(result.score)}</strong> · ${result.sentences} ${t.sentences} ·
+            ${result.findings} ${t.findings}
+          </div>
+        </div>`;
+      els.findings.innerHTML = "";
+      els.resultPanel.hidden = false;
+    }
+
+    // 5) Append a download bar at the top of findings
+    const downloadHtml = `
+      <div class="docx-download">
+        <div class="docx-download-text">
+          ${t.docx_done.replace("{name}", `<strong>${escapeHtml(outName)}</strong>`)}
+        </div>
+        <a class="btn" id="docxDownloadBtn" href="${url}" download="${escapeHtml(outName)}">⬇ ${escapeHtml(outName)}</a>
+      </div>`;
+    els.findings.insertAdjacentHTML("afterbegin", downloadHtml);
+
+    // Auto-trigger the download once (browsers allow this within click handler chain)
     const a = document.createElement("a");
     a.href = url;
     a.download = outName;
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
 
-    // Render a summary in the result panel.
-    const pct = Math.round(result.score * 100);
-    const sev = severityClass(result.score);
-    els.score.innerHTML = `
-      <div class="score-top">
-        <div class="pct ${sev}">${pct}%</div>
-        <div class="meta">
-          <strong>${severityLabel(result.score)}</strong> · ${result.sentences} ${t.sentences} ·
-          ${result.findings} ${t.findings} · <span style="color: var(--hl);">${outName}</span>
-        </div>
-      </div>
-    `;
-    els.findings.innerHTML = `
-      <div class="empty" style="color: var(--grn);">
-        ${t.docx_done.replace("{name}", outName)}
-      </div>
-    `;
-    els.resultPanel.hidden = false;
     setStatus(null);
 
-    // Optional bibliography verification on docx text — needs source text.
-    if (els.biblioSel && els.biblioSel.checked && extractRefsFn) {
-      // We don't have raw text here; extract again via Pyodide from the bytes.
-      // For now: pop a note. We add proper docx-text-extract later if needed.
+    // Optional: bibliography verification on the extracted text
+    if (extractedText.trim() && els.biblioSel && els.biblioSel.checked && extractRefsFn) {
+      await verifyBibliography(extractedText);
     }
+
+    bumpRunCount();
+    maybeShowNudge();
   } catch (err) {
-    clearInterval(ticker);
+    progress.cancel();
     console.error(err);
     setStatus(`${t.error} ${err.message}`, true);
   } finally {
