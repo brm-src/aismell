@@ -23,7 +23,7 @@ const I18N = {
     cli: "también CLI",
     cliText: "¿Necesitas anotar archivos Word o PDF con highlights y comentarios? Hay una versión de terminal que hace eso. <a href=\"https://github.com/brm-src/aismell\">github.com/brm-src/aismell</a>",
     donate: "☕ invitame un café",
-    placeholder: "Pega tu texto acá. O suelta un .txt / .md sobre esta área.",
+    placeholder: "Pega tu texto acá. O suelta un archivo (.txt / .md / .docx).",
     sentences: "oraciones",
     smell: "smell",
     findings: "hallazgos",
@@ -38,6 +38,10 @@ const I18N = {
     inline: "hallazgos línea por línea",
     global: "(global)",
     drop_hint: "suelta el archivo para analizarlo",
+    upload: "subir archivo",
+    annotating: "marcando word…",
+    docx_done: "✓ {name} descargado. Ábrelo en Word o LibreOffice — los hallazgos están en amarillo con comentarios al costado.",
+    pdf_browser_unsupported: "PDF en la web aún no se puede (la librería no carga en el navegador). Para PDF usa el CLI: aismell paper.pdf --out paper-marcado.pdf",
   },
   en: {
     title: "aismell",
@@ -60,7 +64,7 @@ const I18N = {
     cli: "also a CLI",
     cliText: "Need to annotate Word or PDF files with highlights and comments? There's a terminal version that does that. <a href=\"https://github.com/brm-src/aismell\">github.com/brm-src/aismell</a>",
     donate: "☕ buy me a coffee",
-    placeholder: "Paste your text here. Or drop a .txt / .md file on this area.",
+    placeholder: "Paste your text here. Or drop a file (.txt / .md / .docx).",
     sentences: "sentences",
     smell: "smell",
     findings: "findings",
@@ -75,6 +79,10 @@ const I18N = {
     inline: "line-by-line findings",
     global: "(global)",
     drop_hint: "drop the file to analyze",
+    upload: "upload file",
+    annotating: "annotating word…",
+    docx_done: "✓ {name} downloaded. Open it in Word or LibreOffice — findings are highlighted in yellow with side comments.",
+    pdf_browser_unsupported: "PDF in the browser isn't supported yet (the library doesn't run in WASM). For PDF use the CLI: aismell paper.pdf --out paper-marked.pdf",
   },
 };
 
@@ -85,6 +93,8 @@ const els = {
   strictSel: document.getElementById("strictSel"),
   analyzeBtn: document.getElementById("analyzeBtn"),
   clearBtn: document.getElementById("clearBtn"),
+  fileBtn: document.getElementById("fileBtn"),
+  fileInput: document.getElementById("fileInput"),
   resultPanel: document.getElementById("resultPanel"),
   score: document.getElementById("score"),
   findings: document.getElementById("findings"),
@@ -116,6 +126,7 @@ applyI18n();
 // ---------- Pyodide ----------
 let pyodide = null;
 let analyzeFn = null;
+let annotateDocxFn = null;
 
 function setStatus(msg, isError = false) {
   if (msg === null) {
@@ -143,6 +154,7 @@ async function bootPyodide() {
     pyodide.FS.mkdir("/aismell/patterns");
     pyodide.FS.writeFile("/aismell/__init__.py", "");
     pyodide.FS.writeFile("/aismell/core.py", sources.core);
+    pyodide.FS.writeFile("/aismell/docx.py", sources.docx);
     pyodide.FS.writeFile("/aismell/patterns/es.yaml", sources.es);
     pyodide.FS.writeFile("/aismell/patterns/en.yaml", sources.en);
 
@@ -150,6 +162,8 @@ async function bootPyodide() {
 import sys
 sys.path.insert(0, "/")
 from aismell.core import analyze
+from aismell.docx import annotate_docx
+from pathlib import Path
 
 def run(text, lang_code, strict):
     lang = None if lang_code == "auto" else lang_code
@@ -183,8 +197,24 @@ def run(text, lang_code, strict):
             "suggestion": s.suggestion,
         })
     return out
+
+def annotate_docx_bytes(input_bytes, lang_code, strict):
+    src = Path("/tmp/in.docx")
+    dst = Path("/tmp/out.docx")
+    src.write_bytes(bytes(input_bytes))
+    lang = None if lang_code == "auto" else lang_code
+    result = annotate_docx(src, dst, lang=lang, strict=strict)
+    data = dst.read_bytes()
+    return {
+        "bytes": data,
+        "findings": result.findings,
+        "sentences": result.sentences,
+        "score": result.score,
+        "label": result.severity_label,
+    }
 `);
     analyzeFn = pyodide.globals.get("run");
+    annotateDocxFn = pyodide.globals.get("annotate_docx_bytes");
     setStatus(I18N[UILANG].ready);
     els.analyzeBtn.disabled = false;
   } catch (err) {
@@ -197,16 +227,18 @@ async function loadSources() {
   // Try local relative paths first.
   const local = {
     core: "core.py",
+    docx: "docx.py",
     es: "patterns/es.yaml",
     en: "patterns/en.yaml",
   };
   const remote = {
     core: "https://raw.githubusercontent.com/brm-src/aismell/main/aismell/core.py",
+    docx: "https://raw.githubusercontent.com/brm-src/aismell/main/aismell/docx.py",
     es:   "https://raw.githubusercontent.com/brm-src/aismell/main/aismell/patterns/es.yaml",
     en:   "https://raw.githubusercontent.com/brm-src/aismell/main/aismell/patterns/en.yaml",
   };
   const out = {};
-  for (const k of ["core", "es", "en"]) {
+  for (const k of Object.keys(local)) {
     let body = null;
     try {
       const r = await fetch(local[k]);
@@ -349,7 +381,7 @@ els.input.addEventListener("keydown", (e) => {
   }
 });
 
-// Drag & drop for .txt / .md files
+// Drag & drop for .txt / .md / .docx files
 function setupDnd() {
   const ta = els.input;
   ["dragenter", "dragover"].forEach((ev) =>
@@ -366,18 +398,94 @@ function setupDnd() {
   );
   ta.addEventListener("drop", async (e) => {
     const file = e.dataTransfer?.files?.[0];
-    if (!file) return;
-    const ok = ["text/plain", "text/markdown", ""].includes(file.type) ||
-               /\.(txt|md|markdown)$/i.test(file.name);
-    if (!ok) {
-      setStatus(`unsupported file: ${file.name} (only .txt / .md in browser)`, true);
-      return;
-    }
-    const text = await file.text();
-    els.input.value = text;
-    analyze();
+    if (file) await handleFile(file);
   });
 }
+
+async function handleFile(file) {
+  const t = I18N[UILANG];
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".docx")) {
+    return await annotateDocx(file);
+  }
+  const isText = ["text/plain", "text/markdown", ""].includes(file.type) ||
+                 /\.(txt|md|markdown)$/i.test(file.name);
+  if (!isText) {
+    if (name.endsWith(".pdf")) {
+      setStatus(t.pdf_browser_unsupported, true);
+    } else {
+      setStatus(`${t.error} ${file.name}`, true);
+    }
+    return;
+  }
+  const text = await file.text();
+  els.input.value = text;
+  await analyze();
+}
+
+async function annotateDocx(file) {
+  const t = I18N[UILANG];
+  if (!annotateDocxFn) {
+    setStatus(t.booting, true);
+    return;
+  }
+  setStatus(`<span class="spin">●</span> ${t.annotating} ${file.name}`);
+  els.analyzeBtn.disabled = true;
+  try {
+    const buf = new Uint8Array(await file.arrayBuffer());
+    const py = annotateDocxFn(buf, els.langSel.value, els.strictSel.checked);
+    const result = py.toJs({ dict_converter: Object.fromEntries });
+    py.destroy();
+
+    const outBytes = new Uint8Array(result.bytes);
+    const blob = new Blob([outBytes], {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+    const url = URL.createObjectURL(blob);
+    const outName = file.name.replace(/(\.docx)$/i, "-aismell$1");
+
+    // Auto-trigger the download.
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = outName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+
+    // Render a summary in the result panel.
+    const pct = Math.round(result.score * 100);
+    const sev = severityClass(result.score);
+    els.score.innerHTML = `
+      <div class="pct ${sev}">${pct}%</div>
+      <div class="meta">
+        <strong>${severityLabel(result.score)}</strong> · ${result.sentences} ${t.sentences} ·
+        ${result.findings} ${t.findings} · <span style="color: var(--hl);">${outName}</span>
+      </div>
+    `;
+    els.findings.innerHTML = `
+      <div class="empty" style="color: var(--grn);">
+        ${t.docx_done.replace("{name}", outName)}
+      </div>
+    `;
+    els.resultPanel.hidden = false;
+    setStatus(null);
+  } catch (err) {
+    console.error(err);
+    setStatus(`${t.error} ${err.message}`, true);
+  } finally {
+    els.analyzeBtn.disabled = false;
+  }
+}
+
 setupDnd();
+
+// File-input button
+els.fileBtn.addEventListener("click", () => els.fileInput.click());
+els.fileInput.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if (file) await handleFile(file);
+  e.target.value = ""; // allow re-picking the same file
+});
 
 bootPyodide();

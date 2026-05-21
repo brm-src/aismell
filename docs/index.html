@@ -305,7 +305,7 @@
   </div>
 
   <div class="panel">
-    <textarea id="input" placeholder="Pega tu texto acá. O suelta un .txt / .md sobre esta área."></textarea>
+    <textarea id="input" placeholder="Pega tu texto acá. O suelta un archivo (.txt / .md / .docx)."></textarea>
     <div class="toolbar">
       <label>
         <span data-i18n="lang">idioma</span>:
@@ -320,6 +320,8 @@
         <span data-i18n="strict">solo alta confianza</span>
       </label>
       <div class="right">
+        <input type="file" id="fileInput" accept=".txt,.md,.docx" style="display:none">
+        <button class="btn ghost" id="fileBtn" data-i18n="upload">subir archivo</button>
         <button class="btn ghost" id="clearBtn" data-i18n="clear">limpiar</button>
         <button class="btn" id="analyzeBtn" disabled data-i18n="analyze">analizar</button>
       </div>
