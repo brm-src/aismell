@@ -11,10 +11,14 @@ const I18N = {
     analyzing: "olfateando…",
     analyzing_steps: [
       "leyendo el texto…",
+      "tokenizando oraciones…",
       "buscando muletillas…",
       "midiendo ritmo de oraciones…",
-      "olfateando conectores…",
+      "olfateando conectores forzados…",
+      "revisando calcos del inglés…",
+      "detectando estructura editorial IA…",
       "calculando smell…",
+      "armando reporte…",
     ],
     error: "algo se rompió:",
     lang: "idioma",
@@ -28,7 +32,7 @@ const I18N = {
     not2: "<strong>No promete burlar detectores.</strong> Ese juego es scam.",
     not3: "<strong>No es forense.</strong> Falsos positivos pasan; humanos también usan estas frases.",
     cli: "también CLI",
-    cliText: "¿Necesitas anotar archivos Word o PDF con highlights y comentarios? Hay una versión de terminal que hace eso. <a href=\"https://github.com/brm-src/aismell\">github.com/brm-src/aismell</a>",
+    cliText: "¿Necesitas anotar archivos Word o PDF con highlights y comentarios? Hay una versión de terminal que hace eso.",
     donate: "☕ invitame un café",
     placeholder: "Pega tu texto acá. O suelta un archivo (.txt / .md / .docx).",
     sentences: "oraciones",
@@ -98,10 +102,14 @@ const I18N = {
     analyzing: "sniffing…",
     analyzing_steps: [
       "reading text…",
+      "tokenizing sentences…",
       "matching filler phrases…",
       "measuring sentence rhythm…",
-      "sniffing connectors…",
+      "sniffing forced connectors…",
+      "checking English calques…",
+      "detecting AI editorial structure…",
       "scoring smell…",
+      "building report…",
     ],
     error: "something broke:",
     lang: "language",
@@ -115,7 +123,7 @@ const I18N = {
     not2: "<strong>Does not promise to bypass detectors.</strong> That game is a scam.",
     not3: "<strong>Not forensic.</strong> False positives happen; humans use these phrases too.",
     cli: "also a CLI",
-    cliText: "Need to annotate Word or PDF files with highlights and comments? There's a terminal version that does that. <a href=\"https://github.com/brm-src/aismell\">github.com/brm-src/aismell</a>",
+    cliText: "Need to annotate Word or PDF files with highlights and comments? There's a terminal version that does that.",
     donate: "☕ buy me a coffee",
     placeholder: "Paste your text here. Or drop a file (.txt / .md / .docx).",
     sentences: "sentences",
@@ -234,6 +242,67 @@ function setStatus(msg, isError = false) {
   }
   els.status.innerHTML = msg;
   els.status.classList.toggle("err", isError);
+}
+
+// Progress bar with rotating step labels.
+// Returns { advance(stepIndex), finish(), cancel() }.
+function startProgress(steps, opts = {}) {
+  const expectedMs = opts.expectedMs ?? 9000; // visual budget
+  const stepMs = Math.max(900, Math.floor(expectedMs / steps.length));
+  els.status.classList.remove("err");
+  els.status.innerHTML = `
+    <div class="progress" role="status" aria-live="polite">
+      <div class="label"></div>
+      <div class="track"><div class="fill"></div></div>
+      <div class="pct">0%</div>
+    </div>`;
+  const labelEl = els.status.querySelector(".label");
+  const fillEl = els.status.querySelector(".fill");
+  const pctEl = els.status.querySelector(".pct");
+  let cancelled = false;
+  let i = -1;
+
+  function setStep(idx) {
+    if (cancelled) return;
+    if (idx === i || idx >= steps.length) return;
+    i = idx;
+    labelEl.style.opacity = "0";
+    setTimeout(() => {
+      if (cancelled) return;
+      labelEl.textContent = steps[idx];
+      labelEl.style.opacity = "1";
+    }, 90);
+    // Cap fill at 92% until finish() — user always feels the final snap.
+    const pct = Math.min(92, Math.round(((idx + 1) / steps.length) * 92));
+    fillEl.style.width = pct + "%";
+    pctEl.textContent = pct + "%";
+  }
+
+  setStep(0);
+  let next = 1;
+  const ticker = setInterval(() => {
+    if (cancelled) return;
+    if (next >= steps.length - 1) return; // hold on penultimate until finish
+    setStep(next++);
+  }, stepMs);
+
+  return {
+    advance(idx) { setStep(Math.min(idx, steps.length - 1)); },
+    async finish(doneLabel) {
+      cancelled = true;
+      clearInterval(ticker);
+      if (!fillEl) return;
+      labelEl.textContent = doneLabel || steps[steps.length - 1];
+      fillEl.classList.add("done");
+      fillEl.style.width = "100%";
+      pctEl.textContent = "100%";
+      await new Promise((r) => setTimeout(r, 280));
+    },
+    cancel() {
+      cancelled = true;
+      clearInterval(ticker);
+    },
+  };
 }
 
 async function bootPyodide() {
@@ -562,14 +631,11 @@ async function analyze() {
   }
   els.analyzeBtn.disabled = true;
 
-  // Rotating animation messages — at least one cycle so it feels real
+  // Progress bar with rotating step labels — visible budget ~9s, even on short text
   const steps = I18N[UILANG].analyzing_steps || [I18N[UILANG].analyzing];
-  let i = 0;
-  setStatus(`<span class="spin">●</span> ${steps[0]}`);
-  const ticker = setInterval(() => {
-    i = (i + 1) % steps.length;
-    setStatus(`<span class="spin">●</span> ${steps[i]}`);
-  }, 350);
+  const minMs = 4500;
+  const targetMs = 9000;
+  const progress = startProgress(steps, { expectedMs: targetMs });
 
   // Run sync code in a microtask so the spinner renders first
   await new Promise((r) => setTimeout(r, 50));
@@ -580,13 +646,13 @@ async function analyze() {
     const obj = res.toJs({ dict_converter: Object.fromEntries });
     res.destroy();
 
-    // Floor at ~1.2s so very short texts don't feel instant/fake
+    // Floor at minMs so the user can read the steps even on tiny text
     const elapsed = performance.now() - startedAt;
-    if (elapsed < 1200) await new Promise((r) => setTimeout(r, 1200 - elapsed));
-    clearInterval(ticker);
+    if (elapsed < minMs) await new Promise((r) => setTimeout(r, minMs - elapsed));
+    await progress.finish();
 
-    render(obj);
     setStatus(null);
+    render(obj);
 
     // Optional: verify bibliography (network call to CrossRef/arXiv).
     if (els.biblioSel && els.biblioSel.checked && extractRefsFn) {
@@ -596,7 +662,7 @@ async function analyze() {
     bumpRunCount();
     maybeShowNudge();
   } catch (err) {
-    clearInterval(ticker);
+    progress.cancel();
     setStatus(`${I18N[UILANG].error} ${err.message}`, true);
     console.error(err);
   } finally {

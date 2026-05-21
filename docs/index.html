@@ -156,6 +156,42 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* Progress bar (analyze) */
+  .progress {
+    padding: 18px 4px 22px;
+    animation: fadein 0.25s ease;
+  }
+  .progress .label {
+    color: var(--fg);
+    font-size: 14px;
+    margin-bottom: 10px;
+    letter-spacing: 0.2px;
+    min-height: 18px;
+    transition: opacity 0.18s ease;
+  }
+  .progress .track {
+    position: relative;
+    height: 8px;
+    background: var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress .fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0%;
+    background: linear-gradient(90deg, var(--hl) 0%, #f0d160 100%);
+    transition: width 0.4s linear;
+  }
+  .progress .fill.done { transition: width 0.25s ease-out; }
+  .progress .pct {
+    margin-top: 6px;
+    font-size: 11.5px;
+    color: var(--dim);
+    font-variant-numeric: tabular-nums;
+  }
+  @keyframes fadein { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+
   /* Score */
   .score {
     padding: 18px;
