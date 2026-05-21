@@ -2,7 +2,7 @@
 
 > Sniff AI-smell in your text. Bilingual ES/EN. CLI. Offline. Opinionated.
 
-🇪🇸 [Léeme en español](README.es.md)
+🇪🇸 [Léeme en español](README.es.md) · 🌐 [Try it in your browser](https://brm-src.github.io/aismell/)
 
 ![demo](demo.gif)
 

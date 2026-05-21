@@ -2,7 +2,7 @@
 
 > Olfatea olor a IA en tu texto. Bilingüe ES/EN. CLI. Offline. Con opiniones.
 
-🇬🇧 [Read in English](README.md)
+🇬🇧 [Read in English](README.md) · 🌐 [Pruébalo en tu navegador](https://brm-src.github.io/aismell/)
 
 ![demo](demo.gif)
 
