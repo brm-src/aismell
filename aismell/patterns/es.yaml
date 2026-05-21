@@ -1108,3 +1108,32 @@ patterns:
     pattern: '(?i)\bhoja de ruta\b'
     message: calco de "roadmap" — empresarial, IA lo abusa
     suggestion: '"plan", "ruta", o ser específico'
+
+  # ---- Google Doc: AI-isms Writing Bible (adaptado a ES) ----
+  - id: es.doc_pregunta_respuesta
+    kind: regex
+    severity: 2
+    pattern: '(?i)(¿(qué|por qué|cómo|cuándo|dónde)[^?]{0,90}\?\s*(porque|la respuesta|esto|la clave|simple|sencillo)\b|\b(el resultado|la razón)\?\s*\w+)'
+    message: pregunta retórica respondida de inmediato — formato IA
+    suggestion: conviértelo en una afirmación
+
+  - id: es.doc_desglosemos
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(desglosemos|vamos a desglosar|analicemos paso a paso|diseccionemos) (esto|el tema|la cuestión|este punto)\b'
+    message: preámbulo de chatbot antes del contenido
+    suggestion: empieza directo con la idea
+
+  - id: es.doc_mostrar_no_contar
+    kind: regex
+    severity: 2
+    pattern: '(?i)\blo cual (fue|resultó|era) (sorprendente|importante|extraño|evidente) porque\b|\blo que (mostraba|demostraba|evidenciaba) que\b'
+    message: explica la reacción en vez de mostrarla
+    suggestion: muestra con acción o corta la explicación
+
+  - id: es.doc_adjetivos_redundantes
+    kind: regex
+    severity: 1
+    pattern: '(?i)\b(oscuro y sombrío|fuerte y contundente|rápido y ágil|inteligente, capaz y decidido|oscuro, frío y amenazante)\b'
+    message: pareja/tríada de adjetivos genéricos — textura IA
+    suggestion: deja el detalle más específico

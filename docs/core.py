@@ -179,6 +179,82 @@ def _check_list_density(text: str) -> list[StructuralFinding]:
     return []
 
 
+def _check_ellipses(text: str, lang: str) -> list[StructuralFinding]:
+    """Google Doc AI-isms: repeated ellipses used for fake drama."""
+    count = text.count("...") + text.count("…")
+    if count < 3:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="ellipses",
+        severity=2,
+        message=(
+            f"{count} elipsis — pausa dramática artificial típica de IA"
+            if lang == "es" else
+            f"{count} ellipses — artificial dramatic pause typical of AI"
+        ),
+        suggestion=(
+            "usa puntos normales salvo que alguien realmente se interrumpa"
+            if lang == "es" else
+            "use periods unless someone is genuinely trailing off"
+        ),
+    )]
+
+
+def _check_section_headers(text: str, lang: str) -> list[StructuralFinding]:
+    """Google Doc AI-isms: labeled sections in otherwise prose-like text."""
+    headers = 0
+    for ln in text.splitlines():
+        s = ln.strip()
+        if re.match(r"^#{1,4}\s+\S", s):
+            headers += 1
+        elif re.match(r"^(understanding|overview|key takeaways|the problem|the solution|moving forward|conclusion|summary)\b", s, re.I):
+            headers += 1
+        elif re.match(r"^(contexto|introducción|desarrollo|conclusión|resumen|puntos clave|el problema|la solución)\b", s, re.I):
+            headers += 1
+    if headers < 3:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="section-headers",
+        severity=2,
+        message=(
+            f"{headers} encabezados de sección — formato de respuesta IA"
+            if lang == "es" else
+            f"{headers} section headers — AI answer formatting"
+        ),
+        suggestion=(
+            "si es prosa, deja que los párrafos hagan el trabajo"
+            if lang == "es" else
+            "if this is prose, let paragraphs do the work"
+        ),
+    )]
+
+
+def _check_emphasis_overload(text: str, lang: str) -> list[StructuralFinding]:
+    """Google Doc AI-isms: excessive markdown emphasis."""
+    bold = len(re.findall(r"\*\*[^*]+\*\*", text))
+    ital = len(re.findall(r"(?<!\*)\*[^*\n]+\*(?!\*)", text))
+    total = bold + ital
+    if total < 4:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="emphasis-overload",
+        severity=2,
+        message=(
+            f"{total} énfasis en negrita/cursiva — subrayado excesivo típico de IA"
+            if lang == "es" else
+            f"{total} bold/italic emphases — over-explained AI emphasis"
+        ),
+        suggestion=(
+            "deja que la frase pese por sí sola"
+            if lang == "es" else
+            "let the sentence carry the emphasis"
+        ),
+    )]
+
+
 def _check_tricolon(sentences: list[str]) -> list[StructuralFinding]:
     """Flag sentences that contain exactly three comma-separated items in a list."""
     out: list[StructuralFinding] = []
@@ -193,6 +269,32 @@ def _check_tricolon(sentences: list[str]) -> list[StructuralFinding]:
             suggestion="rompe alguna en dos items o cuatro",
         ))
     return out
+
+
+def _check_rhetorical_qa(sentences: list[str], lang: str) -> list[StructuralFinding]:
+    """Google Doc AI-isms: question immediately answered by the writer."""
+    pattern = re.compile(
+        r"(¿?\b(qué|por qué|cómo|cuándo|dónde|what|why|how|when|where)\b[^?\n]{0,90}\?\s*(because|porque|the answer|la respuesta|esto|that|it|simple|sencillo)\b|\b(the result|el resultado|why|por qué)\?\s*\w+)",
+        re.IGNORECASE,
+    )
+    hits = sum(1 for s in sentences if pattern.search(s))
+    if hits < 2:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="rhetorical-qa",
+        severity=3,
+        message=(
+            f"{hits} preguntas retóricas respondidas al tiro — patrón IA"
+            if lang == "es" else
+            f"{hits} rhetorical questions answered immediately — AI pattern"
+        ),
+        suggestion=(
+            "convierte la pregunta y respuesta en una afirmación"
+            if lang == "es" else
+            "turn the question-answer pair into a statement"
+        ),
+    )]
 
 
 _PARAGRAPH_CONNECTORS_ES = re.compile(
@@ -315,7 +417,11 @@ def analyze(
     if not strict:
         report.structural.extend(_check_em_dashes(text, lines))
         report.structural.extend(_check_list_density(text))
+        report.structural.extend(_check_ellipses(text, lang))
+        report.structural.extend(_check_section_headers(text, lang))
+        report.structural.extend(_check_emphasis_overload(text, lang))
         report.structural.extend(_check_tricolon(sentences))
+        report.structural.extend(_check_rhetorical_qa(sentences, lang))
         report.structural.extend(_check_paragraph_connectors(text, lang))
         report.structural.extend(_check_paragraph_symmetry(text, lang))
     report.structural.extend(_check_rhythm(sentences))

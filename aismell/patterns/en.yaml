@@ -840,3 +840,53 @@ patterns:
     pattern: "(?im)^indeed[,\\s]"
     message: AI formal sentence-opener
     suggestion: drop it
+
+  # ---- Google Doc: AI-isms Writing Bible ----
+  - id: en.albeit
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\balbeit\\b"
+    message: formal AI connector (Writing Bible)
+    suggestion: '"although", or restructure'
+
+  - id: en.not_x_but_y_direct
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\bnot (just |merely |simply |only )?.{1,60}\\bbut (also |rather |instead )?\\b|\\bisn'?t about .{1,60}\\bit'?s about\\b"
+    message: overused "not X but Y" construction (Writing Bible)
+    suggestion: choose the stronger statement and say it directly
+
+  - id: en.lets_break_down
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\blet'?s (break it down|dissect (this|the)|dive in|dive into)\\b"
+    message: AI preamble before actual content (Writing Bible)
+    suggestion: start with the content
+
+  - id: en.false_drama_fragments
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\b(and waited|finally|completely|nothing happened)\\.\\s*(and waited|finally|completely|nothing happened)\\b"
+    message: short fragments used for artificial drama (Writing Bible)
+    suggestion: vary sentence rhythm naturally
+
+  - id: en.telling_not_showing
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bwhich (was|felt|seemed) (surprising|important|strange|obvious) because\\b|\\bwhich showed (in|that)\\b"
+    message: explains the reaction instead of showing it (Writing Bible)
+    suggestion: show through action or cut the explanation
+
+  - id: en.redundant_adjective_pair
+    kind: regex
+    severity: 1
+    pattern: "(?i)\\b(dark and brooding|loud and brash|quick and agile|smart, capable, and determined|dark, cold, and forbidding)\\b"
+    message: stock adjective pairing / rule-of-three texture (Writing Bible)
+    suggestion: keep the strongest detail
+
+  - id: en.romance_ai_cliche
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\b(pressed his forehead against hers|pressed her forehead against his|resting his elbows on the counter|lips swollen with kisses|blooming like a promise)\\b"
+    message: fiction-specific AI cliché (Writing Bible)
+    suggestion: use a specific physical gesture
