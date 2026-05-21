@@ -500,6 +500,16 @@
     transition: background 0.1s;
   }
   footer .donate a:hover { background: var(--hl); color: #1a1a1a; }
+  footer .brand-intelecta {
+    flex-basis: 100%;
+    color: var(--dim);
+  }
+  footer .brand-intelecta a {
+    color: var(--dim);
+    text-decoration: none;
+  }
+  footer .brand-intelecta a:hover { color: var(--fg); }
+  footer .brand-intelecta strong { color: var(--fg); font-weight: 600; }
 
   /* Donation nudge (non-invasive) */
   .nudge {
@@ -534,6 +544,19 @@
     padding: 4px 8px;
   }
   .nudge .dismiss:hover { color: var(--fg); }
+  .nudge.intelecta-nudge {
+    border-color: var(--red);
+    background: rgba(214, 90, 74, 0.08);
+  }
+  .nudge.intelecta-nudge .mark { color: var(--red); font-weight: 700; }
+  .nudge.intelecta-nudge .text { flex: 1; min-width: 220px; }
+  .nudge.intelecta-nudge a {
+    color: #1a1a1a;
+    background: var(--red);
+    border-color: var(--red);
+    font-weight: 700;
+  }
+  .nudge.intelecta-nudge a:hover { background: var(--hl); border-color: var(--hl); }
   @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
   /* Modal */
@@ -686,6 +709,9 @@
   </div>
   <div class="donate">
     <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener" data-i18n="donate">☕ invitame un café</a>
+  </div>
+  <div class="brand-intelecta" data-i18n="footer_brand">
+    herramienta abierta de <a href="https://intelecta.cl" target="_blank" rel="noopener"><strong>Intelecta</strong></a>
   </div>
 </footer>
 

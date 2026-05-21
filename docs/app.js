@@ -62,6 +62,11 @@ const I18N = {
     biblio_privacy: "Solo se envían los identificadores (DOI/arXiv/título) a CrossRef y arXiv. Tu texto no sale.",
     biblio_none: "no se detectaron referencias parseables",
     biblio_warning: "⚠  {fakes}/{total} referencias no se encontraron — posible IA inventando",
+    high_smell_note: "Este texto suena bastante a IA. Si lo escribiste tú y quieres que suene más humano, los hallazgos arriba te orientan.",
+    high_smell_cta: "edición humana con Intelecta",
+    biblio_cta_note: "Bibliografía falsa en una tesis o paper no es un detalle: puede echar abajo una entrega.",
+    biblio_cta_btn: "revisión académica con Intelecta",
+    footer_brand: "herramienta abierta de <a href=\"https://intelecta.cl\" target=\"_blank\" rel=\"noopener\"><strong>Intelecta</strong></a>",
     footer_disclaimer: "descargo",
     disc_title: "descargo de responsabilidad",
     disc_body: `
@@ -144,6 +149,11 @@ const I18N = {
     biblio_privacy: "Only identifiers (DOI/arXiv/title) are sent to CrossRef and arXiv. Your text stays local.",
     biblio_none: "no parseable references found",
     biblio_warning: "⚠  {fakes}/{total} references not found — possible AI hallucination",
+    high_smell_note: "This text sounds strongly AI-written. If you wrote it and want it to sound more human, the findings above show where to edit.",
+    high_smell_cta: "human editing by Intelecta",
+    biblio_cta_note: "Fake bibliography in a thesis or paper is not a detail: it can sink a submission.",
+    biblio_cta_btn: "academic review by Intelecta",
+    footer_brand: "an open tool by <a href=\"https://intelecta.cl\" target=\"_blank\" rel=\"noopener\"><strong>Intelecta</strong></a>",
     footer_disclaimer: "disclaimer",
     disc_title: "disclaimer",
     disc_body: `
@@ -378,6 +388,25 @@ function severityLabel(score) {
   return t.label_clean;
 }
 
+function renderIntelectaNudge(kind) {
+  const t = I18N[UILANG];
+  const note = kind === "biblio" ? t.biblio_cta_note : t.high_smell_note;
+  const cta = kind === "biblio" ? t.biblio_cta_btn : t.high_smell_cta;
+  const href = "https://intelecta.cl/cotizador";
+  return `
+    <div class="nudge intelecta-nudge" data-intelecta-nudge="${kind}">
+      <span class="mark">${kind === "biblio" ? "🚨" : "⚠"}</span>
+      <span class="text">${escapeHtml(note)}</span>
+      <a href="${href}" target="_blank" rel="noopener">${escapeHtml(cta)}</a>
+      <button type="button" class="dismiss" aria-label="cerrar">×</button>
+    </div>`;
+}
+
+function dismissIntelectaNudge(btn) {
+  const note = btn.closest(".intelecta-nudge");
+  if (note) note.remove();
+}
+
 function escapeHtml(s) {
   return s
     .replaceAll("&", "&amp;")
@@ -499,6 +528,10 @@ function render(report) {
     }
   }
 
+  if (report.score >= 0.6) {
+    scoreHtml += renderIntelectaNudge("smell");
+  }
+
   els.score.innerHTML = scoreHtml;
 
   if (report.hits.length === 0 && report.structural.length === 0) {
@@ -572,6 +605,11 @@ async function analyze() {
 }
 
 els.analyzeBtn.addEventListener("click", () => { clearBiblio(); analyze(); });
+els.resultPanel.addEventListener("click", (e) => {
+  if (e.target && e.target.matches(".intelecta-nudge .dismiss")) {
+    dismissIntelectaNudge(e.target);
+  }
+});
 els.clearBtn.addEventListener("click", () => {
   els.input.value = "";
   els.resultPanel.hidden = true;
@@ -653,6 +691,9 @@ async function verifyBibliography(text) {
     appendBiblio(
       `<div class="biblio-warning">${t.biblio_warning.replace("{fakes}", fakes).replace("{total}", refs.length)}</div>`
     );
+  }
+  if (fakes > 0) {
+    appendBiblio(renderIntelectaNudge("biblio"));
   }
 }
 
