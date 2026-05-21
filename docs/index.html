@@ -502,19 +502,13 @@
   footer .donate a:hover { background: var(--hl); color: #1a1a1a; }
 
   /* Donation nudge (non-invasive) */
-  .nudge {
-    max-width: 940px;
-    margin: 18px auto 0;
-    padding: 14px 18px;
-    border: 1px dashed var(--line);
-    color: var(--dim);
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    flex-wrap: wrap;
-    animation: fadein 0.4s ease;
-  }
+  .nudge { max-width: 940px; margin: 18px auto 0; padding: 14px 18px; border: 1px dashed var(--line); color: var(--dim); font-size: 13px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; animation: fadein 0.4s ease; }
+  .nudge.high-smell-nudge { border: 1px solid var(--red); background: rgba(214, 90, 74, 0.08); color: var(--fg); }
+  .nudge.high-smell-nudge .high-smell-text { flex: 1; color: var(--dim); font-size: 13px; }
+  .nudge.high-smell-nudge .intelecta-link { background: var(--red); color: #1a1a1a; border: none; padding: 5px 12px; border-radius: 3px; text-decoration: none; white-space: nowrap; font-weight: 600; font-size: 12.5px; cursor: pointer; }
+  .nudge.high-smell-nudge .intelecta-link:hover { background: #f0a0a0; }
+  .nudge.high-smell-nudge .dismiss { background: none; border: none; color: var(--dim); cursor: pointer; font-size: 18px; line-height: 1; padding: 0 4px; }
+  .nudge.high-smell-nudge .dismiss:hover { color: var(--fg); }
   .nudge .heart { color: var(--hl); }
   .nudge a {
     color: var(--hl);
@@ -524,17 +518,46 @@
     white-space: nowrap;
   }
   .nudge a:hover { background: var(--hl); color: #1a1a1a; }
-  .nudge .dismiss {
-    margin-left: auto;
+  .nudge .dismiss { margin-left: auto; background: none; border: none; color: var(--dim); cursor: pointer; font: inherit; padding: 4px 8px; }
+  .nudge .dismiss:hover { color: var(--fg); }
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* High smell nudge */
+  .high-smell-nudge {
+    border: 1px solid var(--red);
+    background: rgba(214, 90, 74, 0.08);
+    color: var(--fg);
+  }
+  .high-smell-nudge .high-smell-text {
+    flex: 1;
+    color: var(--dim);
+    font-size: 13px;
+  }
+  .high-smell-nudge .intelecta-link {
+    background: var(--red);
+    color: #1a1a1a;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 3px;
+    text-decoration: none;
+    white-space: nowrap;
+    font-weight: 600;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .high-smell-nudge .intelecta-link:hover {
+    background: #f0a0a0;
+  }
+  .high-smell-nudge .dismiss {
     background: none;
     border: none;
     color: var(--dim);
     cursor: pointer;
-    font: inherit;
-    padding: 4px 8px;
+    font-size: 18px;
+    line-height: 1;
+    padding: 0 4px;
   }
-  .nudge .dismiss:hover { color: var(--fg); }
-  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .high-smell-nudge .dismiss:hover { color: var(--fg); }
 
   /* Modal */
   .modal-backdrop {
@@ -678,16 +701,19 @@
 
 </main>
 
-<footer>
-  <div class="links">
-    <a href="https://github.com/brm-src/aismell">github.com/brm-src/aismell</a>
-    <button type="button" id="disclaimerBtn" data-i18n="footer_disclaimer">descargo</button>
-    <span>· MIT</span>
-  </div>
-  <div class="donate">
-    <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener" data-i18n="donate">☕ invitame un café</a>
-  </div>
-</footer>
+  <footer>
+    <div class="links">
+      <a href="https://github.com/brm-src/aismell">github.com/brm-src/aismell</a>
+      <button type="button" id="disclaimerBtn" data-i18n="footer_disclaimer">descargo</button>
+      <span>· MIT</span>
+    </div>
+    <div class="donate">
+      <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener" data-i18n="donate">☕ invitame un café</a>
+    </div>
+    <div class="brand-intelecta">
+      <a href="https://intelecta.cl" target="_blank" rel="noopener">herramienta abierta de <strong>Intelecta</strong></a>
+    </div>
+  </footer>
 
 <div class="modal-backdrop" id="disclaimerModal" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
