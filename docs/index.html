@@ -480,6 +480,18 @@
     flex-wrap: wrap;
     gap: 18px;
   }
+  footer .links { display: flex; gap: 16px; flex-wrap: wrap; }
+  footer .links a, footer .links button {
+    color: var(--dim);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  footer .links a:hover, footer .links button:hover { color: var(--fg); }
   footer .donate a {
     color: var(--hl);
     text-decoration: none;
@@ -488,6 +500,94 @@
     transition: background 0.1s;
   }
   footer .donate a:hover { background: var(--hl); color: #1a1a1a; }
+
+  /* Donation nudge (non-invasive) */
+  .nudge {
+    max-width: 940px;
+    margin: 18px auto 0;
+    padding: 14px 18px;
+    border: 1px dashed var(--line);
+    color: var(--dim);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    animation: fadein 0.4s ease;
+  }
+  .nudge .heart { color: var(--hl); }
+  .nudge a {
+    color: var(--hl);
+    border: 1px solid var(--hl);
+    padding: 4px 12px;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .nudge a:hover { background: var(--hl); color: #1a1a1a; }
+  .nudge .dismiss {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--dim);
+    cursor: pointer;
+    font: inherit;
+    padding: 4px 8px;
+  }
+  .nudge .dismiss:hover { color: var(--fg); }
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 60px 20px 40px;
+    z-index: 100;
+    overflow-y: auto;
+  }
+  .modal-backdrop[hidden] { display: none; }
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--line);
+    max-width: 640px;
+    width: 100%;
+    padding: 28px 32px;
+    color: var(--fg);
+    font-size: 14px;
+    line-height: 1.7;
+    position: relative;
+  }
+  .modal h2 {
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 18px;
+    color: var(--hl);
+  }
+  .modal h3 {
+    font-size: 13px;
+    margin-top: 18px;
+    color: var(--fg);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .modal p { color: var(--dim); margin-top: 8px; }
+  .modal strong { color: var(--fg); }
+  .modal .close {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: var(--dim);
+    font-size: 22px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .modal .close:hover { color: var(--fg); }
 
   @media (max-width: 600px) {
     body { font-size: 14px; padding: 18px 14px 30px; }
@@ -529,12 +629,12 @@
       <label>
         <input type="checkbox" id="strictSel">
         <span data-i18n="strict">solo alta confianza</span>
-        <span class="info" data-i18n-tip="strictTip" data-tip="Solo muestra patrones de severidad alta (3/3): los más confiables, donde el falso positivo es raro. Filtra los avisos de severidad 1 y 2.">i</span>
+        <span class="info" data-i18n-tip="strictTip" data-tip="Filtra los avisos dudosos. Solo te muestra lo que casi seguro es IA.">i</span>
       </label>
       <label>
         <input type="checkbox" id="biblioSel">
         <span data-i18n="biblio">verificar bibliografía</span>
-        <span class="info" data-i18n-tip="biblioTip" data-tip="Detecta DOIs, IDs de arXiv y citas, y consulta CrossRef + arXiv para ver si existen. Solo se envían los identificadores, no tu texto. Útil porque la IA inventa referencias falsas.">i</span>
+        <span class="info" data-i18n-tip="biblioTip" data-tip="Busca las referencias del texto (DOIs, papers, citas) y verifica si existen. La IA suele inventar bibliografía.">i</span>
       </label>
       <div class="right">
         <input type="file" id="fileInput" accept=".txt,.md,.docx" style="display:none">
@@ -579,13 +679,23 @@
 </main>
 
 <footer>
-  <div>
-    <a href="https://github.com/brm-src/aismell">github.com/brm-src/aismell</a> · MIT
+  <div class="links">
+    <a href="https://github.com/brm-src/aismell">github.com/brm-src/aismell</a>
+    <button type="button" id="disclaimerBtn" data-i18n="footer_disclaimer">descargo</button>
+    <span>· MIT</span>
   </div>
   <div class="donate">
     <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener" data-i18n="donate">☕ invitame un café</a>
   </div>
 </footer>
+
+<div class="modal-backdrop" id="disclaimerModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
+    <button type="button" class="close" aria-label="cerrar">×</button>
+    <h2 id="disclaimerTitle" data-i18n="disc_title">descargo de responsabilidad</h2>
+    <div data-i18n="disc_body"></div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
 <script src="app.js"></script>

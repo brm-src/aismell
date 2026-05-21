@@ -53,14 +53,36 @@ const I18N = {
     drop_hint: "suelta el archivo para analizarlo",
     upload: "subir archivo",
     annotating: "marcando word…",
-    docx_done: "✓ {name} descargado. Ábrelo en Word o LibreOffice — los hallazgos están en amarillo con comentarios al costado.",
+    docx_done: "Listo: tu archivo marcado se descargó. Abre <strong>{name}</strong> en Word o LibreOffice. Las palabras detectadas como IA aparecen resaltadas en amarillo, y al costado verás un comentario explicando qué huele mal.",
     pdf_browser_unsupported: "PDF en la web aún no se puede (la librería no carga en el navegador). Para PDF usa el CLI: aismell paper.pdf --out paper-marcado.pdf",
     biblio: "verificar bibliografía",
-    biblioTip: "Detecta DOIs, IDs de arXiv y citas, y consulta CrossRef + arXiv para ver si existen. Solo se envían los identificadores, no tu texto. Útil porque la IA inventa referencias falsas.",
+    biblioTip: "Busca las referencias del texto (DOIs, papers, citas) y verifica si existen. La IA suele inventar bibliografía.",
+    strictTip: "Filtra los avisos dudosos. Solo te muestra lo que casi seguro es IA.",
     biblio_header: "BIBLIOGRAFÍA — {n} REFERENCIAS",
     biblio_privacy: "Solo se envían los identificadores (DOI/arXiv/título) a CrossRef y arXiv. Tu texto no sale.",
     biblio_none: "no se detectaron referencias parseables",
     biblio_warning: "⚠  {fakes}/{total} referencias no se encontraron — posible IA inventando",
+    footer_disclaimer: "descargo",
+    disc_title: "descargo de responsabilidad",
+    disc_body: `
+      <h3>qué hace aismell</h3>
+      <p>aismell busca patrones de escritura que la IA usa más que los humanos. Es una herramienta de <strong>orientación</strong>, no un veredicto.</p>
+
+      <h3>qué NO es</h3>
+      <p>No es un detector forense ni una prueba en juicios académicos. Los falsos positivos existen: muchas frases que marca también las usan personas reales, especialmente en textos académicos formales.</p>
+
+      <h3>privacidad</h3>
+      <p>Tu texto no sale de tu navegador. Todo el análisis corre localmente con Python (Pyodide) en tu pestaña. Si activas <strong>verificar bibliografía</strong>, solo se envían los identificadores (DOIs, IDs de arXiv, títulos cortos) a CrossRef y arXiv para confirmar si existen. El resto del texto se queda contigo.</p>
+
+      <h3>uso responsable</h3>
+      <p>No uses aismell para acusar a nadie de hacer trampa. Úsalo para revisar tu propia escritura, detectar muletillas, y decidir qué cambiar. Las instituciones que usen aismell para penalizar estudiantes lo hacen bajo su propia responsabilidad.</p>
+
+      <h3>licencia</h3>
+      <p>MIT. Código abierto. Sin garantía expresa o implícita. Úsalo bajo tu propio riesgo.</p>
+    `,
+    nudge_text: "Si aismell te ha sido útil, considera apoyarlo con un café.",
+    nudge_btn: "☕ donar",
+    nudge_dismiss: "no, gracias",
   },
   en: {
     title: "aismell",
@@ -113,14 +135,36 @@ const I18N = {
     drop_hint: "drop the file to analyze",
     upload: "upload file",
     annotating: "annotating word…",
-    docx_done: "✓ {name} downloaded. Open it in Word or LibreOffice — findings are highlighted in yellow with side comments.",
+    docx_done: "Done: your marked file was downloaded. Open <strong>{name}</strong> in Word or LibreOffice. The words flagged as AI are highlighted in yellow, and a comment in the margin explains what smells off.",
     pdf_browser_unsupported: "PDF in the browser isn't supported yet (the library doesn't run in WASM). For PDF use the CLI: aismell paper.pdf --out paper-marked.pdf",
     biblio: "verify bibliography",
-    biblioTip: "Finds DOIs, arXiv IDs and citations, then queries CrossRef + arXiv to check they exist. Only the identifiers leave your browser, not your text. Useful because LLMs hallucinate references.",
+    biblioTip: "Finds the references in the text (DOIs, papers, citations) and checks if they exist. AI often invents bibliography.",
+    strictTip: "Filters out the noisy hits. Only shows you what's almost certainly AI.",
     biblio_header: "BIBLIOGRAPHY — {n} REFERENCES",
     biblio_privacy: "Only identifiers (DOI/arXiv/title) are sent to CrossRef and arXiv. Your text stays local.",
     biblio_none: "no parseable references found",
     biblio_warning: "⚠  {fakes}/{total} references not found — possible AI hallucination",
+    footer_disclaimer: "disclaimer",
+    disc_title: "disclaimer",
+    disc_body: `
+      <h3>what aismell does</h3>
+      <p>aismell looks for writing patterns that AI uses more than humans. It's a <strong>guidance tool</strong>, not a verdict.</p>
+
+      <h3>what it is NOT</h3>
+      <p>It's not a forensic detector, and not evidence for academic misconduct cases. False positives happen: many phrases it flags are also used by real people, especially in formal academic writing.</p>
+
+      <h3>privacy</h3>
+      <p>Your text never leaves your browser. All analysis runs locally with Python (Pyodide) in your tab. If you enable <strong>verify bibliography</strong>, only the identifiers (DOIs, arXiv IDs, short titles) are sent to CrossRef and arXiv to confirm they exist. The rest of your text stays with you.</p>
+
+      <h3>responsible use</h3>
+      <p>Don't use aismell to accuse anyone of cheating. Use it to review your own writing, spot fillers, and decide what to change. Institutions that use aismell to penalize students do so at their own responsibility.</p>
+
+      <h3>license</h3>
+      <p>MIT. Open source. No express or implied warranty. Use at your own risk.</p>
+    `,
+    nudge_text: "If aismell has been useful to you, consider supporting it with a coffee.",
+    nudge_btn: "☕ donate",
+    nudge_dismiss: "not now",
   },
 };
 
@@ -515,6 +559,9 @@ async function analyze() {
     if (els.biblioSel && els.biblioSel.checked && extractRefsFn) {
       await verifyBibliography(text);
     }
+
+    bumpRunCount();
+    maybeShowNudge();
   } catch (err) {
     clearInterval(ticker);
     setStatus(`${I18N[UILANG].error} ${err.message}`, true);
@@ -806,5 +853,65 @@ els.fileInput.addEventListener("change", async (e) => {
   if (file) await handleFile(file);
   e.target.value = ""; // allow re-picking the same file
 });
+
+// ---------- Disclaimer modal ----------
+const disclaimerModal = document.getElementById("disclaimerModal");
+const disclaimerBtn = document.getElementById("disclaimerBtn");
+function openDisclaimer() { disclaimerModal.hidden = false; document.body.style.overflow = "hidden"; }
+function closeDisclaimer() { disclaimerModal.hidden = true; document.body.style.overflow = ""; }
+if (disclaimerBtn) disclaimerBtn.addEventListener("click", openDisclaimer);
+disclaimerModal.querySelector(".close").addEventListener("click", closeDisclaimer);
+disclaimerModal.addEventListener("click", (e) => {
+  if (e.target === disclaimerModal) closeDisclaimer();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !disclaimerModal.hidden) closeDisclaimer();
+});
+
+// ---------- Donation nudge (non-invasive) ----------
+// Shows after the user has run analyze 3+ times, only once, and never again
+// after dismiss/donate. Uses localStorage; clears nothing else.
+const NUDGE_THRESHOLD = 3;
+const NUDGE_KEY = "aismell.nudge";   // "shown" | "dismissed"
+const COUNT_KEY = "aismell.runs";
+
+function bumpRunCount() {
+  try {
+    const n = parseInt(localStorage.getItem(COUNT_KEY) || "0", 10) + 1;
+    localStorage.setItem(COUNT_KEY, String(n));
+    return n;
+  } catch (_) { return 0; }
+}
+
+function maybeShowNudge() {
+  let state, count;
+  try {
+    state = localStorage.getItem(NUDGE_KEY);
+    count = parseInt(localStorage.getItem(COUNT_KEY) || "0", 10);
+  } catch (_) { return; }
+  if (state) return;                 // already shown or dismissed
+  if (count < NUDGE_THRESHOLD) return;
+  if (document.getElementById("nudge")) return;
+
+  const t = I18N[UILANG];
+  const div = document.createElement("div");
+  div.className = "nudge";
+  div.id = "nudge";
+  div.innerHTML = `
+    <span class="heart">♥</span>
+    <span>${t.nudge_text}</span>
+    <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener">${t.nudge_btn}</a>
+    <button type="button" class="dismiss" aria-label="dismiss">${t.nudge_dismiss}</button>
+  `;
+  document.querySelector("main").appendChild(div);
+  div.querySelector(".dismiss").addEventListener("click", () => {
+    try { localStorage.setItem(NUDGE_KEY, "dismissed"); } catch (_) {}
+    div.remove();
+  });
+  div.querySelector("a").addEventListener("click", () => {
+    try { localStorage.setItem(NUDGE_KEY, "donated"); } catch (_) {}
+  });
+  try { localStorage.setItem(NUDGE_KEY, "shown"); } catch (_) {}
+}
 
 bootPyodide();

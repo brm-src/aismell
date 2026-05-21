@@ -116,7 +116,7 @@ patterns:
     kind: phrase
     severity: 2
     pattern: profundizar en (las complejidades|los matices|los detalles)
-    message: equivalente a "delve" en EN
+    message: vocabulario inflado de IA
     suggestion: '"explorar" o entrar al tema directo'
 
   - id: es.tejido
@@ -147,26 +147,26 @@ patterns:
     message: promo turística AI
     suggestion: di qué tiene específicamente
 
-  # ---- Tono servil / chatbot ----
+  # ---- Tono servil de IA ----
   - id: es.espero_sirva
     kind: regex
     severity: 3
     pattern: '(?i)espero que .{1,30}(sirva|ayude|haya sido útil|funcione)'
-    message: artefacto de chatbot
+    message: cierre artificial de IA
     suggestion: borrar
 
   - id: es.claro_por_supuesto
     kind: regex
     severity: 3
     pattern: '(?i)^(¡)?(claro|por supuesto|desde luego|con gusto)(!|,)'
-    message: apertura servil de chatbot
+    message: apertura servil de IA
     suggestion: borrar y arrancar con el contenido
 
   - id: es.gran_pregunta
     kind: regex
     severity: 3
     pattern: '(?i)(¡)?(qué|gran) (gran |buena )?pregunta'
-    message: apertura sycophantic
+    message: apertura adulatoria de IA
     suggestion: borrar
 
   - id: es.absolutamente_correcto
@@ -219,14 +219,14 @@ patterns:
     kind: regex
     severity: 3
     pattern: '(?i)\b(profundizar|adentrarse|sumergirse) en\b'
-    message: equivalente ES de "delve" — marcador AI #1
+    message: verbo inflado, marcador clásico de IA
     suggestion: '"explorar", "ver", o entrar al tema directo'
 
   - id: es.embarcarse
     kind: regex
     severity: 2
     pattern: '(?i)\b(embarcarse|emprender un viaje) (en|hacia)\b'
-    message: verbo épico AI ("embark")
+    message: verbo épico de IA
     suggestion: '"empezar" o "comenzar"'
 
   - id: es.navegar_complejidades
@@ -262,14 +262,14 @@ patterns:
     kind: regex
     severity: 2
     pattern: '(?i)\b(los |las )?(matices|sutilezas) (de|del|en)\b'
-    message: '"nuance" — sustantivo abstracto AI'
+    message: sustantivo abstracto de IA
     suggestion: nombra los detalles específicos
 
   - id: es.sinergia
     kind: regex
     severity: 2
     pattern: '(?i)\bsinergia(s)? entre\b'
-    message: jerga corporativa AI ("synergy")
+    message: jerga corporativa de IA
     suggestion: di cómo se relacionan en concreto
 
   - id: es.paradigma
@@ -290,7 +290,7 @@ patterns:
     kind: regex
     severity: 2
     pattern: '(?i)\b(en |del |al )?reino (de|digital|virtual|tecnológico)'
-    message: '"realm" — metáfora épica AI'
+    message: metáfora épica de IA
     suggestion: '"campo", "área", o ser específico'
 
   # ---- Adjetivos AI (taxonomía Pangram) ----
@@ -326,7 +326,7 @@ patterns:
     kind: regex
     severity: 2
     pattern: '(?i)\b(sin fisuras|impecable|perfectamente integrado)'
-    message: '"seamless" — adjetivo AI'
+    message: adjetivo abstracto de IA
     suggestion: '"que funciona junto", "que conecta"'
 
   - id: es.transformador
@@ -484,7 +484,7 @@ patterns:
     kind: regex
     severity: 3
     pattern: '(?i)\b(una|la) (perspectiva|mirada|visión|aproximación|enfoque) (integral|holística|holístico|integradora|integral|comprehensiva)\b'
-    message: '"holistic" — adjetivo AI'
+    message: adjetivo de IA
     suggestion: di qué cubre exactamente
 
   - id: es.analisis_exhaustivo
@@ -607,7 +607,7 @@ patterns:
     kind: regex
     severity: 2
     pattern: '(?i)\binvaluable(s)?\b'
-    message: '"invaluable" — adjetivo inflado AI'
+    message: adjetivo inflado de IA
     suggestion: '"importante", "útil"'
 
   - id: es.indispensable
@@ -621,7 +621,7 @@ patterns:
     kind: phrase
     severity: 2
     pattern: intrincad(o|a|os|as)
-    message: '"intricate" — adjetivo AI'
+    message: adjetivo de IA
     suggestion: '"complicado", "enredado"'
 
   - id: es.profundo_impacto
@@ -657,7 +657,7 @@ patterns:
     kind: regex
     severity: 1
     pattern: '(?i)\bfomenta(r|n|ndo)? (la |el |un |una )?(comprensión|cooperación|colaboración|innovación|desarrollo|crecimiento|diálogo)\b'
-    message: verbo AI corporativo ("foster")
+    message: verbo institucional de IA
     suggestion: '"impulsar", "ayudar a"'
 
   - id: es.promover
@@ -671,7 +671,7 @@ patterns:
     kind: regex
     severity: 1
     pattern: '(?i)\babord(ar|ando|amos|aremos) (los |las )?(desafíos|retos|problemáticas|cuestiones|complejidades)\b'
-    message: verbo AI institucional ("tackle")
+    message: verbo institucional de IA
     suggestion: '"resolver", "enfrentar" o concreto'
 
   - id: es.desentranar
@@ -732,19 +732,19 @@ patterns:
     message: estructura paralela AI
     suggestion: afirma directo sin la negación previa
 
-  # ---- Aperturas servil chatbot extra ----
+  # ---- Aperturas serviles de IA extra ----
   - id: es.excelente_pregunta
     kind: regex
     severity: 3
     pattern: '(?i)^(¡)?(excelente|fantástic[oa]|magnífic[oa]|brillante|interesante) (pregunta|punto|observación|comentario)'
-    message: apertura sycophantic chatbot
+    message: apertura adulatoria de IA
     suggestion: borrar
 
   - id: es.entendido
     kind: regex
     severity: 3
     pattern: '(?i)^(¡)?entendido[!,.]'
-    message: ack chatbot
+    message: confirmación servil de IA
     suggestion: borrar
 
   - id: es.profundizar_dive
