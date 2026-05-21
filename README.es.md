@@ -39,19 +39,29 @@ El enfoque honesto es editorial, no adversario. Úsalo antes de publicar.
 
 ## Instalación
 
+**pipx (recomendado para cualquier sistema):**
+```bash
+pipx install aismell
+pipx inject aismell pymupdf       # opcional: anotación de PDFs
+```
+
+**Arch (AUR):**
+```bash
+yay -S aismell                    # cuando esté publicado
+# o desde el repo:
+git clone https://github.com/brm-src/aismell.git
+cd aismell/packaging && makepkg -si
+```
+
+**Desde el repo, sin instalar nada:**
 ```bash
 git clone https://github.com/brm-src/aismell.git
 cd aismell
-pip install -e .
+./bin/aismell --help
+# requiere: PyYAML (pacman -S python-yaml o equivalente)
 ```
 
-O sin instalar:
-```bash
-git clone https://github.com/brm-src/aismell.git
-~/aismell/bin/aismell --help
-```
-
-Necesita Python 3.9+ y PyYAML.
+Necesita Python 3.9+. PyMuPDF es opcional, solo para `.pdf`.
 
 ## Uso
 

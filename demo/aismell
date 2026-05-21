@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Mock aismell for the demo recording — produces deterministic, fast output
+# without real file I/O. Used only by demo.tape via PATH override.
+set -euo pipefail
+
+ARGS=("$@")
+
+# --score-only branch
+if [[ " ${ARGS[*]} " == *" --score-only "* ]]; then
+    case "${ARGS[*]}" in
+        *clean*)  echo 0 ;;
+        *)        echo 100 ;;
+    esac
+    exit 0
+fi
+
+# --out (docx/pdf) branch
+for i in "${!ARGS[@]}"; do
+    if [[ "${ARGS[$i]}" == "--out" ]]; then
+        OUT="${ARGS[$((i+1))]}"
+        case "$OUT" in
+            *.docx) echo "$OUT  •  6 sentences  •  smell: 100% (alto)  •  13 marks" ;;
+            *.pdf)  echo "$OUT  •  9 sentences  •  smell: 74% (alto)  •  8 marks" ;;
+            *)      echo "$OUT  •  marked" ;;
+        esac
+        exit 0
+    fi
+done
+
+# Bare 'aismell' (no args) — simulate file picker output
+if [[ ${#ARGS[@]} -eq 0 ]]; then
+    sleep 0.3
+    echo -e "\033[2m[opening file picker…]\033[0m"
+    sleep 0.6
+    echo "/home/brm/Documents/tesis.docx-aismell.docx  •  47 sentences  •  smell: 31% (moderate)  •  18 marks"
+    exit 0
+fi
+
+# File argument (no --out) → run the real aismell
+exec /home/brm/Developer/aismell/bin/aismell "$@"

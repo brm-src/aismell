@@ -39,19 +39,29 @@ The honest framing is editorial, not adversarial. Use it before publishing.
 
 ## Install
 
+**pipx (recommended, any OS):**
+```bash
+pipx install aismell
+pipx inject aismell pymupdf       # optional: enable PDF annotation
+```
+
+**Arch (AUR):**
+```bash
+yay -S aismell                    # once published
+# or from this repo:
+git clone https://github.com/brm-src/aismell.git
+cd aismell/packaging && makepkg -si
+```
+
+**From source, no install:**
 ```bash
 git clone https://github.com/brm-src/aismell.git
 cd aismell
-pip install -e .
+./bin/aismell --help
+# requires: PyYAML (pacman -S python-yaml, apt install python3-yaml, etc.)
 ```
 
-Or run without installing:
-```bash
-git clone https://github.com/brm-src/aismell.git
-~/aismell/bin/aismell --help
-```
-
-Requires Python 3.9+ and PyYAML.
+Requires Python 3.9+. PyMuPDF is optional, only for `.pdf` annotation.
 
 ## Use
 

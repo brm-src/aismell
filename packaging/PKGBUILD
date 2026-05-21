@@ -1,0 +1,29 @@
+# Maintainer: brm-src <caaq.x@gmail.com>
+pkgname=aismell
+pkgver=0.3.0
+pkgrel=1
+pkgdesc="Sniff AI-smell in your text. Bilingual ES/EN. CLI, offline, opinionated."
+arch=('any')
+url="https://github.com/brm-src/aismell"
+license=('MIT')
+depends=('python' 'python-yaml')
+optdepends=(
+    'python-pymupdf: PDF annotation support (--out file.pdf)'
+    'tk: native file picker when run with no arguments'
+)
+makedepends=('python-build' 'python-installer' 'python-setuptools' 'python-wheel')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/brm-src/aismell/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')  # filled in by `updpkgsums` after the tag exists
+
+build() {
+    cd "$pkgname-$pkgver"
+    python -m build --wheel --no-isolation
+}
+
+package() {
+    cd "$pkgname-$pkgver"
+    python -m installer --destdir="$pkgdir" dist/*.whl
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+    install -Dm644 README.es.md "$pkgdir/usr/share/doc/$pkgname/README.es.md"
+}

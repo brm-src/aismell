@@ -14,7 +14,7 @@ except ImportError as exc:  # pragma: no cover
     raise SystemExit("aismell needs PyYAML. install: pip install pyyaml") from exc
 
 
-PATTERNS_DIR = Path(__file__).resolve().parent.parent / "patterns"
+PATTERNS_DIR = Path(__file__).resolve().parent / "patterns"
 
 
 @dataclass
