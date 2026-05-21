@@ -63,7 +63,13 @@ aismell post.md
 cat borrador.txt | aismell
 
 # anotar un Word .docx — highlights amarillos + comentarios laterales
-aismell mi-tesis.docx --docx-out mi-tesis-marcado.docx
+aismell mi-tesis.docx --out mi-tesis-marcado.docx
+
+# anotar un PDF — highlights amarillos + sticky-notes
+aismell paper.pdf --out paper-marcado.pdf
+
+# sin argumentos: abre un selector de archivos nativo (si tienes escritorio)
+aismell
 
 # solo hallazgos de alta confianza
 aismell --strict post.md

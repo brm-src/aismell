@@ -63,7 +63,13 @@ aismell post.md
 cat draft.txt | aismell
 
 # annotate a Word .docx — yellow highlights + sidebar comments
-aismell mi-tesis.docx --docx-out mi-tesis-marcado.docx
+aismell mi-tesis.docx --out mi-tesis-marcado.docx
+
+# annotate a PDF — yellow highlights + sticky-note comments
+aismell paper.pdf --out paper-marcado.pdf
+
+# no arguments? opens a native file picker (if you have a desktop)
+aismell
 
 # only show high-confidence findings
 aismell --strict post.md

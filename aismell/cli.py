@@ -18,7 +18,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "path",
         nargs="?",
-        help="file to analyze (defaults to stdin)",
+        help="file to analyze (defaults to stdin, or opens a file picker if available)",
     )
     parser.add_argument(
         "--lang",
@@ -42,39 +42,83 @@ def main(argv: list[str] | None = None) -> int:
         help="disable ANSI colors",
     )
     parser.add_argument(
+        "--out",
+        metavar="PATH",
+        help="write a marked-up copy to PATH. Format auto-detected from extension: .docx, .pdf, or .md/.txt for a plain text annotated copy. Implies --docx-out / --pdf-out behavior.",
+    )
+    parser.add_argument(
         "--docx-out",
         metavar="PATH",
-        help="instead of printing, read input as .docx and write a marked-up copy with yellow highlights + review comments to PATH",
+        help="(legacy) same as --out for .docx files",
+    )
+    parser.add_argument(
+        "--no-picker",
+        action="store_true",
+        help="disable the GUI file picker fallback when run with no arguments",
     )
     args = parser.parse_args(argv)
 
-    if args.docx_out:
-        # Bypass stdin/text path; the input must be a real .docx file.
-        if not args.path:
-            print("aismell: --docx-out requires an input .docx path", file=sys.stderr)
-            return 2
-        from .docx import annotate_docx
+    # If no path given and stdin is a TTY, try the file picker.
+    if not args.path and sys.stdin.isatty() and not args.no_picker:
+        from .picker import pick_file
+        picked = pick_file()
+        if picked is not None:
+            args.path = str(picked)
+            # When picked, default the output next to the source.
+            if not args.out and not args.docx_out:
+                src = Path(args.path)
+                ext = src.suffix.lower()
+                if ext in (".docx", ".pdf"):
+                    args.out = str(src.with_name(src.stem + "-aismell" + src.suffix))
 
-        try:
-            result = annotate_docx(
-                in_path=Path(args.path),
-                out_path=Path(args.docx_out),
-                lang=None if args.lang == "auto" else args.lang,
-                strict=args.strict,
-            )
-        except FileNotFoundError as exc:
-            print(f"aismell: {exc}", file=sys.stderr)
+    out_path = args.out or args.docx_out
+    if out_path:
+        ext = Path(out_path).suffix.lower()
+        in_ext = Path(args.path).suffix.lower() if args.path else ""
+        if not args.path:
+            print("aismell: --out requires an input file path", file=sys.stderr)
             return 2
-        except ValueError as exc:
-            print(f"aismell: {exc}", file=sys.stderr)
+        if ext == ".docx" or in_ext == ".docx":
+            from .docx import annotate_docx
+            try:
+                result = annotate_docx(
+                    in_path=Path(args.path),
+                    out_path=Path(out_path),
+                    lang=None if args.lang == "auto" else args.lang,
+                    strict=args.strict,
+                )
+            except (FileNotFoundError, ValueError) as exc:
+                print(f"aismell: {exc}", file=sys.stderr)
+                return 2
+        elif ext == ".pdf" or in_ext == ".pdf":
+            from .pdf import annotate_pdf
+            try:
+                result = annotate_pdf(
+                    in_path=Path(args.path),
+                    out_path=Path(out_path),
+                    lang=None if args.lang == "auto" else args.lang,
+                    strict=args.strict,
+                )
+            except RuntimeError as exc:
+                print(f"aismell: {exc}", file=sys.stderr)
+                return 2
+            except (FileNotFoundError, ValueError) as exc:
+                print(f"aismell: {exc}", file=sys.stderr)
+                return 2
+        else:
+            print(
+                f"aismell: --out only supports .docx and .pdf right now (got '{ext}' / '{in_ext}')",
+                file=sys.stderr,
+            )
             return 2
         pct = int(result.score * 100)
-        print(
+        msg = (
             f"{result.output_path}  •  {result.sentences} sentences  •  "
             f"smell: {pct}% ({result.severity_label})  •  "
-            f"{result.findings} comments added",
-            file=sys.stderr,
+            f"{result.findings} marks"
         )
+        # Print to BOTH stderr (for piping) and stdout (so GUI launches see it).
+        print(msg)
         return 1 if result.findings else 0
 
     if args.no_color:
