@@ -20,6 +20,7 @@ const I18N = {
       "calculando smell…",
       "armando reporte…",
     ],
+    scan_hits: "{n} señales detectadas",
     error: "algo se rompió:",
     lang: "idioma",
     strict: "solo alta confianza",
@@ -111,6 +112,7 @@ const I18N = {
       "scoring smell…",
       "building report…",
     ],
+    scan_hits: "{n} signals detected",
     error: "something broke:",
     lang: "language",
     strict: "high confidence only",
@@ -197,6 +199,7 @@ const els = {
   fileBtn: document.getElementById("fileBtn"),
   fileInput: document.getElementById("fileInput"),
   resultPanel: document.getElementById("resultPanel"),
+  scanning: document.getElementById("scanning"),
   score: document.getElementById("score"),
   findings: document.getElementById("findings"),
   langSwitch: document.getElementById("langSwitch"),
@@ -244,21 +247,32 @@ function setStatus(msg, isError = false) {
   els.status.classList.toggle("err", isError);
 }
 
-// Progress bar with rotating step labels.
-// Returns { advance(stepIndex), finish(), cancel() }.
-function startProgress(steps, opts = {}) {
-  const expectedMs = opts.expectedMs ?? 9000; // visual budget
+// Big in-panel scanner with rotating step labels + live hit counter.
+// Returns { advance(stepIndex), setHits(n,sentences), finish(), cancel() }.
+function startScanning(steps, opts = {}) {
+  const t = I18N[UILANG];
+  const expectedMs = opts.expectedMs ?? 9000;
   const stepMs = Math.max(900, Math.floor(expectedMs / steps.length));
-  els.status.classList.remove("err");
-  els.status.innerHTML = `
-    <div class="progress" role="status" aria-live="polite">
-      <div class="label"></div>
-      <div class="track"><div class="fill"></div></div>
-      <div class="pct">0%</div>
+
+  // Hide previous results, show scanner inside the result panel
+  els.score.innerHTML = "";
+  els.findings.innerHTML = "";
+  clearBiblio();
+  els.resultPanel.hidden = false;
+  els.scanning.hidden = false;
+  els.scanning.innerHTML = `
+    <div class="nose" aria-hidden="true">👃</div>
+    <div class="label" role="status" aria-live="polite"></div>
+    <div class="track"><div class="fill"></div></div>
+    <div class="stats">
+      <span class="pct">0%</span>
+      <span class="hits">${(t.scan_hits || "señales").replace("{n}", "0")}</span>
     </div>`;
-  const labelEl = els.status.querySelector(".label");
-  const fillEl = els.status.querySelector(".fill");
-  const pctEl = els.status.querySelector(".pct");
+  const labelEl = els.scanning.querySelector(".label");
+  const fillEl = els.scanning.querySelector(".fill");
+  const pctEl = els.scanning.querySelector(".pct");
+  const hitsEl = els.scanning.querySelector(".hits");
+
   let cancelled = false;
   let i = -1;
 
@@ -272,7 +286,6 @@ function startProgress(steps, opts = {}) {
       labelEl.textContent = steps[idx];
       labelEl.style.opacity = "1";
     }, 90);
-    // Cap fill at 92% until finish() — user always feels the final snap.
     const pct = Math.min(92, Math.round(((idx + 1) / steps.length) * 92));
     fillEl.style.width = pct + "%";
     pctEl.textContent = pct + "%";
@@ -282,25 +295,34 @@ function startProgress(steps, opts = {}) {
   let next = 1;
   const ticker = setInterval(() => {
     if (cancelled) return;
-    if (next >= steps.length - 1) return; // hold on penultimate until finish
+    if (next >= steps.length - 1) return;
     setStep(next++);
   }, stepMs);
 
   return {
     advance(idx) { setStep(Math.min(idx, steps.length - 1)); },
-    async finish(doneLabel) {
+    setHits(n) {
+      if (cancelled || !hitsEl) return;
+      hitsEl.textContent = (t.scan_hits || "señales").replace("{n}", String(n));
+      hitsEl.classList.toggle("alert", n > 0);
+    },
+    async finish() {
       cancelled = true;
       clearInterval(ticker);
       if (!fillEl) return;
-      labelEl.textContent = doneLabel || steps[steps.length - 1];
+      labelEl.textContent = steps[steps.length - 1];
       fillEl.classList.add("done");
       fillEl.style.width = "100%";
       pctEl.textContent = "100%";
-      await new Promise((r) => setTimeout(r, 280));
+      await new Promise((r) => setTimeout(r, 320));
+      els.scanning.hidden = true;
+      els.scanning.innerHTML = "";
     },
     cancel() {
       cancelled = true;
       clearInterval(ticker);
+      els.scanning.hidden = true;
+      els.scanning.innerHTML = "";
     },
   };
 }
@@ -631,11 +653,12 @@ async function analyze() {
   }
   els.analyzeBtn.disabled = true;
 
-  // Progress bar with rotating step labels — visible budget ~9s, even on short text
+  // Big in-panel scanner — visible budget ~9s, even on short text
   const steps = I18N[UILANG].analyzing_steps || [I18N[UILANG].analyzing];
   const minMs = 4500;
   const targetMs = 9000;
-  const progress = startProgress(steps, { expectedMs: targetMs });
+  const progress = startScanning(steps, { expectedMs: targetMs });
+  setStatus(null);
 
   // Run sync code in a microtask so the spinner renders first
   await new Promise((r) => setTimeout(r, 50));
@@ -646,12 +669,15 @@ async function analyze() {
     const obj = res.toJs({ dict_converter: Object.fromEntries });
     res.destroy();
 
+    // Live hit count once analysis is back
+    const totalHits = (obj.hits ? obj.hits.length : 0) + (obj.structural ? obj.structural.length : 0);
+    progress.setHits(totalHits);
+
     // Floor at minMs so the user can read the steps even on tiny text
     const elapsed = performance.now() - startedAt;
     if (elapsed < minMs) await new Promise((r) => setTimeout(r, minMs - elapsed));
     await progress.finish();
 
-    setStatus(null);
     render(obj);
 
     // Optional: verify bibliography (network call to CrossRef/arXiv).

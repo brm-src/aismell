@@ -156,40 +156,60 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* Progress bar (analyze) */
-  .progress {
-    padding: 18px 4px 22px;
+  /* Big in-panel progress */
+  .scanning {
+    padding: 36px 28px;
+    text-align: center;
     animation: fadein 0.25s ease;
   }
-  .progress .label {
+  .scanning .nose {
+    font-size: 64px;
+    line-height: 1;
+    display: inline-block;
+    animation: sniff 1.4s ease-in-out infinite;
+    transform-origin: 50% 80%;
+    margin-bottom: 14px;
+  }
+  @keyframes sniff {
+    0%, 100% { transform: rotate(-6deg) translateY(0); }
+    25% { transform: rotate(4deg) translateY(-3px); }
+    50% { transform: rotate(-3deg) translateY(2px); }
+    75% { transform: rotate(6deg) translateY(-2px); }
+  }
+  .scanning .label {
     color: var(--fg);
-    font-size: 14px;
-    margin-bottom: 10px;
+    font-size: 17px;
+    margin-bottom: 18px;
     letter-spacing: 0.2px;
-    min-height: 18px;
+    min-height: 22px;
     transition: opacity 0.18s ease;
   }
-  .progress .track {
+  .scanning .track {
     position: relative;
-    height: 8px;
+    height: 10px;
     background: var(--line);
-    border-radius: 4px;
+    border-radius: 5px;
     overflow: hidden;
+    max-width: 480px;
+    margin: 0 auto;
   }
-  .progress .fill {
+  .scanning .fill {
     position: absolute;
     inset: 0 auto 0 0;
     width: 0%;
     background: linear-gradient(90deg, var(--hl) 0%, #f0d160 100%);
     transition: width 0.4s linear;
   }
-  .progress .fill.done { transition: width 0.25s ease-out; }
-  .progress .pct {
-    margin-top: 6px;
-    font-size: 11.5px;
+  .scanning .fill.done { transition: width 0.25s ease-out; }
+  .scanning .stats {
+    margin-top: 14px;
+    font-size: 12.5px;
     color: var(--dim);
     font-variant-numeric: tabular-nums;
+    letter-spacing: 0.4px;
   }
+  .scanning .stats .pct { color: var(--fg); margin-right: 14px; }
+  .scanning .stats .hits.alert { color: var(--hl); }
   @keyframes fadein { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
 
   /* Score */
@@ -705,6 +725,7 @@
   </div>
 
   <div class="panel" id="resultPanel" hidden>
+    <div class="scanning" id="scanning" hidden></div>
     <div class="score" id="score"></div>
     <div class="findings" id="findings"></div>
   </div>
