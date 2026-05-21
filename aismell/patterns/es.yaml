@@ -408,3 +408,356 @@ patterns:
     pattern: '(?i)en (el |un )?(dinámico |actual |evolutivo |cambiante )?panorama( tecnológico| actual| dinámico)?'
     message: scene-setter AI prototípico
     suggestion: borrar la apertura, di el contexto concreto
+
+  # ---- Voz académica IA (faltaban casi todos) ----
+  - id: es.cabe_destacar
+    kind: phrase
+    severity: 3
+    pattern: cabe (destacar|señalar|resaltar|subrayar|notar)
+    message: muletilla académica AI
+    suggestion: borra y di la idea directa
+
+  - id: es.es_fundamental
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(es|resulta) fundamental (comprender|entender|considerar|tener en cuenta|reconocer|analizar)'
+    message: anuncio meta académico AI
+    suggestion: borra la apertura, ve al punto
+
+  - id: es.resulta_evidente
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(resulta|se hace|es) (evidente|claro|patente|manifiesto) que\b'
+    message: muletilla académica AI
+    suggestion: si es evidente no hace falta decirlo
+
+  - id: es.pone_manifiesto
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bpone(n)? de (manifiesto|relieve)\b'
+    message: locución académica AI
+    suggestion: '"muestra", "deja ver"'
+
+  - id: es.como_mencionado
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bcomo (se ha |hemos |)(mencionado|señalado|indicado|expuesto|visto) (anteriormente|previamente|antes)\b'
+    message: auto-referencia AI
+    suggestion: borrar, el lector recuerda
+
+  - id: es.en_este_contexto
+    kind: phrase
+    severity: 2
+    pattern: en (este|dicho|tal|ese) contexto
+    message: conector académico AI
+    suggestion: borrar o ser específico
+
+  - id: es.constituye
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bconstituye (un|una) (aspecto|elemento|factor|pilar|piedra angular)'
+    message: verbo inflado AI
+    suggestion: '"es", "funciona como"'
+
+  - id: es.diversos_multiples
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(diversos|múltiples|variados|numerosos) (factores|elementos|aspectos|dimensiones|perspectivas|matices)\b'
+    message: cuantificador vago AI
+    suggestion: nómbralos concretamente
+
+  - id: es.amplio_diverso
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(amplio|amplia|extenso|extensa) y (diverso|diversa|variado|variada|complejo|compleja)\b'
+    message: doblete adjetival AI
+    suggestion: deja un solo adjetivo, el más concreto
+
+  - id: es.tricolon_adj
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(histórico|social|cultural|político|económico|académico|científico|tecnológico),\s+(histórico|social|cultural|político|económico|académico|científico|tecnológico)\s+y\s+(histórico|social|cultural|político|económico|académico|científico|tecnológico)\b'
+    message: tricolon adjetival AI
+    suggestion: rompe el tres, deja uno o cuatro
+
+  - id: es.perspectiva_integral
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(una|la) (perspectiva|mirada|visión|aproximación|enfoque) (integral|holística|holístico|integradora|integral|comprehensiva)\b'
+    message: '"holistic" — adjetivo AI'
+    suggestion: di qué cubre exactamente
+
+  - id: es.analisis_exhaustivo
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(un |una )?(análisis|estudio|revisión|examen) (exhaustivo|exhaustiva|riguroso|rigurosa|profundo|profunda|detallado|detallada)\b'
+    message: auto-elogio metodológico AI
+    suggestion: muestra el análisis, no lo anuncies
+
+  - id: es.refleja_complejidad
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(refleja|representa|evidencia|encarna) (la |una )?(complejidad|riqueza|profundidad|diversidad)\b'
+    message: locución AI vacía
+    suggestion: di qué es complejo y por qué
+
+  - id: es.subyace
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bsubyace(n)? (a|en|tras)\b'
+    message: verbo académico AI
+    suggestion: '"está debajo", "explica"'
+
+  - id: es.cabe_preguntarse
+    kind: phrase
+    severity: 3
+    pattern: cabe (preguntarse|preguntar|cuestionar|cuestionarse)
+    message: pregunta retórica AI
+    suggestion: haz la pregunta directamente o bórrala
+
+  - id: es.se_observa
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bse (observa|aprecia|advierte|percibe|constata) que\b'
+    message: voz pasiva impersonal AI
+    suggestion: di quién observa, o qué pasa directamente
+
+  - id: es.resulta_interesante
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(resulta|es|cabe destacar como) (interesante|relevante|significativo|notable|destacable|llamativo) (notar|destacar|señalar|observar|mencionar)'
+    message: meta-comentario AI
+    suggestion: borra el aviso, deja solo el dato
+
+  - id: es.dar_lugar
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bda(n)? lugar a\b'
+    message: locución académica AI
+    suggestion: '"causa", "produce", "genera"'
+
+  # ---- Aperturas formulaicas AI ----
+  - id: es.lo_largo_historia
+    kind: phrase
+    severity: 2
+    pattern: a lo largo (de la historia|del tiempo|de los años|de las décadas)
+    message: apertura genérica AI
+    suggestion: pon la fecha o periodo concreto
+
+  - id: es.desde_tiempos
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bdesde (tiempos |la antigüedad|los inicios|los albores)\b'
+    message: apertura grandilocuente AI
+    suggestion: aterrizar en algo concreto
+
+  - id: es.mundo_actual
+    kind: regex
+    severity: 2
+    pattern: '(?i)\ben (el |nuestro )?mundo (actual|moderno|contemporáneo|de hoy)\b'
+    message: scene-setter genérico AI
+    suggestion: di el lugar y momento concreto
+
+  - id: es.era_digital
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(en |de )?(la |esta )?era (digital|de la información|moderna|actual)\b'
+    message: cliché temporal AI
+    suggestion: borrar o ser específico
+
+  # ---- Cierres formulaicos AI ----
+  - id: es.en_definitiva
+    kind: phrase
+    severity: 2
+    pattern: en definitiva
+    message: cierre formulario AI
+    suggestion: deja que el último párrafo cierre solo
+
+  - id: es.por_consiguiente
+    kind: phrase
+    severity: 2
+    pattern: por consiguiente
+    message: conector formal AI
+    suggestion: '"así", "entonces"'
+
+  - id: es.en_suma
+    kind: phrase
+    severity: 2
+    pattern: en suma
+    message: cierre formulario AI
+    suggestion: borrar
+
+  # ---- Hedging académico AI ----
+  - id: es.podria_argumentarse
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(podría|puede) (argumentarse|sostenerse|afirmarse|decirse)\b'
+    message: hedging cobarde AI
+    suggestion: afírmalo o no lo digas
+
+  - id: es.cierta_medida
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(en cierta medida|hasta cierto punto|en alguna medida)\b'
+    message: hedging vago AI
+    suggestion: di cuánto exactamente
+
+  # ---- Adjetivos AI extra ----
+  - id: es.invaluable
+    kind: regex
+    severity: 2
+    pattern: '(?i)\binvaluable(s)?\b'
+    message: '"invaluable" — adjetivo inflado AI'
+    suggestion: '"importante", "útil"'
+
+  - id: es.indispensable
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bindispensable(s)?\b'
+    message: adjetivo AI inflado
+    suggestion: '"necesario", "clave"'
+
+  - id: es.intrincado
+    kind: phrase
+    severity: 2
+    pattern: intrincad(o|a|os|as)
+    message: '"intricate" — adjetivo AI'
+    suggestion: '"complicado", "enredado"'
+
+  - id: es.profundo_impacto
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(profundo|enorme|significativo|notable|considerable) impacto\b'
+    message: adjetivo inflado AI
+    suggestion: di la cifra o consecuencia concreta
+
+  - id: es.emergente
+    kind: regex
+    severity: 1
+    pattern: '(?i)\b(tendencias|tecnologías|paradigmas|conceptos) emergentes\b'
+    message: adjetivo AI corporativo
+    suggestion: '"nuevas/os", o nombrarlas'
+
+  - id: es.holistico
+    kind: phrase
+    severity: 2
+    pattern: holístic(o|a|os|as)
+    message: adjetivo AI sobreusado
+    suggestion: '"completo", "integral" o ser concreto'
+
+  - id: es.equilibrio_delicado
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(un |el |delicado |frágil )?equilibrio (delicado|frágil|cuidadoso|cuidadosa) entre\b'
+    message: cliché AI ("delicate balance")
+    suggestion: di los dos lados directamente
+
+  # ---- Verbos AI extra ----
+  - id: es.fomentar
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bfomenta(r|n|ndo)? (la |el |un |una )?(comprensión|cooperación|colaboración|innovación|desarrollo|crecimiento|diálogo)\b'
+    message: verbo AI corporativo ("foster")
+    suggestion: '"impulsar", "ayudar a"'
+
+  - id: es.promover
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bpromov(er|iendo|emos) (la |el |un |una )?(comprensión|inclusión|cooperación|colaboración)\b'
+    message: verbo AI institucional
+    suggestion: di qué se hace exactamente
+
+  - id: es.abordar
+    kind: regex
+    severity: 1
+    pattern: '(?i)\babord(ar|ando|amos|aremos) (los |las )?(desafíos|retos|problemáticas|cuestiones|complejidades)\b'
+    message: verbo AI institucional ("tackle")
+    suggestion: '"resolver", "enfrentar" o concreto'
+
+  - id: es.desentranar
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bdesentrañ(ar|ando|amos|emos) (los |las |el |la )?(misterios|secretos|complejidades|matices)\b'
+    message: verbo épico AI
+    suggestion: '"explicar", "estudiar"'
+
+  - id: es.iluminar
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bilumina(r|ndo|n)? (el |la |los |las )?(camino|sendero|comprensión|conocimiento)\b'
+    message: metáfora AI cliché
+    suggestion: '"aclarar", "ayudar a entender"'
+
+  # ---- Sustantivos AI extra ----
+  - id: es.legado
+    kind: regex
+    severity: 1
+    pattern: '(?i)\b(deja|dejó|forja|dejando) un legado\b'
+    message: sustantivo AI inflado
+    suggestion: di qué dejó concretamente
+
+  - id: es.testimonio_vivo
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(es |son |constituye |constituyen )?un testimonio (vivo |silencioso |duradero |perdurable )?de\b'
+    message: locución AI clásica
+    suggestion: di qué prueba o muestra concretamente
+
+  - id: es.encrucijada
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(en |la |una )?encrucijada\b'
+    message: metáfora AI sobreusada
+    suggestion: di la situación concreta
+
+  # ---- Combinaciones AI ----
+  - id: es.tanto_como
+    kind: regex
+    severity: 2
+    pattern: '(?i)\btanto a nivel\b.{1,40}\bcomo a nivel\b'
+    message: estructura paralela AI
+    suggestion: simplifica, di lo importante
+
+  - id: es.por_un_lado_otro
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bpor un lado\b.{0,200}\bpor (el |)otro( lado)?\b'
+    message: estructura binaria AI
+    suggestion: si hay contraste real, dilo directo
+
+  - id: es.no_solo_tambien
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bno (solo|sólo|solamente)\b.{1,80}\bsino (que )?también\b'
+    message: estructura paralela AI
+    suggestion: afirma directo sin la negación previa
+
+  # ---- Aperturas servil chatbot extra ----
+  - id: es.excelente_pregunta
+    kind: regex
+    severity: 3
+    pattern: '(?i)^(¡)?(excelente|fantástic[oa]|magnífic[oa]|brillante|interesante) (pregunta|punto|observación|comentario)'
+    message: apertura sycophantic chatbot
+    suggestion: borrar
+
+  - id: es.entendido
+    kind: regex
+    severity: 3
+    pattern: '(?i)^(¡)?entendido[!,.]'
+    message: ack chatbot
+    suggestion: borrar
+
+  - id: es.profundizar_dive
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(profundicemos|profundizemos|adentrémonos|sumerjámonos) en\b'
+    message: invitación AI ("let''s dive in")
+    suggestion: borrar el preámbulo, ve al tema
+
+  # ---- Estructura de definición AI ----
+  - id: es.no_es_simplemente
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bno es (simplemente|meramente|tan solo|únicamente)\b'
+    message: estructura de definición AI
+    suggestion: di lo que sí es directamente
