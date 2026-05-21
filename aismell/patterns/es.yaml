@@ -761,3 +761,350 @@ patterns:
     pattern: '(?i)\bno es (simplemente|meramente|tan solo|únicamente)\b'
     message: estructura de definición AI
     suggestion: di lo que sí es directamente
+
+  # ---- Calques del inglés (IA piensa en EN y traduce) ----
+  # Estas frases existen en inglés pero NO se usan así en español natural
+
+  - id: es.calco_sumergirse_profundo
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(sumerg(irse|ámonos|irnos)|profundic(e|emos|en)|adentr(arse|émonos|emonos)) (en )?las (profundidades|aguas|complejidades)'
+    message: calco directo de "dive deep into" — no se dice así en español
+    suggestion: usa "estudiar a fondo" o "ver en detalle"
+
+  - id: es.calco_dejame_decir
+    kind: regex
+    severity: 3
+    pattern: '(?i)^(¡)?déjame (decirte|contarte|explicarte) (que |algo|una cosa)'
+    message: calco de "let me tell you" — chatbot traducido
+    suggestion: borra la apertura, ve al punto
+
+  - id: es.calco_aqui_donde
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(es |y es |aquí es |precisamente )aquí (donde|cuando|que)\b'
+    message: calco de "this is where" — anglicismo de IA
+    suggestion: borra y di la idea directa
+
+  - id: es.calco_no_solo_sino_que_ademas
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bno solo .{1,80}sino que además\b'
+    message: calco de "not only X but also" forzado al español
+    suggestion: afírmalo directo sin la negación previa
+
+  - id: es.calco_es_acerca_de
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(se trata|esto es|todo es) (acerca|sobre todo) de\b'
+    message: calco de "it''s about" — en español natural se dice "es" o "consiste en"
+    suggestion: '"consiste en", "se trata de", o solo "es"'
+
+  - id: es.calco_dia_a_dia
+    kind: regex
+    severity: 1
+    pattern: '(?i)\b(en el |para el |del )?día a día\b'
+    message: calco de "day-to-day" sobreusado por IA
+    suggestion: '"diario", "cotidiano", "rutina"'
+
+  - id: es.calco_al_final_del_dia
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bal final del día\b'
+    message: calco directo de "at the end of the day"
+    suggestion: '"al final", "en definitiva no" — borrarlo'
+
+  - id: es.calco_pensar_fuera_caja
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bpensar fuera de la caja\b'
+    message: calco de "think outside the box" — no es expresión natural en español
+    suggestion: '"pensar distinto", "buscar otra forma"'
+
+  - id: es.calco_en_otras_palabras
+    kind: phrase
+    severity: 2
+    pattern: en otras palabras
+    message: calco de "in other words" — la IA lo abusa
+    suggestion: '"o sea", o reformula directo'
+
+  - id: es.calco_dicho_eso
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bdicho eso\b'
+    message: calco de "that said" — en español decimos "dicho esto"
+    suggestion: '"dicho esto", o borrar'
+
+  - id: es.calco_tomar_lugar
+    kind: regex
+    severity: 3
+    pattern: '(?i)\btoma(r|ron|rá|rá|n) lugar\b'
+    message: calco de "take place" — en español es "ocurrir", "suceder"
+    suggestion: '"ocurrir", "suceder", "darse"'
+
+  - id: es.calco_hacer_sentido
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(hace|hacer|hacen) sentido\b'
+    message: calco de "make sense" — en español es "tener sentido"
+    suggestion: '"tener sentido", "tiene sentido"'
+
+  - id: es.calco_tiene_que_ver
+    kind: regex
+    severity: 1
+    pattern: '(?i)\btiene que ver con (cómo|el hecho)\b'
+    message: posible calco de "has to do with"
+    suggestion: '"se relaciona con", o ser directo'
+
+  - id: es.calco_sostenibilidad_robusta
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bsostenibilid(ad|ades) robust(a|as)\b|\bcrecimiento robusto\b|\bsalud robusta\b'
+    message: calco de "robust X" — en español robusto suele referirse a cuerpos
+    suggestion: '"sólid(o|a)", "fuerte", "consistente"'
+
+  - id: es.calco_jugar_papel
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bjuega(n|ron) un papel (clave|vital|crucial|fundamental|importante|crítico|pivotal)\b'
+    message: calco de "plays a key role" — en español más natural es "tiene un papel"
+    suggestion: '"tiene un papel", o di qué hace específicamente'
+
+  - id: es.calco_a_lo_largo
+    kind: regex
+    severity: 2
+    pattern: '(?i)\ba lo largo y ancho\b'
+    message: calco de "throughout" inflado
+    suggestion: '"en todo", "por todo"'
+
+  - id: es.calco_construir_sobre
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bconstruir sobre (esta |esa |la |estas |esas |las )?(base(s)?|fundamento(s)?|cimiento(s)?)\b'
+    message: calco de "build on" — en español es "partir de", "basarse en"
+    suggestion: '"partir de", "basarse en"'
+
+  - id: es.calco_cambiador_juego
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(un |el )?cambia(dor|nte) (de |del )?juego\b|\bgame.changer\b'
+    message: calco de "game-changer" — anglicismo total
+    suggestion: '"un giro", "algo que cambia todo"'
+
+  - id: es.calco_mover_aguja
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bmove(r|mos)? la aguja\b'
+    message: calco de "move the needle" — no existe en español
+    suggestion: '"hacer la diferencia", "tener impacto real"'
+
+  - id: es.calco_fruta_baja
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bfruta(s)? (baja(s)?|del árbol bajo|colgante(s)? baja(s)?)\b'
+    message: calco de "low-hanging fruit" — no se usa en español
+    suggestion: '"lo más fácil", "lo evidente"'
+
+  - id: es.calco_punto_dulce
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(el |un |encontrar el )?punto dulce\b'
+    message: calco de "sweet spot"
+    suggestion: '"punto justo", "equilibrio", "punto óptimo"'
+
+  - id: es.calco_no_brainer
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(es |un )?no.brainer\b|\bsin pensarlo dos veces\b'
+    message: calco de "no-brainer"
+    suggestion: '"obvio", "evidente"'
+
+  - id: es.calco_estar_en_la_misma_pagina
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bestar (en |todos en )?la misma página\b'
+    message: calco de "be on the same page"
+    suggestion: '"estar de acuerdo", "entendernos"'
+
+  - id: es.calco_tocar_base
+    kind: regex
+    severity: 3
+    pattern: '(?i)\btocar base\b'
+    message: calco de "touch base"
+    suggestion: '"hablar", "ponernos al día"'
+
+  - id: es.calco_apuntar_al_blanco
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bdar (en )?(el|al) (blanco|clavo)\b'
+    message: posible calco — IA usa estos modismos en serie
+    suggestion: ser específico
+
+  # ---- Aperturas/conexiones formuláicas calcadas ----
+  - id: es.calco_dicho_de_otro_modo
+    kind: phrase
+    severity: 2
+    pattern: dicho de otro modo
+    message: calco frecuente en IA ("put another way")
+    suggestion: solo reformula directo
+
+  - id: es.calco_para_resumir
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bpara (resumir|sintetizar|recapitular)\b'
+    message: cierre formulario AI ("to sum up")
+    suggestion: borra, deja que el último párrafo cierre solo
+
+  - id: es.calco_tomemos_un_momento
+    kind: regex
+    severity: 3
+    pattern: '(?i)\btom(emos|a) un (momento|minuto|instante)\b'
+    message: calco de "let''s take a moment" — chatbot traducido
+    suggestion: borra el preámbulo
+
+  - id: es.calco_imagina_por_un_momento
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bimagina(te)? por un (momento|instante)\b'
+    message: calco de "imagine for a moment"
+    suggestion: borra y describe directo
+
+  - id: es.calco_con_eso_dicho
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bcon eso dicho\b'
+    message: calco directo de "with that said"
+    suggestion: '"dicho esto", o borrar'
+
+  - id: es.calco_en_la_creciente
+    kind: regex
+    severity: 2
+    pattern: '(?i)\ben (un |el )?creciente\s+(número|cantidad|movimiento|tendencia)\b'
+    message: calco de "in a growing X"
+    suggestion: '"cada vez más", o ser concreto'
+
+  - id: es.calco_jugadores_clave
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(los )?jugadores (clave|principales)\b'
+    message: calco de "key players" — anglicismo corporativo IA
+    suggestion: '"actores principales", "protagonistas"'
+
+  - id: es.calco_actor_clave
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bun actor (clave|principal|crucial|fundamental)\b'
+    message: calco de "key player"
+    suggestion: ser específico sobre quién es y qué hace
+
+  - id: es.calco_implementar
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bimplementa(r|n|ron|mos|ndo) (la |el |un |una )?(solución|estrategia|enfoque|metodología)\b'
+    message: anglicismo institucional ("implement")
+    suggestion: '"poner en marcha", "aplicar", "ejecutar"'
+
+  - id: es.calco_ofertas
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bnuestras ofertas\b'
+    message: calco de "our offerings" — en ES es "productos/servicios"
+    suggestion: '"nuestros productos", "nuestros servicios"'
+
+  - id: es.calco_acogedor
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(un |una |espacio |ambiente |entorno )acogedor(a)?\s+(donde|que|para)\b'
+    message: calco de "welcoming/cozy" — IA lo usa de muletilla turística
+    suggestion: describe lo concreto
+
+  - id: es.calco_amigable_usuario
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(amigable (con|para) el usuario|user.friendly)\b'
+    message: calco de "user-friendly"
+    suggestion: '"fácil de usar", "intuitivo"'
+
+  - id: es.calco_libre_de_estres
+    kind: regex
+    severity: 2
+    pattern: '(?i)\blibre de (estrés|preocupaciones|complicaciones)\b'
+    message: calco de "stress-free" — anglicismo IA
+    suggestion: '"sin estrés", "tranquilo"'
+
+  - id: es.calco_pruebale
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(pruéba(lo|la)|chéca(lo|la)|míra(lo|la)) (a |por )?ti mismo\b'
+    message: calco de "try it yourself"
+    suggestion: '"pruébalo", "compruébalo tú mismo"'
+
+  - id: es.calco_es_lo_que_es
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bes lo que es\b'
+    message: calco de "it is what it is" — no se usa en ES natural
+    suggestion: borrar o reformular
+
+  - id: es.calco_tener_los_ojos
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bten(er|emos|go) los ojos puestos\b'
+    message: calco de "have eyes on" — anglicismo
+    suggestion: '"vigilar", "observar", "estar atento a"'
+
+  - id: es.calco_correr_la_milla
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bcorrer la milla extra\b'
+    message: calco de "go the extra mile" — no existe en español
+    suggestion: '"hacer un esfuerzo extra", "ir más allá"'
+
+  - id: es.calco_imagen_grande
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bla imagen (grande|completa|general) (de|del|de la)\b'
+    message: calco de "the big picture"
+    suggestion: '"el panorama general", "la visión completa"'
+
+  - id: es.calco_palabra_clave
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bla palabra clave (aquí|es)\b'
+    message: calco de "the key word here"
+    suggestion: '"lo importante aquí", "lo clave"'
+
+  - id: es.calco_punto_de_inflexion
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bpunto de inflexión\b'
+    message: traducción de "tipping point" — usada hasta el cliché por IA
+    suggestion: '"momento de cambio", "giro"'
+
+  - id: es.calco_donde_la_magia
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(es )?(aquí |allí )?donde (sucede|ocurre|pasa) la magia\b|\bdonde la magia (sucede|ocurre|pasa)\b'
+    message: calco de "where the magic happens"
+    suggestion: borra el cliché, describe lo concreto
+
+  - id: es.calco_paseo_parque
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bun paseo (en|por) el parque\b'
+    message: calco de "walk in the park" — no se usa en ES
+    suggestion: '"fácil", "sencillo"'
+
+  - id: es.calco_bocado
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(bocados|trozos|piezas) (digeribles|del tamaño de un bocado)\b'
+    message: calco de "bite-sized chunks"
+    suggestion: '"partes pequeñas", "fácil de procesar"'
+
+  - id: es.calco_hoja_de_ruta
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bhoja de ruta\b'
+    message: calco de "roadmap" — empresarial, IA lo abusa
+    suggestion: '"plan", "ruta", o ser específico'

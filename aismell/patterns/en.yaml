@@ -447,3 +447,396 @@ patterns:
     pattern: '(?im)^firstly[,\s]'
     message: enumeration AI marker
     suggestion: just start with the point
+
+  # ---- Extra AI-isms (Reddit + Pangram + Novelcrafter + Wikipedia) ----
+  - id: en.dive_in
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\b(let'?s |let us |we can |i'?ll )?dive (in|into)\\b"
+    message: AI invitation cliché
+    suggestion: just start the topic
+
+  - id: en.unpack
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\b(let'?s |we can |to )?unpack (this|that|the)\\b"
+    message: AI verb (unpack)
+    suggestion: '"explain", or just explain it'
+
+  - id: en.shed_light
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\bshed (some |)light on\\b"
+    message: AI cliché ("shed light on")
+    suggestion: '"explain", "show"'
+
+  - id: en.stand_out
+    kind: regex
+    severity: 1
+    pattern: "(?i)\\bstands? out (as|from|in)\\b"
+    message: AI promotional verb
+    suggestion: say what makes it different
+
+  - id: en.cutting_edge
+    kind: phrase
+    severity: 2
+    pattern: cutting[- ]edge
+    message: AI hype adjective
+    suggestion: '"new", or name the technique'
+
+  - id: en.state_of_the_art
+    kind: regex
+    severity: 1
+    pattern: "(?i)\\bstate[- ]of[- ]the[- ]art\\b"
+    message: AI hype phrase
+    suggestion: name the actual technique
+
+  - id: en.game_changer
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\bgame[- ]?chang(er|ing)\\b"
+    message: AI hype cliché
+    suggestion: say what changes
+
+  - id: en.next_level
+    kind: phrase
+    severity: 2
+    pattern: next[- ]level
+    message: AI hype
+    suggestion: be specific about how
+
+  - id: en.unprecedented
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bunprecedented\\b"
+    message: AI inflation adjective
+    suggestion: '"new", or compare to what came before'
+
+  - id: en.profound
+    kind: regex
+    severity: 1
+    pattern: "(?i)\\bprofound (impact|effect|influence|change)\\b"
+    message: AI inflated adjective
+    suggestion: give a number or concrete consequence
+
+  - id: en.reflects
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\breflects? (the |a |its )?(complexity|richness|depth|diversity)\\b"
+    message: AI vague locution
+    suggestion: say what is complex and why
+
+  - id: en.tapestry_rich
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\b(rich |intricate |complex |vibrant )tapestry\\b"
+    message: AI metaphor cliché ("rich tapestry")
+    suggestion: describe what's actually there
+
+  - id: en.weave_threads
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\b(weave|weaves|woven|weaving) (a |the |its )?(threads|fabric|tapestry)\\b"
+    message: AI metaphor (weaving threads)
+    suggestion: drop the metaphor
+
+  - id: en.symphony
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\b(a |the )?symphony of\\b"
+    message: AI epic metaphor
+    suggestion: drop it
+
+  - id: en.dance_between
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\b(a |the |delicate )?dance (between|of)\\b"
+    message: AI metaphor cliché
+    suggestion: say what actually relates
+
+  - id: en.ever_evolving
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\bever[- ]evolving\\b"
+    message: AI scene-setter cliché
+    suggestion: drop it or name a date range
+
+  - id: en.in_the_realm
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\bin the realm of\\b"
+    message: AI epic metaphor
+    suggestion: '"in", "within"'
+
+  - id: en.at_its_core
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bat (its|the) (core|heart) (of |,)"
+    message: AI cliché opener
+    suggestion: say it directly
+
+  - id: en.world_of
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\b(fascinating|exciting|complex|ever[- ]changing) world of\\b"
+    message: AI hype scene-setter
+    suggestion: drop the adjective + "world of"
+
+  - id: en.testament_living
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\b(a |is a |stands as a )?living testament (to|of)\\b"
+    message: AI inflated locution
+    suggestion: say what it actually proves
+
+  - id: en.ushering
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bushering (in|forth)\\b"
+    message: AI epic verb
+    suggestion: '"starting", "bringing"'
+
+  - id: en.akin_to
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bakin to\\b"
+    message: AI formal comparison
+    suggestion: '"like", "similar to"'
+
+  - id: en.boil_down
+    kind: regex
+    severity: 1
+    pattern: "(?i)\\bboils? down to\\b"
+    message: AI common reduction phrase
+    suggestion: just state it
+
+  - id: en.foster_understanding
+    kind: regex
+    severity: 1
+    pattern: "(?i)\\bfoster(s|ing|ed)? (a |an |the )?(understanding|cooperation|collaboration|innovation|growth|dialogue|inclusion)\\b"
+    message: AI institutional verb
+    suggestion: say what's done concretely
+
+  - id: en.carve_path
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\bcarv(e|ed|ing) (out )?(a |its |their )?(path|niche|space)\\b"
+    message: AI motivational metaphor
+    suggestion: drop it
+
+  - id: en.bridge_gap
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bbridg(e|es|ed|ing) (the |a )?gap (between|in)\\b"
+    message: AI corporate cliché
+    suggestion: '"connect", "link"'
+
+  - id: en.pivotal_role
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\b(plays|play|playing|played) (a |an )?(pivotal|crucial|key|critical|vital|essential|important) role\\b"
+    message: AI role-inflation
+    suggestion: say what it does specifically
+
+  - id: en.cornerstone
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\b(a |the )?cornerstone of\\b"
+    message: AI architecture metaphor
+    suggestion: '"the basis of", or be specific'
+
+  - id: en.vital
+    kind: regex
+    severity: 1
+    pattern: "(?i)\\bvital (to|for|role)\\b"
+    message: AI inflated adjective
+    suggestion: '"important", "needed"'
+
+  - id: en.empower
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bempower(s|ed|ing|ment)?\\b"
+    message: AI corporate verb
+    suggestion: '"help", or be specific'
+
+  - id: en.unlock_potential
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\bunlock(s|ed|ing)? (the |its |our |their )?(potential|power|capabilities)\\b"
+    message: AI motivational cliché
+    suggestion: drop it
+
+  - id: en.lies_in
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\b(the (real |true |key |secret )?(power|beauty|magic|strength|essence)) lies in\\b"
+    message: AI essentialist cliché
+    suggestion: just state what's important
+
+  - id: en.intricate
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bintricate(ly)?\\b"
+    message: AI inflated adjective
+    suggestion: '"complex", "detailed"'
+
+  - id: en.elucidate
+    kind: phrase
+    severity: 2
+    pattern: elucidate
+    message: AI formal verb
+    suggestion: '"explain", "show"'
+
+  - id: en.commendable
+    kind: phrase
+    severity: 2
+    pattern: commendable
+    message: AI sycophantic adjective
+    suggestion: '"good", or be specific'
+
+  - id: en.fascinating
+    kind: regex
+    severity: 1
+    pattern: "(?i)\\bfascinating\\b"
+    message: AI weak adjective
+    suggestion: say why it's interesting
+
+  - id: en.captivating
+    kind: phrase
+    severity: 2
+    pattern: captivating
+    message: AI promotional adjective
+    suggestion: '"interesting", or show it'
+
+  - id: en.indelible
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\b(left |leaves |leaving )?an indelible (mark|impression|impact)\\b"
+    message: AI epic locution
+    suggestion: say what was left
+
+  - id: en.aforementioned
+    kind: phrase
+    severity: 2
+    pattern: aforementioned
+    message: AI formal-register marker
+    suggestion: '"the previous", or just refer to it'
+
+  - id: en.in_the_pursuit
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bin (the )?pursuit of\\b"
+    message: AI motivational opener
+    suggestion: '"to", "while looking for"'
+
+  - id: en.harness
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bharness(es|ed|ing)? (the |its |our )?(power|potential|energy|capabilities)\\b"
+    message: AI epic verb
+    suggestion: '"use"'
+
+  - id: en.pave_way
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bpav(e|es|ed|ing) the way (for|to)\\b"
+    message: AI corporate cliché
+    suggestion: '"helps to", "makes possible"'
+
+  - id: en.no_stranger
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\bis no stranger to\\b"
+    message: AI biographical cliché
+    suggestion: '"has experience with", or just state it'
+
+  - id: en.tested_true
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\btime[- ](tested|honored)\\b|\\btried[- ]and[- ]true\\b|\\btried[- ]and[- ]tested\\b"
+    message: AI legitimacy cliché
+    suggestion: '"established", or be specific'
+
+  - id: en.in_recent_years
+    kind: regex
+    severity: 1
+    pattern: "(?i)\\bin recent years\\b"
+    message: AI temporal vagueness
+    suggestion: name the period
+
+  - id: en.in_today
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bin today'?s (modern |digital |fast[- ]paced |interconnected )?(world|age|era|society)\\b"
+    message: AI scene-setter
+    suggestion: drop the framing
+
+  - id: en.first_and_foremost
+    kind: phrase
+    severity: 2
+    pattern: first and foremost
+    message: AI emphasis cliché
+    suggestion: '"first", or just start'
+
+  - id: en.last_but_not_least
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\blast but not least\\b"
+    message: AI list cliché
+    suggestion: just present the item
+
+  - id: en.bear_in_mind
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\b(bear|keep) in mind (that |)\\b"
+    message: AI formal hedge
+    suggestion: '"note", or just state it'
+
+  - id: en.point_out_that
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bit'?s worth (pointing out|mentioning|emphasizing|stressing)\\b"
+    message: AI meta-announcement
+    suggestion: just point it out
+
+  - id: en.in_essence
+    kind: phrase
+    severity: 2
+    pattern: in essence
+    message: AI formal connector
+    suggestion: '"so", or delete'
+
+  - id: en.by_and_large
+    kind: regex
+    severity: 1
+    pattern: "(?i)\\bby and large\\b"
+    message: AI formal hedge
+    suggestion: '"mostly", or be specific'
+
+  - id: en.indelibly
+    kind: phrase
+    severity: 2
+    pattern: indelibly
+    message: AI formal adverb
+    suggestion: '"permanently", or drop'
+
+  - id: en.markedly
+    kind: phrase
+    severity: 1
+    pattern: markedly
+    message: AI formal adverb
+    suggestion: '"clearly", "much more"'
+
+  - id: en.notably
+    kind: regex
+    severity: 1
+    pattern: "(?im)^notably[,\\s]"
+    message: AI sentence-opener
+    suggestion: drop it
+
+  - id: en.indeed_open
+    kind: regex
+    severity: 1
+    pattern: "(?im)^indeed[,\\s]"
+    message: AI formal sentence-opener
+    suggestion: drop it
