@@ -286,6 +286,108 @@
     text-decoration: none;
   }
 
+  /* Compact findings summary line + collapsed "more" details */
+  .findings-summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    flex-wrap: wrap;
+  }
+  .findings-summary .fs-count strong { color: var(--fg); font-size: 14px; }
+  .findings-summary .fs-sep { color: var(--line); }
+  .findings-summary .fs-sev.s-high { color: var(--red); }
+  .findings-summary .fs-sev.s-mod  { color: var(--hl); }
+  .findings-summary .fs-sev.s-low  { color: var(--dim); }
+  .findings-more {
+    border-top: 1px dashed var(--line);
+  }
+  .findings-more > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 12px 18px;
+    color: var(--hl);
+    font-size: 13px;
+    user-select: none;
+  }
+  .findings-more > summary::-webkit-details-marker { display: none; }
+  .findings-more > summary::before {
+    content: "▸ ";
+    color: var(--dim);
+    margin-right: 6px;
+  }
+  .findings-more[open] > summary::before { content: "▾ "; }
+  .findings-more .more-hide { display: none; }
+  .findings-more[open] .more-show { display: none; }
+  .findings-more[open] .more-hide { display: inline; }
+
+  /* Bibliography summary block */
+  .biblio-summary {
+    display: flex;
+    gap: 18px;
+    padding: 14px 18px;
+    border-bottom: 1px dashed var(--line);
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+  .biblio-summary .bs-cell { color: var(--dim); }
+  .biblio-summary .bs-cell strong {
+    color: var(--fg);
+    font-size: 18px;
+    margin-right: 6px;
+    font-weight: 600;
+  }
+  .biblio-summary .bs-cell.ok strong   { color: var(--grn, #6abf69); }
+  .biblio-summary .bs-cell.warn strong { color: var(--hl); }
+  .biblio-summary .bs-cell.err strong  { color: var(--red); }
+  .biblio-disclaimer {
+    padding: 10px 18px;
+    border-bottom: 1px dashed var(--line);
+    color: var(--dim);
+    font-size: 12px;
+    line-height: 1.55;
+    font-style: italic;
+  }
+  .biblio-detail-box > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 10px 18px;
+    border-bottom: 1px dashed var(--line);
+    color: var(--hl);
+    font-size: 13px;
+    user-select: none;
+  }
+  .biblio-detail-box > summary::-webkit-details-marker { display: none; }
+  .biblio-detail-box > summary::before {
+    content: "▸ ";
+    color: var(--dim);
+    margin-right: 6px;
+  }
+  .biblio-detail-box[open] > summary::before { content: "▾ "; }
+  .biblio-detail-box .more-hide { display: none; }
+  .biblio-detail-box[open] .more-show { display: none; }
+  .biblio-detail-box[open] .more-hide { display: inline; }
+  .biblio-progress {
+    padding: 10px 18px;
+    color: var(--dim);
+    font-size: 12px;
+    font-style: italic;
+  }
+  .biblio-download {
+    padding: 12px 18px;
+    border-bottom: 1px dashed var(--line);
+  }
+  .biblio-download .btn {
+    text-decoration: none;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
   /* Score */
   .score {
     padding: 18px;

@@ -21,6 +21,19 @@ const I18N = {
       "armando reporte…",
     ],
     scan_hits: "{n} señales detectadas",
+    show_more: "ver los otros {n}",
+    show_less: "colapsar",
+    download_docx_btn: "descargar archivo anotado",
+    biblio_summary_label: "BIBLIOGRAFÍA",
+    biblio_sum_total: "{n} referencias detectadas",
+    biblio_sum_verified: "verificadas",
+    biblio_sum_not_found: "sin coincidencia",
+    biblio_sum_unverifiable: "sin DOI/ID",
+    biblio_sum_error: "error de red",
+    biblio_show_detail: "ver detalle por referencia",
+    biblio_hide_detail: "colapsar",
+    biblio_download_btn: "descargar reporte de citas (.txt)",
+    biblio_disclaimer: "\"sin coincidencia\" significa que no se encontró en CrossRef ni arXiv — pueden ser fuentes legítimas sin indexar (libros, tesis, capítulos). Revisa a mano antes de concluir nada. \"sin DOI/ID\" no es problema: muchas citas válidas no tienen identificador.",
     verdict_label: "veredicto",
     verdict_ai: "probable IA",
     verdict_mixed: "mixto / asistido",
@@ -77,7 +90,7 @@ const I18N = {
     drop_hint: "suelta el archivo para analizarlo",
     upload: "subir archivo",
     annotating: "marcando word…",
-    docx_done: "Listo: tu archivo marcado se descargó. Abre <strong>{name}</strong> en Word o LibreOffice. Las palabras detectadas como IA aparecen resaltadas en amarillo, y al costado verás un comentario explicando qué huele mal.",
+    docx_done: "Listo: <strong>{name}</strong> está armado. Bájalo cuando quieras, ábrelo en Word o LibreOffice. Las palabras detectadas como IA aparecen resaltadas en amarillo, y al costado verás un comentario explicando qué huele mal.",
     pdf_browser_unsupported: "PDF en la web aún no se puede (la librería no carga en el navegador). Para PDF usa el CLI: aismell paper.pdf --out paper-marcado.pdf",
     biblio: "verificar bibliografía",
     biblioTip: "Busca las referencias del texto (DOIs, papers, citas) y verifica si existen. La IA suele inventar bibliografía.",
@@ -132,6 +145,19 @@ const I18N = {
       "building report…",
     ],
     scan_hits: "{n} signals detected",
+    show_more: "show the other {n}",
+    show_less: "collapse",
+    download_docx_btn: "download annotated file",
+    biblio_summary_label: "BIBLIOGRAPHY",
+    biblio_sum_total: "{n} references detected",
+    biblio_sum_verified: "verified",
+    biblio_sum_not_found: "no match",
+    biblio_sum_unverifiable: "no DOI/ID",
+    biblio_sum_error: "network error",
+    biblio_show_detail: "show per-reference detail",
+    biblio_hide_detail: "collapse",
+    biblio_download_btn: "download citation report (.txt)",
+    biblio_disclaimer: "\"no match\" means it wasn't found in CrossRef or arXiv — these might still be legitimate sources not indexed there (books, theses, chapters). Check by hand before drawing conclusions. \"no DOI/ID\" is fine: lots of valid citations don't have one.",
     verdict_label: "verdict",
     verdict_ai: "likely AI",
     verdict_mixed: "mixed / assisted",
@@ -188,7 +214,7 @@ const I18N = {
     drop_hint: "drop the file to analyze",
     upload: "upload file",
     annotating: "annotating word…",
-    docx_done: "Done: your marked file was downloaded. Open <strong>{name}</strong> in Word or LibreOffice. The words flagged as AI are highlighted in yellow, and a comment in the margin explains what smells off.",
+    docx_done: "Ready: <strong>{name}</strong> is built. Download it whenever, open it in Word or LibreOffice. AI-flagged words are highlighted in yellow, with a margin comment explaining what smells off.",
     pdf_browser_unsupported: "PDF in the browser isn't supported yet (the library doesn't run in WASM). For PDF use the CLI: aismell paper.pdf --out paper-marked.pdf",
     biblio: "verify bibliography",
     biblioTip: "Finds the references in the text (DOIs, papers, citations) and checks if they exist. AI often invents bibliography.",
@@ -558,9 +584,15 @@ function escapeHtml(s) {
 }
 
 function renderHit(hit, t) {
-  const before = escapeHtml(hit.text.slice(0, hit.col));
+  // Compact context: ±60 chars around the match (was: whole paragraph).
+  const CTX = 60;
+  const start = Math.max(0, hit.col - CTX);
+  const end = Math.min(hit.text.length, hit.end + CTX);
+  const lead = start > 0 ? "… " : "";
+  const tail = end < hit.text.length ? " …" : "";
+  const before = escapeHtml(hit.text.slice(start, hit.col));
   const matched = escapeHtml(hit.text.slice(hit.col, hit.end));
-  const after = escapeHtml(hit.text.slice(hit.end));
+  const after = escapeHtml(hit.text.slice(hit.end, end));
   let glyph = "·";
   if (hit.severity === 3) glyph = "🔴";
   else if (hit.severity === 2) glyph = "⚠";
@@ -568,7 +600,7 @@ function renderHit(hit, t) {
     <div class="finding">
       <div class="glyph s-${hit.severity}">${glyph}</div>
       <div class="body">
-        <div class="ctx">${before}<span class="match">${matched}</span>${after}</div>
+        <div class="ctx">${lead}${before}<span class="match">${matched}</span>${after}${tail}</div>
         <div class="meta">${escapeHtml(hit.message)} <span class="id">${escapeHtml(hit.id)}</span> · ${t.line}${hit.line}</div>
         ${hit.suggestion ? `<div class="sug">${escapeHtml(hit.suggestion)}</div>` : ""}
       </div>
@@ -704,35 +736,6 @@ function render(report) {
   const pct = Math.round(report.score * 100);
   const sev = severityClass(report.score);
 
-  // Severity breakdown
-  let sevHigh = 0, sevMod = 0, sevLow = 0;
-  for (const h of report.hits) {
-    if (h.severity === 3) sevHigh++;
-    else if (h.severity === 2) sevMod++;
-    else sevLow++;
-  }
-  for (const s of report.structural) {
-    if (s.severity === 3) sevHigh++;
-    else if (s.severity === 2) sevMod++;
-    else sevLow++;
-  }
-
-  // Density: % of distinct lines with at least one inline hit
-  const flaggedLines = new Set();
-  for (const h of report.hits) flaggedLines.add(h.line);
-  const flagged = flaggedLines.size;
-  const denPct = report.sentences ? Math.round((flagged / report.sentences) * 100) : 0;
-
-  // Top repeated patterns (by id)
-  const counts = {};
-  for (const h of report.hits) {
-    counts[h.id] = (counts[h.id] || 0) + 1;
-  }
-  const top = Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .filter(([, n]) => n >= 2)
-    .slice(0, 3);
-
   const totalFindings = report.hits.length + report.structural.length;
 
   let scoreHtml = renderVerdict(report) + `
@@ -743,41 +746,6 @@ function render(report) {
         ${totalFindings} ${t.findings} · ${report.lang}
       </div>
     </div>`;
-
-  if (totalFindings > 0) {
-    scoreHtml += `
-    <div class="score-bars">
-      <div class="score-bar s-high">
-        <div class="num">${sevHigh}</div>
-        <div class="lbl">${t.sev_high}</div>
-      </div>
-      <div class="score-bar s-mod">
-        <div class="num">${sevMod}</div>
-        <div class="lbl">${t.sev_mod}</div>
-      </div>
-      <div class="score-bar s-low">
-        <div class="num">${sevLow}</div>
-        <div class="lbl">${t.sev_low}</div>
-      </div>
-    </div>`;
-
-    if (flagged > 0 && report.sentences > 0) {
-      scoreHtml += `
-    <div class="score-density">
-      <span>${t.density_text.replace("{n}", flagged).replace("{total}", report.sentences).replace("{pct}", denPct)}</span>
-      <div class="track"><div class="fill" style="width: ${Math.min(100, denPct)}%"></div></div>
-    </div>`;
-    }
-
-    if (top.length > 0) {
-      const chips = top.map(([id, n]) => `<span class="chip"><span class="cnt">×${n}</span>${escapeHtml(id)}</span>`).join("");
-      scoreHtml += `
-    <div class="score-top-patterns">
-      <span>${t.top_patterns}</span>
-      ${chips}
-    </div>`;
-    }
-  }
 
   if (report.score >= 0.6) {
     scoreHtml += renderIntelectaNudge("smell");
@@ -791,10 +759,48 @@ function render(report) {
     return;
   }
 
-  let html = "";
-  if (report.hits.length) {
-    const sorted = [...report.hits].sort((a, b) => a.line - b.line || a.col - b.col);
-    html += sorted.map((h) => renderHit(h, t)).join("");
+  // Findings — collapsed summary by default, expandable to full list.
+  const sorted = [...report.hits].sort((a, b) => (b.severity - a.severity) || (a.line - b.line));
+  const TOP_N = 5;
+  const top = sorted.slice(0, TOP_N);
+  const rest = sorted.slice(TOP_N);
+
+  // Severity counts (for the compact summary line)
+  let sevHigh = 0, sevMod = 0, sevLow = 0;
+  for (const h of report.hits) {
+    if (h.severity === 3) sevHigh++;
+    else if (h.severity === 2) sevMod++;
+    else sevLow++;
+  }
+  for (const s of report.structural) {
+    if (s.severity === 3) sevHigh++;
+    else if (s.severity === 2) sevMod++;
+    else sevLow++;
+  }
+
+  let html = `
+    <div class="findings-summary">
+      <span class="fs-count"><strong>${totalFindings}</strong> ${t.findings}</span>
+      <span class="fs-sep">·</span>
+      <span class="fs-sev s-high">${sevHigh} ${t.sev_high}</span>
+      <span class="fs-sev s-mod">${sevMod} ${t.sev_mod}</span>
+      <span class="fs-sev s-low">${sevLow} ${t.sev_low}</span>
+    </div>`;
+
+  if (top.length) {
+    html += top.map((h) => renderHit(h, t)).join("");
+  }
+  if (rest.length) {
+    const moreLbl = (t.show_more || "ver los otros {n}").replace("{n}", rest.length);
+    const lessLbl = t.show_less || "colapsar";
+    html += `
+      <details class="findings-more">
+        <summary>
+          <span class="more-show">${moreLbl}</span>
+          <span class="more-hide">${lessLbl}</span>
+        </summary>
+        ${rest.map((h) => renderHit(h, t)).join("")}
+      </details>`;
   }
   if (report.structural.length) {
     html += `<div class="finding" style="border-bottom: 1px dashed var(--line); color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;"><div></div><div>${t.structural}</div></div>`;
@@ -921,11 +927,18 @@ async function verifyBibliography(text) {
     appendBiblio(`<div class="biblio-empty">${t.biblio_none}</div>`);
     return;
   }
-  appendBiblio(`<div class="biblio-header">${t.biblio_header.replace("{n}", refs.length)}</div>`);
+
+  // Header + privacy note
+  appendBiblio(`<div class="biblio-header">${t.biblio_summary_label} — ${t.biblio_sum_total.replace("{n}", refs.length)}</div>`);
   appendBiblio(`<div class="biblio-note">${t.biblio_privacy}</div>`);
 
-  let fakes = 0;
-  for (const r of refs) {
+  // Live progress placeholder
+  appendBiblio(`<div id="biblio-progress" class="biblio-progress">verificando 0 / ${refs.length}…</div>`);
+  const progEl = () => document.getElementById("biblio-progress");
+
+  const results = [];
+  for (let i = 0; i < refs.length; i++) {
+    const r = refs[i];
     let res;
     try {
       if (r.kind === "doi")        res = await verifyDoiJs(r.identifier);
@@ -935,18 +948,77 @@ async function verifyBibliography(text) {
     } catch (e) {
       res = { status: "error", detail: e.message };
     }
-    if (res.status === "not_found") fakes++;
-    appendBiblio(renderBiblioRow(r, res));
-    await sleep(300);
+    results.push({ ref: r, res });
+    if (progEl()) progEl().textContent = `verificando ${i + 1} / ${refs.length}…`;
+    await sleep(180);
   }
-  if (fakes > 0) {
-    appendBiblio(
-      `<div class="biblio-warning">${t.biblio_warning.replace("{fakes}", fakes).replace("{total}", refs.length)}</div>`
-    );
-  }
-  if (fakes > 0) {
+  if (progEl()) progEl().remove();
+
+  // Summary stats
+  const counts = { exists: 0, not_found: 0, unverifiable: 0, error: 0 };
+  for (const { res } of results) counts[res.status] = (counts[res.status] || 0) + 1;
+
+  const summary = `
+    <div class="biblio-summary">
+      <span class="bs-cell ok"><strong>${counts.exists}</strong> ${t.biblio_sum_verified}</span>
+      <span class="bs-cell warn"><strong>${counts.not_found}</strong> ${t.biblio_sum_not_found}</span>
+      <span class="bs-cell dim"><strong>${counts.unverifiable}</strong> ${t.biblio_sum_unverifiable}</span>
+      ${counts.error ? `<span class="bs-cell err"><strong>${counts.error}</strong> ${t.biblio_sum_error}</span>` : ""}
+    </div>
+    <div class="biblio-disclaimer">${t.biblio_disclaimer}</div>`;
+  appendBiblio(summary);
+
+  // Detail (collapsed)
+  let detailHtml = "";
+  for (const { ref, res } of results) detailHtml += renderBiblioRow(ref, res);
+  appendBiblio(`
+    <details class="biblio-detail-box">
+      <summary>
+        <span class="more-show">${t.biblio_show_detail}</span>
+        <span class="more-hide">${t.biblio_hide_detail}</span>
+      </summary>
+      ${detailHtml}
+    </details>`);
+
+  // Download report
+  const reportText = buildBiblioReport(results, t);
+  const reportBlob = new Blob([reportText], { type: "text/plain;charset=utf-8" });
+  const reportUrl = URL.createObjectURL(reportBlob);
+  appendBiblio(`
+    <div class="biblio-download">
+      <a class="btn ghost" href="${reportUrl}" download="aismell-bibliografia.txt">⬇ ${t.biblio_download_btn}</a>
+    </div>`);
+
+  // Only nudge Intelecta when there's enough signal: 2+ "no match" AND ratio > 25%
+  const ratio = counts.not_found / refs.length;
+  if (counts.not_found >= 2 && ratio >= 0.25) {
     appendBiblio(renderIntelectaNudge("biblio"));
   }
+}
+
+function buildBiblioReport(results, t) {
+  const lines = [];
+  lines.push("aismell · reporte de bibliografía");
+  lines.push("=".repeat(50));
+  lines.push(`total: ${results.length}`);
+  const stats = { exists: 0, not_found: 0, unverifiable: 0, error: 0 };
+  for (const { res } of results) stats[res.status] = (stats[res.status] || 0) + 1;
+  lines.push(`verificadas: ${stats.exists}`);
+  lines.push(`sin coincidencia (CrossRef/arXiv): ${stats.not_found}`);
+  lines.push(`sin DOI/ID: ${stats.unverifiable}`);
+  if (stats.error) lines.push(`error de red: ${stats.error}`);
+  lines.push("");
+  lines.push("nota: \"sin coincidencia\" no equivale a falsa. Libros, tesis,");
+  lines.push("capítulos y publicaciones locales muchas veces no están indexados");
+  lines.push("en CrossRef o arXiv. Verifica a mano antes de concluir nada.");
+  lines.push("");
+  lines.push("-".repeat(50));
+  for (const { ref, res } of results) {
+    lines.push(`L${ref.line} [${ref.kind}] ${ref.identifier || ref.title || ref.raw}`);
+    lines.push(`  estado: ${res.status}${res.detail ? " · " + res.detail : ""}`);
+    lines.push("");
+  }
+  return lines.join("\n");
 }
 
 async function verifyDoiJs(doi) {
@@ -1136,24 +1208,18 @@ async function annotateDocx(file) {
       els.resultPanel.hidden = false;
     }
 
-    // 5) Append a download bar at the top of findings
+    // 5) Append a download bar at the top of findings — manual click, no auto-download.
     const downloadHtml = `
       <div class="docx-download">
         <div class="docx-download-text">
           ${t.docx_done.replace("{name}", `<strong>${escapeHtml(outName)}</strong>`)}
         </div>
-        <a class="btn" id="docxDownloadBtn" href="${url}" download="${escapeHtml(outName)}">⬇ ${escapeHtml(outName)}</a>
+        <a class="btn" id="docxDownloadBtn" href="${url}" download="${escapeHtml(outName)}">⬇ ${escapeHtml(t.download_docx_btn || outName)}</a>
       </div>`;
     els.findings.insertAdjacentHTML("afterbegin", downloadHtml);
 
-    // Auto-trigger the download once (browsers allow this within click handler chain)
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = outName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    // Keep the blob alive for a couple of minutes so the user can click when ready.
+    setTimeout(() => URL.revokeObjectURL(url), 120000);
 
     setStatus(null);
 
