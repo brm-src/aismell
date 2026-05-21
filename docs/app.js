@@ -721,13 +721,31 @@ async function annotateDocx(file) {
     setStatus(t.booting, true);
     return;
   }
-  setStatus(`<span class="spin">●</span> ${t.annotating} ${file.name}`);
   els.analyzeBtn.disabled = true;
+
+  // Same rotating animation as analyze() — feels alive while parsing the docx
+  const baseSteps = t.analyzing_steps || [t.analyzing];
+  const steps = [`${t.annotating} ${file.name}`, ...baseSteps];
+  let i = 0;
+  setStatus(`<span class="spin">●</span> ${steps[0]}`);
+  const ticker = setInterval(() => {
+    i = (i + 1) % steps.length;
+    setStatus(`<span class="spin">●</span> ${steps[i]}`);
+  }, 350);
+
+  await new Promise((r) => setTimeout(r, 50));
+  const startedAt = performance.now();
+
   try {
     const buf = new Uint8Array(await file.arrayBuffer());
     const py = annotateDocxFn(buf, els.langSel.value, els.strictSel.checked);
     const result = py.toJs({ dict_converter: Object.fromEntries });
     py.destroy();
+
+    // Floor at ~1.5s — docx parsing is usually fast, so we let the animation breathe
+    const elapsed = performance.now() - startedAt;
+    if (elapsed < 1500) await new Promise((r) => setTimeout(r, 1500 - elapsed));
+    clearInterval(ticker);
 
     const outBytes = new Uint8Array(result.bytes);
     const blob = new Blob([outBytes], {
@@ -749,10 +767,12 @@ async function annotateDocx(file) {
     const pct = Math.round(result.score * 100);
     const sev = severityClass(result.score);
     els.score.innerHTML = `
-      <div class="pct ${sev}">${pct}%</div>
-      <div class="meta">
-        <strong>${severityLabel(result.score)}</strong> · ${result.sentences} ${t.sentences} ·
-        ${result.findings} ${t.findings} · <span style="color: var(--hl);">${outName}</span>
+      <div class="score-top">
+        <div class="pct ${sev}">${pct}%</div>
+        <div class="meta">
+          <strong>${severityLabel(result.score)}</strong> · ${result.sentences} ${t.sentences} ·
+          ${result.findings} ${t.findings} · <span style="color: var(--hl);">${outName}</span>
+        </div>
       </div>
     `;
     els.findings.innerHTML = `
@@ -762,7 +782,14 @@ async function annotateDocx(file) {
     `;
     els.resultPanel.hidden = false;
     setStatus(null);
+
+    // Optional bibliography verification on docx text — needs source text.
+    if (els.biblioSel && els.biblioSel.checked && extractRefsFn) {
+      // We don't have raw text here; extract again via Pyodide from the bytes.
+      // For now: pop a note. We add proper docx-text-extract later if needed.
+    }
   } catch (err) {
+    clearInterval(ticker);
     console.error(err);
     setStatus(`${t.error} ${err.message}`, true);
   } finally {
