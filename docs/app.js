@@ -42,6 +42,12 @@ const I18N = {
     annotating: "marcando word…",
     docx_done: "✓ {name} descargado. Ábrelo en Word o LibreOffice — los hallazgos están en amarillo con comentarios al costado.",
     pdf_browser_unsupported: "PDF en la web aún no se puede (la librería no carga en el navegador). Para PDF usa el CLI: aismell paper.pdf --out paper-marcado.pdf",
+    biblio: "verificar bibliografía",
+    biblioTip: "Detecta DOIs, IDs de arXiv y citas, y consulta CrossRef + arXiv para ver si existen. Solo se envían los identificadores, no tu texto. Útil porque la IA inventa referencias falsas.",
+    biblio_header: "BIBLIOGRAFÍA — {n} REFERENCIAS",
+    biblio_privacy: "Solo se envían los identificadores (DOI/arXiv/título) a CrossRef y arXiv. Tu texto no sale.",
+    biblio_none: "no se detectaron referencias parseables",
+    biblio_warning: "⚠  {fakes}/{total} referencias no se encontraron — posible IA inventando",
   },
   en: {
     title: "aismell",
@@ -83,6 +89,12 @@ const I18N = {
     annotating: "annotating word…",
     docx_done: "✓ {name} downloaded. Open it in Word or LibreOffice — findings are highlighted in yellow with side comments.",
     pdf_browser_unsupported: "PDF in the browser isn't supported yet (the library doesn't run in WASM). For PDF use the CLI: aismell paper.pdf --out paper-marked.pdf",
+    biblio: "verify bibliography",
+    biblioTip: "Finds DOIs, arXiv IDs and citations, then queries CrossRef + arXiv to check they exist. Only the identifiers leave your browser, not your text. Useful because LLMs hallucinate references.",
+    biblio_header: "BIBLIOGRAPHY — {n} REFERENCES",
+    biblio_privacy: "Only identifiers (DOI/arXiv/title) are sent to CrossRef and arXiv. Your text stays local.",
+    biblio_none: "no parseable references found",
+    biblio_warning: "⚠  {fakes}/{total} references not found — possible AI hallucination",
   },
 };
 
@@ -91,6 +103,7 @@ const els = {
   input: document.getElementById("input"),
   langSel: document.getElementById("langSel"),
   strictSel: document.getElementById("strictSel"),
+  biblioSel: document.getElementById("biblioSel"),
   analyzeBtn: document.getElementById("analyzeBtn"),
   clearBtn: document.getElementById("clearBtn"),
   fileBtn: document.getElementById("fileBtn"),
@@ -108,6 +121,10 @@ function applyI18n() {
   for (const el of document.querySelectorAll("[data-i18n]")) {
     const k = el.getAttribute("data-i18n");
     if (t[k] !== undefined) el.innerHTML = t[k];
+  }
+  for (const el of document.querySelectorAll("[data-i18n-tip]")) {
+    const k = el.getAttribute("data-i18n-tip");
+    if (t[k] !== undefined) el.setAttribute("data-tip", t[k]);
   }
   els.input.placeholder = t.placeholder;
   document.documentElement.lang = UILANG;
@@ -127,6 +144,7 @@ applyI18n();
 let pyodide = null;
 let analyzeFn = null;
 let annotateDocxFn = null;
+let extractRefsFn = null;
 
 function setStatus(msg, isError = false) {
   if (msg === null) {
@@ -155,6 +173,7 @@ async function bootPyodide() {
     pyodide.FS.writeFile("/aismell/__init__.py", "");
     pyodide.FS.writeFile("/aismell/core.py", sources.core);
     pyodide.FS.writeFile("/aismell/docx.py", sources.docx);
+    pyodide.FS.writeFile("/aismell/biblio.py", sources.biblio);
     pyodide.FS.writeFile("/aismell/patterns/es.yaml", sources.es);
     pyodide.FS.writeFile("/aismell/patterns/en.yaml", sources.en);
 
@@ -163,6 +182,7 @@ import sys
 sys.path.insert(0, "/")
 from aismell.core import analyze
 from aismell.docx import annotate_docx
+from aismell.biblio import find_references
 from pathlib import Path
 
 def run(text, lang_code, strict):
@@ -212,9 +232,25 @@ def annotate_docx_bytes(input_bytes, lang_code, strict):
         "score": result.score,
         "label": result.severity_label,
     }
+
+def extract_refs(text):
+    refs = find_references(text)
+    out = []
+    for r in refs:
+        out.append({
+            "kind": r.kind,
+            "raw": r.raw,
+            "line": r.line,
+            "identifier": r.identifier,
+            "title": r.title,
+            "year": r.year,
+            "author": r.author,
+        })
+    return out
 `);
     analyzeFn = pyodide.globals.get("run");
     annotateDocxFn = pyodide.globals.get("annotate_docx_bytes");
+    extractRefsFn = pyodide.globals.get("extract_refs");
     setStatus(I18N[UILANG].ready);
     els.analyzeBtn.disabled = false;
   } catch (err) {
@@ -228,12 +264,14 @@ async function loadSources() {
   const local = {
     core: "core.py",
     docx: "docx.py",
+    biblio: "biblio.py",
     es: "patterns/es.yaml",
     en: "patterns/en.yaml",
   };
   const remote = {
     core: "https://raw.githubusercontent.com/brm-src/aismell/main/aismell/core.py",
     docx: "https://raw.githubusercontent.com/brm-src/aismell/main/aismell/docx.py",
+    biblio: "https://raw.githubusercontent.com/brm-src/aismell/main/aismell/biblio.py",
     es:   "https://raw.githubusercontent.com/brm-src/aismell/main/aismell/patterns/es.yaml",
     en:   "https://raw.githubusercontent.com/brm-src/aismell/main/aismell/patterns/en.yaml",
   };
@@ -358,6 +396,11 @@ async function analyze() {
     res.destroy();
     render(obj);
     setStatus(null);
+
+    // Optional: verify bibliography (network call to CrossRef/arXiv).
+    if (els.biblioSel && els.biblioSel.checked && extractRefsFn) {
+      await verifyBibliography(text);
+    }
   } catch (err) {
     setStatus(`${I18N[UILANG].error} ${err.message}`, true);
     console.error(err);
@@ -366,10 +409,11 @@ async function analyze() {
   }
 }
 
-els.analyzeBtn.addEventListener("click", analyze);
+els.analyzeBtn.addEventListener("click", () => { clearBiblio(); analyze(); });
 els.clearBtn.addEventListener("click", () => {
   els.input.value = "";
   els.resultPanel.hidden = true;
+  clearBiblio();
   els.input.focus();
 });
 
@@ -377,9 +421,142 @@ els.clearBtn.addEventListener("click", () => {
 els.input.addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
     e.preventDefault();
+    clearBiblio();
     analyze();
   }
 });
+
+// ---------- bibliography verification ----------
+function appendBiblio(html) {
+  let panel = document.getElementById("biblioPanel");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "biblioPanel";
+    panel.className = "biblio";
+    els.resultPanel.appendChild(panel);
+  }
+  panel.insertAdjacentHTML("beforeend", html);
+}
+
+function clearBiblio() {
+  const panel = document.getElementById("biblioPanel");
+  if (panel) panel.remove();
+}
+
+function renderBiblioRow(ref, res) {
+  const icon = { exists: "✓", not_found: "✗", error: "?", unverifiable: "·" }[res.status] || "·";
+  const cls = `biblio-${res.status}`;
+  const ident = ref.identifier || (ref.title ? ref.title.slice(0, 70) : ref.raw.slice(0, 70));
+  const detail = res.detail ? `<div class="biblio-detail">${escapeHtml(res.detail)}</div>` : "";
+  return `
+    <div class="biblio-row ${cls}">
+      <div class="biblio-icon">${icon}</div>
+      <div class="biblio-body">
+        <div class="biblio-ident">[${ref.kind}] ${escapeHtml(ident)} <span class="biblio-line">L${ref.line}</span></div>
+        ${detail}
+      </div>
+    </div>`;
+}
+
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+async function verifyBibliography(text) {
+  const t = I18N[UILANG];
+  const refsPy = extractRefsFn(text);
+  const refs = refsPy.toJs({ dict_converter: Object.fromEntries });
+  refsPy.destroy();
+  if (!refs || refs.length === 0) {
+    appendBiblio(`<div class="biblio-empty">${t.biblio_none}</div>`);
+    return;
+  }
+  appendBiblio(`<div class="biblio-header">${t.biblio_header.replace("{n}", refs.length)}</div>`);
+  appendBiblio(`<div class="biblio-note">${t.biblio_privacy}</div>`);
+
+  let fakes = 0;
+  for (const r of refs) {
+    let res;
+    try {
+      if (r.kind === "doi")        res = await verifyDoiJs(r.identifier);
+      else if (r.kind === "arxiv") res = await verifyArxivJs(r.identifier);
+      else if (r.kind === "citation") res = await verifyCitationJs(r);
+      else                         res = { status: "unverifiable", detail: "" };
+    } catch (e) {
+      res = { status: "error", detail: e.message };
+    }
+    if (res.status === "not_found") fakes++;
+    appendBiblio(renderBiblioRow(r, res));
+    await sleep(300);
+  }
+  if (fakes > 0) {
+    appendBiblio(
+      `<div class="biblio-warning">${t.biblio_warning.replace("{fakes}", fakes).replace("{total}", refs.length)}</div>`
+    );
+  }
+}
+
+async function verifyDoiJs(doi) {
+  const url = `https://api.crossref.org/works/${encodeURIComponent(doi)}`;
+  try {
+    const r = await fetch(url, { headers: { Accept: "application/json" } });
+    if (r.status === 404) return { status: "not_found", detail: "CrossRef: not found" };
+    if (!r.ok) return { status: "error", detail: `HTTP ${r.status}` };
+    const d = await r.json();
+    if (d.status !== "ok") return { status: "not_found", detail: "" };
+    const m = d.message;
+    const title = (m.title && m.title[0]) || "";
+    const authors = m.author || [];
+    const author = authors[0] ? (authors[0].family || authors[0].name || "") : "";
+    let year = "";
+    for (const k of ["published-print", "published-online", "issued"]) {
+      const dp = m[k] && m[k]["date-parts"] && m[k]["date-parts"][0];
+      if (dp && dp[0]) { year = String(dp[0]); break; }
+    }
+    let detail = title;
+    if (author) detail = year ? `${author} (${year}) ${title}` : `${author}: ${title}`;
+    return { status: "exists", detail };
+  } catch (e) {
+    return { status: "error", detail: e.message };
+  }
+}
+
+async function verifyArxivJs(id) {
+  const url = `https://export.arxiv.org/api/query?id_list=${encodeURIComponent(id)}`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return { status: "error", detail: `HTTP ${r.status}` };
+    const text = await r.text();
+    if (!text.includes("<entry>")) return { status: "not_found", detail: "arXiv: not found" };
+    const m = text.match(/<entry>[\s\S]*?<title>([\s\S]*?)<\/title>/);
+    const title = m ? m[1].replace(/\s+/g, " ").trim() : "";
+    return { status: "exists", detail: title };
+  } catch (e) {
+    return { status: "error", detail: e.message };
+  }
+}
+
+async function verifyCitationJs(ref) {
+  if (!ref.title) return { status: "unverifiable", detail: "" };
+  const q = ref.author ? `${ref.title} ${ref.author}` : ref.title;
+  const url = `https://api.crossref.org/works?rows=1&query.bibliographic=${encodeURIComponent(q)}`;
+  try {
+    const r = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!r.ok) return { status: "error", detail: `HTTP ${r.status}` };
+    const d = await r.json();
+    const items = (d.message && d.message.items) || [];
+    if (!items.length) return { status: "not_found", detail: "no match" };
+    const item = items[0];
+    const found = (item.title && item.title[0]) || "";
+    const score = item.score || 0;
+    const a = ref.title.toLowerCase().replace(/\W+/g, "");
+    const b = found.toLowerCase().replace(/\W+/g, "");
+    const sim = a && b && (a.includes(b) || b.includes(a));
+    if (score >= 60 && sim) return { status: "exists", detail: `CrossRef: ${found}` };
+    if (score >= 60) return { status: "not_found", detail: `título distinto: ${found}` };
+    return { status: "not_found", detail: "sin match" };
+  } catch (e) {
+    return { status: "error", detail: e.message };
+  }
+}
 
 // Drag & drop for .txt / .md / .docx files
 function setupDnd() {
