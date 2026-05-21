@@ -56,6 +56,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="disable the GUI file picker fallback when run with no arguments",
     )
+    parser.add_argument(
+        "--biblio",
+        action="store_true",
+        help="extract bibliographic references (DOIs, arXiv ids, citations) and verify them online (CrossRef + arXiv). Network required.",
+    )
     args = parser.parse_args(argv)
 
     # If no path given and stdin is a TTY, try the file picker.
@@ -152,6 +157,31 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     print(render(path_label, report, lang_used), end="")
+
+    if args.biblio:
+        from .biblio import find_references, verify_all
+        refs = find_references(text)
+        if refs:
+            print(f"\n--- bibliografía ({len(refs)} referencias) ---")
+            print("verificando online (CrossRef/arXiv)...\n")
+            results = verify_all(refs)
+            for vr in results:
+                r = vr.reference
+                icon = {
+                    "exists": "✓",
+                    "not_found": "✗",
+                    "error": "?",
+                    "unverifiable": "·",
+                }.get(vr.status, "·")
+                ident = r.identifier or (r.title[:60] if r.title else r.raw[:60])
+                print(f"  {icon} [{r.kind}] L{r.line}  {ident}")
+                if vr.detail:
+                    print(f"      {vr.detail[:100]}")
+            fakes = sum(1 for vr in results if vr.status == "not_found")
+            if fakes:
+                print(f"\n⚠  {fakes}/{len(refs)} referencias no se encontraron — posible IA inventando")
+        else:
+            print("\nbibliografía: no se detectaron referencias parseables")
 
     # exit code: 0 clean, 1 findings (useful for CI / pre-commit)
     return 1 if report.total_findings else 0
