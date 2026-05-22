@@ -81,6 +81,14 @@ class VerifyResult:
 
 
 @dataclass
+class ApaScore:
+    reference: Reference
+    score: float
+    status: str               # 'plausible' | 'suspicious'
+    issues: list[str] = field(default_factory=list)
+
+
+@dataclass
 class BiblioReport:
     references: list[Reference] = field(default_factory=list)
     verified: list[VerifyResult] = field(default_factory=list)
@@ -168,7 +176,7 @@ def find_references(text: str) -> list[Reference]:
             continue
         refs.append(Reference(
             kind="citation",
-            raw=m.group(0),
+            raw=lines[line_no - 1].strip() if 0 <= line_no - 1 < len(lines) else m.group(0),
             line=line_no,
             col=col,
             end=end,
@@ -256,7 +264,7 @@ def verify_arxiv(arxiv_id: str) -> VerifyResult:
 
 
 def verify_citation(ref: Reference) -> VerifyResult:
-    """Fuzzy lookup: query CrossRef by title + author and check first hit."""
+    """Fuzzy lookup: query CrossRef, then OpenAlex, by title + author/year."""
     if not ref.title:
         return VerifyResult(reference=ref, status="unverifiable", detail="")
     query = ref.title
@@ -267,32 +275,126 @@ def verify_citation(ref: Reference) -> VerifyResult:
         + urllib.parse.urlencode({"query.bibliographic": query})
     )
     data = _fetch_json(url)
-    if not data:
+    if data:
+        items = data.get("message", {}).get("items", [])
+        if items:
+            item = items[0]
+            found_title = (item.get("title") or [""])[0]
+            score = item.get("score", 0.0)
+            if _title_similar(ref.title, found_title) and score >= 45:
+                return VerifyResult(reference=ref, status="exists",
+                                    detail=f"CrossRef: {found_title}")
+            if score >= 60:
+                return VerifyResult(reference=ref, status="not_found",
+                                    detail=f"título distinto: {found_title}")
+
+    oa = verify_citation_openalex(ref)
+    if oa.status == "exists":
+        return oa
+    ss = verify_citation_semantic_scholar(ref)
+    if ss.status == "exists":
+        return ss
+    if data is None and oa.status == "error" and ss.status == "error":
         return VerifyResult(reference=ref, status="error",
-                            detail="CrossRef no respondió")
-    items = data.get("message", {}).get("items", [])
-    if not items:
-        return VerifyResult(reference=ref, status="not_found",
-                            detail="sin resultado en CrossRef")
-    item = items[0]
-    found_title = (item.get("title") or [""])[0]
-    score = item.get("score", 0.0)
-    # CrossRef scores: <30 is usually noise. We require fuzzy similarity too.
-    norm_a = re.sub(r"\W+", "", ref.title.lower())
-    norm_b = re.sub(r"\W+", "", found_title.lower())
-    if norm_a and norm_b:
-        # Substring match in either direction is good
-        sim = norm_a in norm_b or norm_b in norm_a
-    else:
-        sim = False
-    if score >= 60 and sim:
-        return VerifyResult(reference=ref, status="exists",
-                            detail=f"CrossRef: {found_title}")
-    if score >= 60:
-        return VerifyResult(reference=ref, status="not_found",
-                            detail=f"título distinto: {found_title}")
+                            detail="CrossRef/OpenAlex/Semantic Scholar no respondieron")
     return VerifyResult(reference=ref, status="not_found",
-                        detail="sin match en CrossRef")
+                        detail="sin match en CrossRef/OpenAlex/Semantic Scholar")
+
+
+def _title_norm(s: str) -> str:
+    return re.sub(r"\W+", "", s.lower())
+
+
+def _title_similar(a: str, b: str) -> bool:
+    norm_a = _title_norm(a)
+    norm_b = _title_norm(b)
+    if not norm_a or not norm_b:
+        return False
+    if norm_a in norm_b or norm_b in norm_a:
+        return True
+    # Token overlap catches small subtitle/punctuation differences.
+    toks_a = {t for t in re.findall(r"\w+", a.lower()) if len(t) > 3}
+    toks_b = {t for t in re.findall(r"\w+", b.lower()) if len(t) > 3}
+    return bool(toks_a) and len(toks_a & toks_b) / len(toks_a) >= 0.75
+
+
+def verify_citation_openalex(ref: Reference) -> VerifyResult:
+    if not ref.title:
+        return VerifyResult(reference=ref, status="unverifiable", detail="")
+    params = {"search": ref.title, "per-page": "3"}
+    if ref.year:
+        params["filter"] = f"from_publication_date:{ref.year}-01-01,to_publication_date:{ref.year}-12-31"
+    url = "https://api.openalex.org/works?" + urllib.parse.urlencode(params)
+    data = _fetch_json(url)
+    if not data:
+        return VerifyResult(reference=ref, status="error", detail="OpenAlex no respondió")
+    for item in data.get("results", []):
+        found = item.get("display_name") or item.get("title") or ""
+        year = str(item.get("publication_year") or "")
+        if _title_similar(ref.title, found) and (not ref.year or not year or year == ref.year):
+            yr = f" ({year})" if year else ""
+            return VerifyResult(reference=ref, status="exists", detail=f"OpenAlex{yr}: {found}")
+    return VerifyResult(reference=ref, status="not_found", detail="sin match en OpenAlex")
+
+
+def verify_citation_semantic_scholar(ref: Reference) -> VerifyResult:
+    if not ref.title:
+        return VerifyResult(reference=ref, status="unverifiable", detail="")
+    params = {"query": ref.title, "limit": "3", "fields": "title,year"}
+    url = "https://api.semanticscholar.org/graph/v1/paper/search?" + urllib.parse.urlencode(params)
+    data = _fetch_json(url)
+    if not data:
+        return VerifyResult(reference=ref, status="error", detail="Semantic Scholar no respondió")
+    for item in data.get("data", []):
+        found = item.get("title") or ""
+        year = str(item.get("year") or "")
+        if _title_similar(ref.title, found) and (not ref.year or not year or year == ref.year):
+            yr = f" ({year})" if year else ""
+            return VerifyResult(reference=ref, status="exists", detail=f"Semantic Scholar{yr}: {found}")
+    return VerifyResult(reference=ref, status="not_found", detail="sin match en Semantic Scholar")
+
+
+def verify_isbn(isbn: str) -> VerifyResult:
+    clean = re.sub(r"[^0-9Xx]", "", isbn)
+    if not clean:
+        return VerifyResult(reference=None, status="unverifiable", detail="ISBN vacío")
+    url = f"https://openlibrary.org/isbn/{urllib.parse.quote(clean)}.json"
+    data = _fetch_json(url)
+    if data and data.get("title"):
+        return VerifyResult(reference=None, status="exists", detail=f"OpenLibrary: {data.get('title')}")
+    return VerifyResult(reference=None, status="not_found", detail="OpenLibrary no encontró este ISBN")
+
+
+def score_apa_reference(ref: Reference) -> ApaScore:
+    """Local plausibility check for DOI-less APA-ish references; not existence proof."""
+    issues: list[str] = []
+    score = 0.0
+    if ref.author:
+        score += 0.2
+    else:
+        issues.append("falta autor")
+    if ref.year and re.match(r"^(19|20)\d{2}$", ref.year):
+        score += 0.2
+    else:
+        issues.append("año inválido o ausente")
+    if ref.title and 3 <= len(ref.title.split()) <= 28:
+        score += 0.2
+    else:
+        issues.append("título raro por longitud")
+    remainder = ref.raw[ref.raw.find(ref.title) + len(ref.title):] if ref.title in ref.raw else ref.raw
+    if re.search(r"\b(Revista|Journal|Press|Editorial|University|Universidad|Proceedings|Tesis|Thesis)\b", remainder, re.I):
+        score += 0.2
+    else:
+        issues.append("falta fuente/editorial/revista")
+    if re.search(r"\b\d+\s*\(\d+\)|\bpp?\.\s*\d+|\b\d+\s*[-–]\s*\d+", remainder, re.I):
+        score += 0.1
+    else:
+        issues.append("faltan volumen/número/páginas")
+    if ref.kind in {"doi", "arxiv", "isbn"} or ref.identifier:
+        score += 0.1
+    else:
+        issues.append("sin identificador DOI/arXiv/ISBN")
+    return ApaScore(reference=ref, score=min(1.0, score), status="plausible" if score >= 0.7 else "suspicious", issues=issues)
 
 
 def verify_all(refs: list[Reference]) -> list[VerifyResult]:
@@ -305,9 +407,11 @@ def verify_all(refs: list[Reference]) -> list[VerifyResult]:
             res = verify_arxiv(r.identifier)
         elif r.kind == "citation":
             res = verify_citation(r)
+        elif r.kind == "isbn":
+            res = verify_isbn(r.identifier)
         else:
             res = VerifyResult(reference=r, status="unverifiable",
-                               detail="ISBN no se verifica aún")
+                               detail="tipo de referencia no verificable")
         res.reference = r
         out.append(res)
     return out

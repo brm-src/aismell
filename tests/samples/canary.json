@@ -1,0 +1,24 @@
+[
+  {
+    "id": "es_ai_academic_cleaned",
+    "lang": "es",
+    "label": "ai",
+    "min_score": 0.35,
+    "text": "La transformación educativa contemporánea requiere comprender la evaluación como un proceso integral orientado al fortalecimiento de trayectorias formativas diversas. La incorporación de metodologías activas permite articular dimensiones pedagógicas, institucionales y culturales que favorecen una experiencia de aprendizaje pertinente. Esta perspectiva reconoce la complejidad de los contextos escolares y promueve condiciones para desarrollar capacidades reflexivas en los estudiantes. La gestión curricular, entendida como práctica colaborativa, contribuye a generar coherencia entre objetivos, estrategias y evidencias de logro. Asimismo, la retroalimentación sistemática posibilita identificar avances, ajustar decisiones y consolidar procesos de mejora continua. De este modo, la evaluación se configura como una herramienta relevante para orientar aprendizajes significativos y fortalecer la calidad educativa."
+  },
+  {
+    "id": "es_ai_marketing_generic",
+    "lang": "es",
+    "label": "ai",
+    "min_score": 0.30,
+    "text": "Nuestra solución integral permite optimizar procesos y aprovechar al máximo el potencial de cada equipo. Además, facilita la interacción entre áreas clave mediante capacidades robustas y sin fisuras. En este sentido, se consolida como una herramienta relevante para transformar la experiencia del usuario y generar valor sostenible. El futuro se ve prometedor para quienes adoptan este nuevo paradigma."
+  },
+  {
+    "id": "es_human_messy_note",
+    "lang": "es",
+    "label": "human",
+    "min_score": 0.0,
+    "max_score": 0.25,
+    "text": "Ayer revisé tres cuadernos del 4B en Valparaíso y me quedé pegado en una corrección mal hecha. La profe había anotado 'falta desarrollar', pero el cabro sí desarrolló: lo hizo desordenado, con dos ejemplos pobres y una frase cortada. No era brillante, pero tampoco era vacío. Ahí está el problema real."
+  }
+]

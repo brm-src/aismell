@@ -418,7 +418,7 @@ import sys
 sys.path.insert(0, "/")
 from aismell.core import analyze
 from aismell.docx import annotate_docx
-from aismell.biblio import find_references
+from aismell.biblio import find_references, score_apa_reference
 from pathlib import Path
 
 def run(text, lang_code, strict):
@@ -431,6 +431,7 @@ def run(text, lang_code, strict):
         "lang": used,
         "hits": [],
         "structural": [],
+        "sections": [],
     }
     for h in report.hits:
         out["hits"].append({
@@ -451,6 +452,13 @@ def run(text, lang_code, strict):
             "severity": s.severity,
             "message": s.message,
             "suggestion": s.suggestion,
+        })
+    for sec in report.sections:
+        out["sections"].append({
+            "name": sec.name,
+            "score": sec.score,
+            "sentences": sec.sentences,
+            "reasons": sec.reasons,
         })
     return out
 
@@ -473,6 +481,7 @@ def extract_refs(text):
     refs = find_references(text)
     out = []
     for r in refs:
+        apa = score_apa_reference(r) if r.kind == "citation" else None
         out.append({
             "kind": r.kind,
             "raw": r.raw,
@@ -481,6 +490,9 @@ def extract_refs(text):
             "title": r.title,
             "year": r.year,
             "author": r.author,
+            "apa_score": apa.score if apa else None,
+            "apa_status": apa.status if apa else "",
+            "apa_issues": apa.issues if apa else [],
         })
     return out
 
@@ -747,6 +759,15 @@ function render(report) {
       </div>
     </div>`;
 
+  if (report.sections && report.sections.length) {
+    const secHtml = report.sections.map((s) => {
+      const spct = Math.round((s.score || 0) * 100);
+      const reason = (s.reasons && s.reasons[0]) ? s.reasons[0] : "";
+      return `<span class="bs-cell"><strong>${escapeHtml(s.name)}</strong> ${spct}%${reason ? ` · ${escapeHtml(reason)}` : ""}</span>`;
+    }).join("");
+    scoreHtml += `<div class="biblio-summary" style="margin-top:10px">${secHtml}</div>`;
+  }
+
   if (report.score >= 0.6) {
     scoreHtml += renderIntelectaNudge("smell");
   }
@@ -937,20 +958,24 @@ async function verifyBibliography(text) {
   const progEl = () => document.getElementById("biblio-progress");
 
   const results = [];
-  for (let i = 0; i < refs.length; i++) {
-    const r = refs[i];
-    let res;
+  const verifyOne = async (r) => {
     try {
-      if (r.kind === "doi")        res = await verifyDoiJs(r.identifier);
-      else if (r.kind === "arxiv") res = await verifyArxivJs(r.identifier);
-      else if (r.kind === "citation") res = await verifyCitationJs(r);
-      else                         res = { status: "unverifiable", detail: "" };
+      if (r.kind === "doi")        return { ref: r, res: await verifyDoiJs(r.identifier) };
+      if (r.kind === "arxiv")      return { ref: r, res: await verifyArxivJs(r.identifier) };
+      if (r.kind === "isbn")       return { ref: r, res: await verifyIsbnJs(r.identifier) };
+      if (r.kind === "citation")   return { ref: r, res: await verifyCitationJs(r) };
+      return { ref: r, res: { status: "unverifiable", detail: "" } };
     } catch (e) {
-      res = { status: "error", detail: e.message };
+      return { ref: r, res: { status: "error", detail: e.message } };
     }
-    results.push({ ref: r, res });
-    if (progEl()) progEl().textContent = `verificando ${i + 1} / ${refs.length}…`;
-    await sleep(180);
+  };
+  const CONCURRENCY = 4;
+  for (let i = 0; i < refs.length; i += CONCURRENCY) {
+    const batch = refs.slice(i, i + CONCURRENCY);
+    const done = await Promise.all(batch.map(verifyOne));
+    results.push(...done);
+    if (progEl()) progEl().textContent = `verificando ${Math.min(i + batch.length, refs.length)} / ${refs.length}…`;
+    await sleep(80);
   }
   if (progEl()) progEl().remove();
 
@@ -1004,7 +1029,7 @@ function buildBiblioReport(results, t) {
   const stats = { exists: 0, not_found: 0, unverifiable: 0, error: 0 };
   for (const { res } of results) stats[res.status] = (stats[res.status] || 0) + 1;
   lines.push(`verificadas: ${stats.exists}`);
-  lines.push(`sin coincidencia (CrossRef/arXiv): ${stats.not_found}`);
+  lines.push(`sin coincidencia (CrossRef/OpenAlex/Semantic Scholar/arXiv/OpenLibrary): ${stats.not_found}`);
   lines.push(`sin DOI/ID: ${stats.unverifiable}`);
   if (stats.error) lines.push(`error de red: ${stats.error}`);
   lines.push("");
@@ -1067,19 +1092,84 @@ async function verifyCitationJs(ref) {
   const url = `https://api.crossref.org/works?rows=1&query.bibliographic=${encodeURIComponent(q)}`;
   try {
     const r = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!r.ok) return { status: "error", detail: `HTTP ${r.status}` };
+    if (r.ok) {
+      const d = await r.json();
+      const items = (d.message && d.message.items) || [];
+      if (items.length) {
+        const item = items[0];
+        const found = (item.title && item.title[0]) || "";
+        const score = item.score || 0;
+        if (score >= 45 && titleSimilar(ref.title, found)) return { status: "exists", detail: `CrossRef: ${found}` };
+        if (score >= 60) return { status: "not_found", detail: `título distinto: ${found}` };
+      }
+    }
+    const oa = await verifyOpenAlexJs(ref);
+    if (oa.status === "exists") return oa;
+    const ss = await verifySemanticScholarJs(ref);
+    if (ss.status === "exists") return ss;
+    const apa = ref.apa_status === "suspicious" && ref.apa_issues && ref.apa_issues.length
+      ? ` · APA débil: ${ref.apa_issues.slice(0, 2).join(", ")}` : "";
+    return { status: "not_found", detail: `sin match en CrossRef/OpenAlex/Semantic Scholar${apa}` };
+  } catch (e) {
+    return { status: "error", detail: e.message };
+  }
+}
+
+function titleSimilar(a, b) {
+  const norm = (s) => (s || "").toLowerCase().replace(/\W+/g, "");
+  const na = norm(a), nb = norm(b);
+  if (!na || !nb) return false;
+  if (na.includes(nb) || nb.includes(na)) return true;
+  const toksA = new Set((a || "").toLowerCase().match(/\w+/g)?.filter((x) => x.length > 3) || []);
+  const toksB = new Set((b || "").toLowerCase().match(/\w+/g)?.filter((x) => x.length > 3) || []);
+  if (!toksA.size) return false;
+  let overlap = 0;
+  for (const x of toksA) if (toksB.has(x)) overlap++;
+  return overlap / toksA.size >= 0.75;
+}
+
+async function verifyOpenAlexJs(ref) {
+  const params = new URLSearchParams({ search: ref.title, "per-page": "3" });
+  if (ref.year) params.set("filter", `from_publication_date:${ref.year}-01-01,to_publication_date:${ref.year}-12-31`);
+  const url = `https://api.openalex.org/works?${params.toString()}`;
+  const r = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!r.ok) return { status: "error", detail: `OpenAlex HTTP ${r.status}` };
+  const d = await r.json();
+  for (const item of (d.results || [])) {
+    const found = item.display_name || item.title || "";
+    const year = item.publication_year ? String(item.publication_year) : "";
+    if (titleSimilar(ref.title, found) && (!ref.year || !year || year === ref.year)) {
+      return { status: "exists", detail: `OpenAlex${year ? ` (${year})` : ""}: ${found}` };
+    }
+  }
+  return { status: "not_found", detail: "sin match en OpenAlex" };
+}
+
+async function verifySemanticScholarJs(ref) {
+  const params = new URLSearchParams({ query: ref.title, limit: "3", fields: "title,year" });
+  const url = `https://api.semanticscholar.org/graph/v1/paper/search?${params.toString()}`;
+  const r = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!r.ok) return { status: "error", detail: `Semantic Scholar HTTP ${r.status}` };
+  const d = await r.json();
+  for (const item of (d.data || [])) {
+    const found = item.title || "";
+    const year = item.year ? String(item.year) : "";
+    if (titleSimilar(ref.title, found) && (!ref.year || !year || year === ref.year)) {
+      return { status: "exists", detail: `Semantic Scholar${year ? ` (${year})` : ""}: ${found}` };
+    }
+  }
+  return { status: "not_found", detail: "sin match en Semantic Scholar" };
+}
+
+async function verifyIsbnJs(isbn) {
+  const clean = String(isbn || "").replace(/[^0-9Xx]/g, "");
+  if (!clean) return { status: "unverifiable", detail: "ISBN vacío" };
+  try {
+    const r = await fetch(`https://openlibrary.org/isbn/${encodeURIComponent(clean)}.json`, { headers: { Accept: "application/json" } });
+    if (r.status === 404) return { status: "not_found", detail: "OpenLibrary: not found" };
+    if (!r.ok) return { status: "error", detail: `OpenLibrary HTTP ${r.status}` };
     const d = await r.json();
-    const items = (d.message && d.message.items) || [];
-    if (!items.length) return { status: "not_found", detail: "no match" };
-    const item = items[0];
-    const found = (item.title && item.title[0]) || "";
-    const score = item.score || 0;
-    const a = ref.title.toLowerCase().replace(/\W+/g, "");
-    const b = found.toLowerCase().replace(/\W+/g, "");
-    const sim = a && b && (a.includes(b) || b.includes(a));
-    if (score >= 60 && sim) return { status: "exists", detail: `CrossRef: ${found}` };
-    if (score >= 60) return { status: "not_found", detail: `título distinto: ${found}` };
-    return { status: "not_found", detail: "sin match" };
+    return d.title ? { status: "exists", detail: `OpenLibrary: ${d.title}` } : { status: "not_found", detail: "OpenLibrary sin título" };
   } catch (e) {
     return { status: "error", detail: e.message };
   }

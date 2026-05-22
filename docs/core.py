@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import statistics
 from dataclasses import dataclass, field
@@ -60,10 +61,19 @@ class StructuralFinding:
 
 
 @dataclass
+class SectionScore:
+    name: str             # apertura | cuerpo | cierre
+    score: float
+    sentences: int
+    reasons: list[str] = field(default_factory=list)
+
+
+@dataclass
 class Report:
     sentences: int
     hits: list[Hit] = field(default_factory=list)
     structural: list[StructuralFinding] = field(default_factory=list)
+    sections: list[SectionScore] = field(default_factory=list)
     score: float = 0.0  # 0..1
     severity_label: str = ""
 
@@ -387,7 +397,8 @@ _SYNTHETIC_ACADEMIC_ES = re.compile(
     r"articular|dimensiones?|pedagógicas?|institucionales?|culturales?|experiencia|"
     r"aprendizaje|pertinente|perspectiva|complejidad|contextos?|escolares?|"
     r"condiciones?|capacidades?|reflexivas?|gestión|curricular|práctica|colaborativa|"
-    r"coherencia|objetivos?|estrategias?|evidencias?|logro|retroalimentación|"
+    r"coherencia|objetivos?|estrategias?|propuesta|estudiantes?|diversos?|mejora|"
+    r"evidencias?|logro|retroalimentación|"
     r"sistemática|posibilita|consolidar|mejora continua|se configura|herramienta|"
     r"relevante|significativos?|calidad educativa|dimensión|abordaje|problemática)\b",
     re.IGNORECASE,
@@ -465,6 +476,96 @@ def _check_low_specificity(text: str, lang: str) -> list[StructuralFinding]:
     return []
 
 
+def _check_vague_sentence_stack(sentences: list[str], lang: str) -> list[StructuralFinding]:
+    """Look at whole sentences: repeated abstract claim shape, not isolated words."""
+    if lang != "es" or len(sentences) < 3:
+        return []
+    vague = 0
+    for s in sentences:
+        words = _word_count(s)
+        if words < 8:
+            continue
+        abstract_terms = len(_SYNTHETIC_ACADEMIC_ES.findall(s))
+        weak_verbs = len(_WEAK_ABSTRACT_VERBS_ES.findall(s))
+        anchors = len(_CONCRETE_ANCHORS.findall(s))
+        if abstract_terms >= 3 and weak_verbs >= 1 and anchors == 0:
+            vague += 1
+    if vague >= 3:
+        return [StructuralFinding(
+            line=0,
+            kind="vague-sentence-stack",
+            severity=2,
+            message=f"{vague} frases completas hacen afirmaciones abstractas sin anclas concretas",
+            suggestion="revisa frase por frase: cada afirmación debería tener un caso, dato, cita o decisión concreta",
+        )]
+    return []
+
+
+def _sentence_score(sentence: str, lang: str, role: str) -> tuple[float, list[str]]:
+    reasons: list[str] = []
+    score = 0.0
+    abstract_terms = len(_SYNTHETIC_ACADEMIC_ES.findall(sentence)) if lang == "es" else 0
+    weak_verbs = len(_WEAK_ABSTRACT_VERBS_ES.findall(sentence)) if lang == "es" else 0
+    anchors = len(_CONCRETE_ANCHORS.findall(sentence))
+    words = max(_word_count(sentence), 1)
+    if abstract_terms >= 3 and weak_verbs >= 1 and anchors == 0:
+        score += 0.28
+        reasons.append("frase abstracta sin anclaje concreto")
+    if abstract_terms / words >= 0.18 and words >= 10:
+        score += 0.18
+        reasons.append("alta densidad de abstracciones")
+    if role == "cierre" and re.search(r"\b(de este modo|en conclusión|en síntesis|en resumen|finalmente)\b", sentence, re.I):
+        score += 0.16
+        reasons.append("cierre formulario")
+    return min(1.0, score), reasons
+
+
+def _score_sections(sentences: list[str], lang: str) -> list[SectionScore]:
+    if not sentences:
+        return []
+    n = len(sentences)
+    first_end = max(1, round(n * 0.25))
+    last_start = min(n - 1, max(first_end, round(n * 0.75))) if n >= 3 else n
+    buckets = [
+        ("apertura", sentences[:first_end]),
+        ("cuerpo", sentences[first_end:last_start]),
+        ("cierre", sentences[last_start:]),
+    ]
+    out: list[SectionScore] = []
+    for name, chunk in buckets:
+        if not chunk:
+            out.append(SectionScore(name=name, score=0.0, sentences=0, reasons=["sin texto"] ))
+            continue
+        vals: list[float] = []
+        reasons: list[str] = []
+        for s in chunk:
+            val, rs = _sentence_score(s, lang, name)
+            vals.append(val)
+            reasons.extend(rs)
+        score = min(1.0, sum(vals) / max(len(vals), 1))
+        if reasons:
+            # Keep stable, non-noisy summary reasons.
+            uniq = []
+            for r in reasons:
+                if r not in uniq:
+                    uniq.append(r)
+            reasons = uniq[:3]
+        else:
+            reasons = ["sin señales fuertes"]
+        out.append(SectionScore(name=name, score=score, sentences=len(chunk), reasons=reasons))
+    return out
+
+
+def load_canary_samples(path: str | Path | None = None) -> list[dict]:
+    """Load local regression samples used to keep the detector honest."""
+    if path is None:
+        path = Path(__file__).resolve().parent.parent / "tests" / "samples" / "canary.json"
+    p = Path(path)
+    if not p.exists():
+        return []
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
 # ---------- main analyze ----------
 
 def analyze(
@@ -510,7 +611,9 @@ def analyze(
         report.structural.extend(_check_paragraph_symmetry(text, lang))
         report.structural.extend(_check_synthetic_academic_texture(text, lang))
         report.structural.extend(_check_low_specificity(text, lang))
+        report.structural.extend(_check_vague_sentence_stack(sentences, lang))
     report.structural.extend(_check_rhythm(sentences))
+    report.sections = _score_sections(sentences, lang)
 
     # score
     weight = sum(h.pattern.severity for h in report.hits)

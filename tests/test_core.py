@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from aismell.core import analyze, detect_lang, split_sentences
+from aismell.core import analyze, detect_lang, load_canary_samples, split_sentences
 
 
 def test_detects_spanish():
@@ -170,6 +170,45 @@ def test_long_synthetic_academic_spanish_does_not_dilute_to_clean():
     assert "synthetic-academic" in kinds
     assert report.sentences >= 30
     assert report.score >= 0.35
+
+
+def test_report_includes_section_scores():
+    text = (
+        "Ayer revisé tres cuadernos del 4B en Valparaíso. Dos tenían correcciones reales. "
+        "La transformación educativa contemporánea requiere comprender la evaluación como un proceso "
+        "integral orientado al fortalecimiento de trayectorias formativas diversas. "
+        "La incorporación de metodologías activas permite articular dimensiones pedagógicas, institucionales "
+        "y culturales que favorecen una experiencia de aprendizaje pertinente. "
+        "De este modo, la evaluación se configura como una herramienta relevante para orientar aprendizajes "
+        "significativos y fortalecer la calidad educativa."
+    )
+    report, _ = analyze(text, lang="es")
+    assert [s.name for s in report.sections] == ["apertura", "cuerpo", "cierre"]
+    assert report.sections[-1].score >= report.sections[0].score
+    assert any("cierre" in s.reasons[0] or s.name == "cierre" for s in report.sections)
+
+
+def test_canary_dataset_loaded_and_thresholds_hold():
+    samples = load_canary_samples()
+    assert samples, "canary dataset should not be empty"
+    by_name = {s["id"]: s for s in samples}
+    assert "es_ai_academic_cleaned" in by_name
+    for sample in samples:
+        report, _ = analyze(sample["text"], lang=sample.get("lang") or "es")
+        assert report.score >= sample["min_score"], sample["id"]
+        if "max_score" in sample:
+            assert report.score <= sample["max_score"], sample["id"]
+
+
+def test_sentence_level_vague_claims_flagged_as_context_not_word_only():
+    text = (
+        "La propuesta permite fortalecer el desarrollo integral de los estudiantes en diversos contextos. "
+        "Este proceso contribuye a generar condiciones relevantes para una mejora significativa. "
+        "La estrategia favorece capacidades reflexivas y articula dimensiones institucionales pertinentes."
+    )
+    report, _ = analyze(text, lang="es")
+    kinds = {f.kind for f in report.structural}
+    assert "vague-sentence-stack" in kinds
 
 
 if __name__ == "__main__":
