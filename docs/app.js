@@ -1301,7 +1301,7 @@ function buildBiblioReportHtml(results, t) {
 <ul class="refs">${rows}</ul>
 
 <footer>
-  ${escape(t.biblio_rep_footer)} · <a href="https://brm-src.github.io/aismell/">aismell</a>
+  ${escape(t.biblio_rep_footer)} · <a href="https://brm-src.github.io/aismell/">aismell</a> · <a href="https://intelecta.cl">Intelecta</a>
 </footer>
 </body>
 </html>`;
