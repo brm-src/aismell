@@ -66,61 +66,6 @@
   }
   header .tag-biblio strong { color: var(--hl); font-weight: 600; }
 
-  /* "Cómo funciona" 3-layer block */
-  .how-it-works {
-    margin-top: 14px;
-    padding: 16px 18px;
-    border: 1px solid var(--line);
-    background: var(--bg2);
-  }
-  .how-it-works h3 {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 1.4px;
-    color: var(--dim);
-    font-weight: 600;
-    margin-bottom: 12px;
-  }
-  .how-it-works ol {
-    list-style: none;
-    counter-reset: layer;
-    display: grid;
-    gap: 10px;
-  }
-  .how-it-works li {
-    counter-increment: layer;
-    padding-left: 32px;
-    position: relative;
-    font-size: 13px;
-    line-height: 1.55;
-    color: var(--fg);
-  }
-  .how-it-works li::before {
-    content: counter(layer);
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 22px;
-    height: 22px;
-    border: 1px solid var(--hl);
-    color: var(--hl);
-    font-size: 11px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .how-it-works li strong { color: var(--hl); font-weight: 600; }
-  .how-it-works li small { color: var(--dim); display: block; font-size: 12px; margin-top: 2px; }
-  .how-it-works .score-note {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px dashed var(--line);
-    color: var(--dim);
-    font-size: 12px;
-  }
-  .how-it-works .score-note strong { color: var(--fg); font-weight: 600; }
-
   /* Inline privacy note under biblio checkbox */
   .biblio-inline-note {
     flex-basis: 100%;
@@ -945,18 +890,8 @@
     <button data-lang="en">en</button>
   </div>
   <h1><span class="nose">👃</span><span data-i18n="title">aismell</span></h1>
-  <p class="tag" data-i18n="tagline">Pega tu texto. Te marcamos lo que huele a IA. Offline en tu navegador, sin trampa, sin promesas de "burlar detectores".</p>
+  <p class="tag" data-i18n="tagline">Pega o sube tu archivo. Olfateamos línea por línea y marcamos lo que huele a IA. Todo pasa en tu navegador, sin servidores, sin cuentos.</p>
   <p class="tag-biblio" data-i18n="tagline_biblio">También revisa si tus <strong>citas son reales o inventadas</strong> — la IA suele alucinar bibliografía.</p>
-
-  <div class="how-it-works">
-    <h3 data-i18n="how_title">cómo funciona</h3>
-    <ol>
-      <li data-i18n="how_layer1"><strong>Patrones de frase.</strong> Muletillas, conectores forzados, calcos del inglés.<small>Regex auditable, sin caja negra.</small></li>
-      <li data-i18n="how_layer2"><strong>Estructura.</strong> Encabezados decorativos, listas simétricas, fragmentos dramáticos.<small>Lo que delata un texto editorialmente "armado" por IA.</small></li>
-      <li data-i18n="how_layer3"><strong>Ritmo y forma.</strong> Largo de oraciones demasiado uniforme, cadencia plana.<small>Los humanos varían más; los modelos tienden al promedio.</small></li>
-    </ol>
-    <p class="score-note" data-i18n="how_score">Tres capas combinadas dan un <strong>score de 0 a 100</strong> y un veredicto: limpio, mixto, o probable IA.</p>
-  </div>
 </header>
 
 <main>
@@ -1005,7 +940,7 @@
   <div class="about">
     <div class="about-col">
       <h2 data-i18n="why">qué hace</h2>
-      <p data-i18n="whyText">Marca línea por línea lo que huele a IA. Patrones reales, regex auditable. Tu texto nunca sale del navegador.</p>
+      <p data-i18n="whyText">Marca línea por línea tres tipos de pista: muletillas y conectores forzados, estructura editorial (encabezados, listas simétricas, fragmentos dramáticos) y ritmo plano de oraciones. Las tres juntas dan un score de 0 a 100 y un veredicto: limpio, mixto o probable IA. El análisis corre en tu navegador; solo si activas <strong>verificar bibliografía</strong> las citas viajan a fuentes públicas para confirmarlas.</p>
     </div>
 
     <div class="about-col">
@@ -1019,11 +954,11 @@
 
     <div class="about-col full">
       <h2 data-i18n="cli">también CLI</h2>
-      <p data-i18n="cliText">¿Necesitas anotar archivos Word o PDF con highlights y comentarios? Hay una versión de terminal que hace eso.</p>
+      <p data-i18n="cliText">¿Trabajas con PDFs? Hay una versión CLI que anota Word y PDF con highlights y comentarios al margen. <a href="https://github.com/brm-src/aismell#cli" target="_blank" rel="noopener">Ver en GitHub</a>.</p>
 
       <div class="donate-note">
-        <span data-i18n="donateNote">Si te sirvió, considera donarme o convidarme un cafecito. Lo mantengo solo, sin tracking, cobros ni APIs.</span>
-        <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener" class="kofi" data-i18n="donate">☕ convídame un cafecito</a>
+        <span data-i18n="donateNote">Si te sirvió, considera donarme. Lo mantengo solo, sin tracking, cobros ni APIs.</span>
+        <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener" class="kofi" data-i18n="donate">☕ donar</a>
       </div>
     </div>
   </div>
