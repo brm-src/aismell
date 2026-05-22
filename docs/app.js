@@ -4,8 +4,15 @@
 const I18N = {
   es: {
     title: "aismell",
-    tagline: "Pega tu texto. Te marcamos lo que huele a IA. Offline en tu navegador, sin trampa, sin promesas de \"burlar detectores\".",
-    boot: "cargando python en tu navegador (~6 MB la primera vez)…",
+    tagline: "Pega o sube tu archivo. Olfateamos línea por línea y marcamos lo que huele a IA. Todo pasa en tu navegador, sin servidores, sin cuentos.",
+    tagline_biblio: "También revisa si tus <strong>citas son reales o inventadas</strong> — la IA suele alucinar bibliografía.",
+    how_title: "cómo funciona",
+    how_layer1: "<strong>Patrones de frase.</strong> Muletillas, conectores forzados, calcos del inglés.<small>Regex auditable, sin caja negra.</small>",
+    how_layer2: "<strong>Estructura.</strong> Encabezados decorativos, listas simétricas, fragmentos dramáticos.<small>Lo que delata un texto editorialmente \"armado\" por IA.</small>",
+    how_layer3: "<strong>Ritmo y forma.</strong> Largo de oraciones demasiado uniforme, cadencia plana.<small>Los humanos varían más; los modelos tienden al promedio.</small>",
+    how_score: "Tres capas combinadas dan un <strong>score de 0 a 100</strong> y un veredicto: limpio, mixto, o probable IA.",
+    biblio_note_inline: "Al activar esto, solo las citas (DOI / título / autor / arXiv ID) se consultan en CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books y OpenLibrary. El resto del texto no sale de tu navegador.",
+    boot: "afinando el olfato…",
     booting: "preparando aismell…",
     ready: "listo. pega tu texto y dale a analizar.",
     analyzing: "olfateando…",
@@ -33,7 +40,7 @@ const I18N = {
     biblio_show_detail: "ver detalle por referencia",
     biblio_hide_detail: "colapsar",
     biblio_download_btn: "descargar reporte de citas (.txt)",
-    biblio_disclaimer: "\"sin coincidencia\" significa que no se encontró en CrossRef ni arXiv — pueden ser fuentes legítimas sin indexar (libros, tesis, capítulos). Revisa a mano antes de concluir nada. \"sin DOI/ID\" no es problema: muchas citas válidas no tienen identificador.",
+    biblio_disclaimer: "\"sin coincidencia\" significa que no se encontró en ninguna fuente (CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books, OpenLibrary). Igual pueden ser fuentes legítimas no indexadas (tesis, capítulos, ediciones locales). Revisa a mano antes de concluir nada. \"sin DOI/ID\" no es problema: muchas citas válidas no tienen identificador.",
     verdict_label: "veredicto",
     verdict_ai: "probable IA",
     verdict_mixed: "mixto / asistido",
@@ -59,15 +66,15 @@ const I18N = {
     analyze: "analizar",
     clear: "limpiar",
     why: "qué hace",
-    whyText: "aismell lee tu texto y marca línea por línea qué huele a modelo de lenguaje. Patrones reales, regex auditable, sin llamadas a APIs externas — el texto nunca sale de tu navegador.",
+    whyText: "aismell lee tu texto y marca línea por línea qué huele a modelo de lenguaje. Patrones reales, regex auditable. El análisis corre 100% en tu navegador. Solo si activas <strong>verificar bibliografía</strong>, las citas (no el texto) viajan a CrossRef, OpenAlex y arXiv para confirmarlas.",
     not: "qué NO hace",
     not1: "<strong>No reescribe tu texto.</strong> Tú decides qué cambiar.",
     not2: "<strong>No promete burlar detectores.</strong> Ese juego es scam.",
     not3: "<strong>No es forense.</strong> Falsos positivos pasan; humanos también usan estas frases.",
     cli: "también CLI",
-    cliText: "¿Necesitas anotar archivos Word o PDF con highlights y comentarios? Hay una versión de terminal que hace eso.",
-    donate: "☕ invitame un café",
-    placeholder: "Pega tu texto acá. O suelta un archivo (.txt / .md / .docx).",
+    cliText: "¿Trabajas con PDFs? Hay una versión CLI que anota Word y PDF con highlights y comentarios al margen. <a href=\"https://github.com/brm-src/aismell#cli\" target=\"_blank\" rel=\"noopener\">Ver en GitHub</a>.",
+    donate: "☕ convídame un cafecito",
+    placeholder: "Pega o suelta tu archivo (.txt / .md / .docx). Si es un PDF, ojo que la web aún no lo soporta — usa la CLI.",
     sentences: "oraciones",
     smell: "smell",
     findings: "hallazgos",
@@ -93,10 +100,10 @@ const I18N = {
     docx_done: "Listo: <strong>{name}</strong> está armado. Bájalo cuando quieras, ábrelo en Word o LibreOffice. Las palabras detectadas como IA aparecen resaltadas en amarillo, y al costado verás un comentario explicando qué huele mal.",
     pdf_browser_unsupported: "PDF en la web aún no se puede (la librería no carga en el navegador). Para PDF usa el CLI: aismell paper.pdf --out paper-marcado.pdf",
     biblio: "verificar bibliografía",
-    biblioTip: "Busca las referencias del texto (DOIs, papers, citas) y verifica si existen. La IA suele inventar bibliografía.",
+    biblioTip: "Busca las referencias del texto (DOIs, papers, libros, citas) y verifica si existen en CrossRef, OpenAlex, Google Books y otras fuentes. La IA suele inventar bibliografía.",
     strictTip: "Filtra los avisos dudosos. Solo te muestra lo que casi seguro es IA.",
     biblio_header: "BIBLIOGRAFÍA — {n} REFERENCIAS",
-    biblio_privacy: "Solo se envían los identificadores (DOI/arXiv/título) a CrossRef y arXiv. Tu texto no sale.",
+    biblio_privacy: "Solo se envían los identificadores (DOI / título / autor / arXiv ID) a CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books y OpenLibrary. Tu texto no sale.",
     biblio_none: "no se detectaron referencias parseables",
     biblio_warning: "⚠  {fakes}/{total} referencias no se encontraron — posible IA inventando",
     high_smell_note: "Este texto suena bastante a IA. Si lo escribiste tú y quieres que suene más humano, los hallazgos arriba te orientan.",
@@ -114,7 +121,7 @@ const I18N = {
       <p>No es un detector forense ni una prueba en juicios académicos. Los falsos positivos existen: muchas frases que marca también las usan personas reales, especialmente en textos académicos formales.</p>
 
       <h3>privacidad</h3>
-      <p>Tu texto no sale de tu navegador. Todo el análisis corre localmente con Python (Pyodide) en tu pestaña. Si activas <strong>verificar bibliografía</strong>, solo se envían los identificadores (DOIs, IDs de arXiv, títulos cortos) a CrossRef y arXiv para confirmar si existen. El resto del texto se queda contigo.</p>
+      <p>Tu texto no sale de tu navegador. Todo el análisis corre localmente con Python (Pyodide) en tu pestaña. Si activas <strong>verificar bibliografía</strong>, solo se envían los identificadores (DOIs, IDs de arXiv, títulos y autores) a CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books y OpenLibrary para confirmar si existen. El resto del texto se queda contigo.</p>
 
       <h3>uso responsable</h3>
       <p>No uses aismell para acusar a nadie de hacer trampa. Úsalo para revisar tu propia escritura, detectar muletillas, y decidir qué cambiar. Las instituciones que usen aismell para penalizar estudiantes lo hacen bajo su propia responsabilidad.</p>
@@ -122,14 +129,21 @@ const I18N = {
       <h3>licencia</h3>
       <p>MIT. Código abierto. Sin garantía expresa o implícita. Úsalo bajo tu propio riesgo.</p>
     `,
-    nudge_text: "Si aismell te ha sido útil, considera apoyarlo con un café.",
+    nudge_text: "Si te sirvió, considera donarme o convidarme un cafecito. Lo mantengo solo, sin tracking, cobros ni APIs.",
     nudge_btn: "☕ donar",
     nudge_dismiss: "no, gracias",
   },
   en: {
     title: "aismell",
-    tagline: "Paste your text. We flag what smells like an LLM wrote it. Offline in your browser, no tricks, no \"bypass detectors\" lies.",
-    boot: "loading python in your browser (~6 MB on first visit)…",
+    tagline: "Paste or drop your file. We sniff line by line and flag what smells AI-written. Everything runs in your browser — no servers, no tricks.",
+    tagline_biblio: "It also checks whether your <strong>citations are real or made up</strong> — AI loves to hallucinate bibliography.",
+    how_title: "how it works",
+    how_layer1: "<strong>Phrase patterns.</strong> Filler phrases, forced connectors, English calques.<small>Auditable regex, no black box.</small>",
+    how_layer2: "<strong>Structure.</strong> Decorative headings, symmetric lists, dramatic fragments.<small>What gives away an editorially AI-built text.</small>",
+    how_layer3: "<strong>Rhythm & shape.</strong> Sentence length too uniform, flat cadence.<small>Humans vary more; models pull toward the mean.</small>",
+    how_score: "The three layers combined produce a <strong>0–100 score</strong> and a verdict: clean, mixed, or likely AI.",
+    biblio_note_inline: "When this is on, only the citations (DOI / title / author / arXiv ID) are queried against CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books and OpenLibrary. The rest of your text stays in your browser.",
+    boot: "warming up the nose…",
     booting: "warming up aismell…",
     ready: "ready. paste your text and hit analyze.",
     analyzing: "sniffing…",
@@ -157,7 +171,7 @@ const I18N = {
     biblio_show_detail: "show per-reference detail",
     biblio_hide_detail: "collapse",
     biblio_download_btn: "download citation report (.txt)",
-    biblio_disclaimer: "\"no match\" means it wasn't found in CrossRef or arXiv — these might still be legitimate sources not indexed there (books, theses, chapters). Check by hand before drawing conclusions. \"no DOI/ID\" is fine: lots of valid citations don't have one.",
+    biblio_disclaimer: "\"no match\" means it wasn't found in any source (CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books, OpenLibrary). It may still be a legitimate non-indexed source (theses, chapters, regional editions). Check by hand before drawing conclusions. \"no DOI/ID\" is fine: lots of valid citations don't have one.",
     verdict_label: "verdict",
     verdict_ai: "likely AI",
     verdict_mixed: "mixed / assisted",
@@ -183,15 +197,15 @@ const I18N = {
     analyze: "analyze",
     clear: "clear",
     why: "what it does",
-    whyText: "aismell reads your text and marks line by line what smells like a language model wrote it. Real patterns, auditable regex, no external API calls — your text never leaves your browser.",
+    whyText: "aismell reads your text and marks line by line what smells like a language model wrote it. Real patterns, auditable regex. Analysis runs 100% in your browser. Only if you enable <strong>verify bibliography</strong>, the citations (not the text) travel to CrossRef, OpenAlex and arXiv to be confirmed.",
     not: "what it does NOT do",
     not1: "<strong>Does not rewrite your text.</strong> You decide what to change.",
     not2: "<strong>Does not promise to bypass detectors.</strong> That game is a scam.",
     not3: "<strong>Not forensic.</strong> False positives happen; humans use these phrases too.",
     cli: "also a CLI",
-    cliText: "Need to annotate Word or PDF files with highlights and comments? There's a terminal version that does that.",
+    cliText: "Working with PDFs? There's a CLI version that annotates Word and PDF with highlights and margin comments. <a href=\"https://github.com/brm-src/aismell#cli\" target=\"_blank\" rel=\"noopener\">See on GitHub</a>.",
     donate: "☕ buy me a coffee",
-    placeholder: "Paste your text here. Or drop a file (.txt / .md / .docx).",
+    placeholder: "Paste or drop your file (.txt / .md / .docx). PDFs aren't supported in the web yet — use the CLI.",
     sentences: "sentences",
     smell: "smell",
     findings: "findings",
@@ -217,10 +231,10 @@ const I18N = {
     docx_done: "Ready: <strong>{name}</strong> is built. Download it whenever, open it in Word or LibreOffice. AI-flagged words are highlighted in yellow, with a margin comment explaining what smells off.",
     pdf_browser_unsupported: "PDF in the browser isn't supported yet (the library doesn't run in WASM). For PDF use the CLI: aismell paper.pdf --out paper-marked.pdf",
     biblio: "verify bibliography",
-    biblioTip: "Finds the references in the text (DOIs, papers, citations) and checks if they exist. AI often invents bibliography.",
+    biblioTip: "Finds the references in the text (DOIs, papers, books, citations) and checks them against CrossRef, OpenAlex, Google Books and other sources. AI often invents bibliography.",
     strictTip: "Filters out the noisy hits. Only shows you what's almost certainly AI.",
     biblio_header: "BIBLIOGRAPHY — {n} REFERENCES",
-    biblio_privacy: "Only identifiers (DOI/arXiv/title) are sent to CrossRef and arXiv. Your text stays local.",
+    biblio_privacy: "Only the identifiers (DOI / title / author / arXiv ID) are sent to CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books and OpenLibrary. Your text stays local.",
     biblio_none: "no parseable references found",
     biblio_warning: "⚠  {fakes}/{total} references not found — possible AI hallucination",
     high_smell_note: "This text sounds strongly AI-written. If you wrote it and want it to sound more human, the findings above show where to edit.",
@@ -238,7 +252,7 @@ const I18N = {
       <p>It's not a forensic detector, and not evidence for academic misconduct cases. False positives happen: many phrases it flags are also used by real people, especially in formal academic writing.</p>
 
       <h3>privacy</h3>
-      <p>Your text never leaves your browser. All analysis runs locally with Python (Pyodide) in your tab. If you enable <strong>verify bibliography</strong>, only the identifiers (DOIs, arXiv IDs, short titles) are sent to CrossRef and arXiv to confirm they exist. The rest of your text stays with you.</p>
+      <p>Your text never leaves your browser. All analysis runs locally with Python (Pyodide) in your tab. If you enable <strong>verify bibliography</strong>, only the identifiers (DOIs, arXiv IDs, titles and authors) are sent to CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books and OpenLibrary to confirm they exist. The rest of your text stays with you.</p>
 
       <h3>responsible use</h3>
       <p>Don't use aismell to accuse anyone of cheating. Use it to review your own writing, spot fillers, and decide what to change. Institutions that use aismell to penalize students do so at their own responsibility.</p>
@@ -246,7 +260,7 @@ const I18N = {
       <h3>license</h3>
       <p>MIT. Open source. No express or implied warranty. Use at your own risk.</p>
     `,
-    nudge_text: "If aismell has been useful to you, consider supporting it with a coffee.",
+    nudge_text: "If it helped, consider donating or buying me a coffee. I maintain it solo — no tracking, no fees, no APIs.",
     nudge_btn: "☕ donate",
     nudge_dismiss: "not now",
   },
@@ -258,6 +272,7 @@ const els = {
   langSel: document.getElementById("langSel"),
   strictSel: document.getElementById("strictSel"),
   biblioSel: document.getElementById("biblioSel"),
+  biblioInlineNote: document.getElementById("biblioInlineNote"),
   analyzeBtn: document.getElementById("analyzeBtn"),
   clearBtn: document.getElementById("clearBtn"),
   fileBtn: document.getElementById("fileBtn"),
@@ -294,6 +309,17 @@ els.langSwitch.addEventListener("click", (e) => {
   applyI18n();
 });
 applyI18n();
+
+// Show/hide inline biblio privacy note when checkbox toggles
+if (els.biblioSel && els.biblioInlineNote) {
+  const syncBiblioNote = () => {
+    const on = !!els.biblioSel.checked;
+    els.biblioInlineNote.hidden = !on;
+    els.biblioInlineNote.classList.toggle("visible", on);
+  };
+  els.biblioSel.addEventListener("change", syncBiblioNote);
+  syncBiblioNote();
+}
 
 // ---------- Pyodide ----------
 let pyodide = null;
@@ -1029,7 +1055,7 @@ function buildBiblioReport(results, t) {
   const stats = { exists: 0, not_found: 0, unverifiable: 0, error: 0 };
   for (const { res } of results) stats[res.status] = (stats[res.status] || 0) + 1;
   lines.push(`verificadas: ${stats.exists}`);
-  lines.push(`sin coincidencia (CrossRef/OpenAlex/Semantic Scholar/arXiv/OpenLibrary): ${stats.not_found}`);
+  lines.push(`sin coincidencia (CrossRef/OpenAlex/Semantic Scholar/arXiv/Google Books/OpenLibrary): ${stats.not_found}`);
   lines.push(`sin DOI/ID: ${stats.unverifiable}`);
   if (stats.error) lines.push(`error de red: ${stats.error}`);
   lines.push("");
@@ -1107,9 +1133,12 @@ async function verifyCitationJs(ref) {
     if (oa.status === "exists") return oa;
     const ss = await verifySemanticScholarJs(ref);
     if (ss.status === "exists") return ss;
+    // Fallback to book sources — papers rarely live here, books often do
+    const gb = await verifyGoogleBooksJs(ref);
+    if (gb.status === "exists") return gb;
     const apa = ref.apa_status === "suspicious" && ref.apa_issues && ref.apa_issues.length
       ? ` · APA débil: ${ref.apa_issues.slice(0, 2).join(", ")}` : "";
-    return { status: "not_found", detail: `sin match en CrossRef/OpenAlex/Semantic Scholar${apa}` };
+    return { status: "not_found", detail: `sin match en CrossRef/OpenAlex/Semantic Scholar/Google Books${apa}` };
   } catch (e) {
     return { status: "error", detail: e.message };
   }
@@ -1159,6 +1188,39 @@ async function verifySemanticScholarJs(ref) {
     }
   }
   return { status: "not_found", detail: "sin match en Semantic Scholar" };
+}
+
+async function verifyGoogleBooksJs(ref) {
+  // Build query: prefer "intitle: + inauthor:" for precision; fallback to plain title
+  const parts = [];
+  if (ref.title) parts.push(`intitle:${ref.title}`);
+  if (ref.author) parts.push(`inauthor:${ref.author}`);
+  const q = parts.length ? parts.join("+") : (ref.title || "");
+  if (!q) return { status: "unverifiable", detail: "Google Books: sin título" };
+  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=3&printType=books`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return { status: "error", detail: `Google Books HTTP ${r.status}` };
+    const d = await r.json();
+    const items = d.items || [];
+    for (const item of items) {
+      const v = item.volumeInfo || {};
+      const found = v.title || "";
+      const subtitle = v.subtitle ? `: ${v.subtitle}` : "";
+      const fullTitle = `${found}${subtitle}`;
+      const year = v.publishedDate ? String(v.publishedDate).slice(0, 4) : "";
+      const authors = (v.authors || []).join(", ");
+      if (titleSimilar(ref.title, fullTitle) && (!ref.year || !year || year === ref.year)) {
+        const detail = authors
+          ? `Google Books${year ? ` (${year})` : ""}: ${authors} — ${fullTitle}`
+          : `Google Books${year ? ` (${year})` : ""}: ${fullTitle}`;
+        return { status: "exists", detail };
+      }
+    }
+    return { status: "not_found", detail: "sin match en Google Books" };
+  } catch (e) {
+    return { status: "error", detail: e.message };
+  }
 }
 
 async function verifyIsbnJs(isbn) {
