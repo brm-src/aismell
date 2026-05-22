@@ -381,6 +381,90 @@ def _check_paragraph_symmetry(text: str, lang: str) -> list[StructuralFinding]:
     return []
 
 
+_SYNTHETIC_ACADEMIC_ES = re.compile(
+    r"\b(transformación|educativa|contemporánea|evaluación|proceso|integral|"
+    r"fortalecimiento|trayectorias?|formativas?|incorporación|metodologías?|activas?|"
+    r"articular|dimensiones?|pedagógicas?|institucionales?|culturales?|experiencia|"
+    r"aprendizaje|pertinente|perspectiva|complejidad|contextos?|escolares?|"
+    r"condiciones?|capacidades?|reflexivas?|gestión|curricular|práctica|colaborativa|"
+    r"coherencia|objetivos?|estrategias?|evidencias?|logro|retroalimentación|"
+    r"sistemática|posibilita|consolidar|mejora continua|se configura|herramienta|"
+    r"relevante|significativos?|calidad educativa|dimensión|abordaje|problemática)\b",
+    re.IGNORECASE,
+)
+_WEAK_ABSTRACT_VERBS_ES = re.compile(
+    r"\b(permite|permiten|posibilita|posibilitan|contribuye|contribuyen|favorece|"
+    r"favorecen|promueve|promueven|orienta|orientan|fortalece|fortalecen|"
+    r"desarrollar|generar|articular|consolidar|reconoce|comprender)\b",
+    re.IGNORECASE,
+)
+_CONCRETE_ANCHORS = re.compile(
+    r"\b\d+(?:[.,]\d+)?\b|[\"“”«»]|\b(yo|me|mi|nos|ayer|hoy|mañana|"
+    r"lunes|martes|miércoles|jueves|viernes|sábado|domingo|enero|febrero|marzo|"
+    r"abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b",
+    re.IGNORECASE,
+)
+
+
+def _word_count(text: str) -> int:
+    return len(re.findall(r"\b[\wáéíóúüñÁÉÍÓÚÜÑ]+\b", text))
+
+
+def _check_synthetic_academic_texture(text: str, lang: str) -> list[StructuralFinding]:
+    """Catch cleaned-up AI academic Spanish: abstract, smooth, correct, unanchored."""
+    if lang != "es":
+        return []
+    words = _word_count(text)
+    if words < 80:
+        return []
+
+    abstraction_hits = len(_SYNTHETIC_ACADEMIC_ES.findall(text))
+    weak_verbs = len(_WEAK_ABSTRACT_VERBS_ES.findall(text))
+    density = abstraction_hits / max(words, 1)
+    if abstraction_hits < 12 or weak_verbs < 4 or density < 0.08:
+        return []
+
+    return [StructuralFinding(
+        line=0,
+        kind="synthetic-academic",
+        severity=3,
+        message=(
+            f"textura académica sintética: {abstraction_hits} abstracciones y "
+            f"{weak_verbs} verbos débiles en {words} palabras"
+        ),
+        suggestion=(
+            "baja la abstracción: agrega casos, decisiones, nombres, datos o una postura con filo"
+        ),
+    )]
+
+
+def _check_low_specificity(text: str, lang: str) -> list[StructuralFinding]:
+    """Flag long, polished abstraction with almost no concrete anchors."""
+    words = _word_count(text)
+    if words < 80:
+        return []
+    anchors = len(_CONCRETE_ANCHORS.findall(text))
+    abstraction_hits = len(_SYNTHETIC_ACADEMIC_ES.findall(text)) if lang == "es" else 0
+    if anchors <= 1 and abstraction_hits >= 10:
+        return [StructuralFinding(
+            line=0,
+            kind="low-specificity",
+            severity=2,
+            message=(
+                f"baja especificidad: {anchors} anclas concretas frente a "
+                f"{abstraction_hits} abstracciones"
+                if lang == "es" else
+                f"low specificity: {anchors} concrete anchors"
+            ),
+            suggestion=(
+                "agrega evidencia verificable: nombres, fechas, cifras, escenas o ejemplos no genéricos"
+                if lang == "es" else
+                "add verifiable evidence: names, dates, numbers, scenes, or non-generic examples"
+            ),
+        )]
+    return []
+
+
 # ---------- main analyze ----------
 
 def analyze(
@@ -424,6 +508,8 @@ def analyze(
         report.structural.extend(_check_rhetorical_qa(sentences, lang))
         report.structural.extend(_check_paragraph_connectors(text, lang))
         report.structural.extend(_check_paragraph_symmetry(text, lang))
+        report.structural.extend(_check_synthetic_academic_texture(text, lang))
+        report.structural.extend(_check_low_specificity(text, lang))
     report.structural.extend(_check_rhythm(sentences))
 
     # score

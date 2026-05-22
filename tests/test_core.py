@@ -129,6 +129,29 @@ def test_pdf_vocabulary_en():
     assert "en.utilize" in ids
 
 
+def test_synthetic_academic_spanish_not_missed_when_cliches_are_cleaned():
+    """Canary for Memphis-style false negatives: AI text without obvious clichés."""
+    text = (
+        "La transformación educativa contemporánea requiere comprender la evaluación como un proceso "
+        "integral orientado al fortalecimiento de trayectorias formativas diversas. "
+        "La incorporación de metodologías activas permite articular dimensiones pedagógicas, institucionales "
+        "y culturales que favorecen una experiencia de aprendizaje pertinente. "
+        "Esta perspectiva reconoce la complejidad de los contextos escolares y promueve condiciones para "
+        "desarrollar capacidades reflexivas en los estudiantes. "
+        "La gestión curricular, entendida como práctica colaborativa, contribuye a generar coherencia entre "
+        "objetivos, estrategias y evidencias de logro. "
+        "Asimismo, la retroalimentación sistemática posibilita identificar avances, ajustar decisiones y "
+        "consolidar procesos de mejora continua. "
+        "De este modo, la evaluación se configura como una herramienta relevante para orientar aprendizajes "
+        "significativos y fortalecer la calidad educativa."
+    )
+    report, _ = analyze(text, lang="es")
+    kinds = {f.kind for f in report.structural}
+    assert report.score >= 0.35
+    assert "synthetic-academic" in kinds
+    assert "low-specificity" in kinds
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in list(globals().items()):
