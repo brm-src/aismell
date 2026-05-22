@@ -515,8 +515,21 @@ def analyze(
     # score
     weight = sum(h.pattern.severity for h in report.hits)
     weight += sum(f.severity for f in report.structural)
-    # normalize against sentence count (cap at 1.0)
-    report.score = min(1.0, weight / max(len(sentences), 1) / 3.0)
+    # Normalize local matches against sentence count, but do not let long uploads
+    # dilute strong whole-text structural signals into a fake-clean score.
+    normalized_score = weight / max(len(sentences), 1) / 3.0
+    structural_kinds = {f.kind for f in report.structural}
+    severe_structural = sum(1 for f in report.structural if f.severity >= 3)
+    structural_floor = 0.0
+    if {"synthetic-academic", "low-specificity"} <= structural_kinds:
+        structural_floor = 0.35
+    elif "synthetic-academic" in structural_kinds:
+        structural_floor = 0.28
+    elif severe_structural >= 2:
+        structural_floor = 0.30
+    elif len(report.structural) >= 3:
+        structural_floor = 0.22
+    report.score = min(1.0, max(normalized_score, structural_floor))
 
     if report.score >= 0.6:
         report.severity_label = "alto" if lang == "es" else "high"

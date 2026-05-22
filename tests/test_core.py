@@ -152,6 +152,26 @@ def test_synthetic_academic_spanish_not_missed_when_cliches_are_cleaned():
     assert "low-specificity" in kinds
 
 
+def test_long_synthetic_academic_spanish_does_not_dilute_to_clean():
+    """Long uploads should not hide strong structural AI-smell by adding sentences."""
+    synthetic_block = (
+        "La transformación educativa contemporánea requiere comprender la evaluación como un proceso "
+        "integral orientado al fortalecimiento de trayectorias formativas diversas. "
+        "La incorporación de metodologías activas permite articular dimensiones pedagógicas, institucionales "
+        "y culturales que favorecen una experiencia de aprendizaje pertinente. "
+        "Esta perspectiva reconoce la complejidad de los contextos escolares y promueve condiciones para "
+        "desarrollar capacidades reflexivas en los estudiantes. "
+        "La gestión curricular contribuye a generar coherencia entre objetivos, estrategias y evidencias de logro. "
+    )
+    filler = "El apartado mantiene una exposición formal y correcta sin incorporar casos verificables. "
+    text = (synthetic_block + filler) * 8
+    report, _ = analyze(text, lang="es")
+    kinds = {f.kind for f in report.structural}
+    assert "synthetic-academic" in kinds
+    assert report.sentences >= 30
+    assert report.score >= 0.35
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in list(globals().items()):
