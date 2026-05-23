@@ -97,7 +97,7 @@ const I18N = {
     cliText: "¿Trabajas con PDFs? Hay una versión CLI que anota Word y PDF con highlights y comentarios al margen. <a href=\"https://github.com/brm-src/aismell#cli\" target=\"_blank\" rel=\"noopener\">Ver en GitHub</a>.",
     donate: "☕ donar",
     donateNote: "Si te sirvió, considera donarme. Lo mantengo solo, sin tracking, cobros ni APIs.",
-    placeholder: "Pega o suelta tu archivo (.txt / .md / .docx). Si es un PDF, ojo que la web aún no lo soporta — usa la CLI.",
+    placeholder: "Pega tu texto, o suelta un archivo (.txt / .md / .docx / .pdf).",
     sentences: "oraciones",
     smell: "smell",
     findings: "hallazgos",
@@ -122,6 +122,8 @@ const I18N = {
     annotating: "marcando word…",
     docx_done: "Listo: <strong>{name}</strong> está armado. Bájalo cuando quieras, ábrelo en Word o LibreOffice. Las palabras detectadas como IA aparecen resaltadas en amarillo, y al costado verás un comentario explicando qué huele mal.",
     pdf_browser_unsupported: "PDF en la web aún no se puede (la librería no carga en el navegador). Para PDF usa el CLI: aismell paper.pdf --out paper-marcado.pdf",
+    pdf_extracting: "extrayendo texto del PDF…",
+    pdf_no_text: "El PDF no tiene capa de texto (probablemente escaneado). Sin OCR no puedo leerlo. Para PDFs escaneados usa el CLI con OCR.",
     biblio: "verificar bibliografía",
     biblioTip: "Busca las referencias del texto (DOIs, papers, libros, citas) y verifica si existen en CrossRef, OpenAlex, Google Books y otras fuentes. La IA suele inventar bibliografía.",
     strictTip: "Filtra los avisos dudosos. Solo te muestra lo que casi seguro es IA.",
@@ -264,7 +266,7 @@ const I18N = {
     cliText: "Working with PDFs? There's a CLI version that annotates Word and PDF with highlights and margin comments. <a href=\"https://github.com/brm-src/aismell#cli\" target=\"_blank\" rel=\"noopener\">See on GitHub</a>.",
     donate: "☕ donate",
     donateNote: "If it helped, consider donating. I maintain it solo — no tracking, no fees, no APIs.",
-    placeholder: "Paste or drop your file (.txt / .md / .docx). PDFs aren't supported in the web yet — use the CLI.",
+    placeholder: "Paste text, or drop a file (.txt / .md / .docx / .pdf).",
     sentences: "sentences",
     smell: "smell",
     findings: "findings",
@@ -289,6 +291,8 @@ const I18N = {
     annotating: "annotating word…",
     docx_done: "Ready: <strong>{name}</strong> is built. Download it whenever, open it in Word or LibreOffice. AI-flagged words are highlighted in yellow, with a margin comment explaining what smells off.",
     pdf_browser_unsupported: "PDF in the browser isn't supported yet (the library doesn't run in WASM). For PDF use the CLI: aismell paper.pdf --out paper-marked.pdf",
+    pdf_extracting: "extracting text from PDF…",
+    pdf_no_text: "This PDF has no text layer (probably scanned). Without OCR I can't read it. Use the CLI with OCR for scanned PDFs.",
     biblio: "verify bibliography",
     biblioTip: "Finds the references in the text (DOIs, papers, books, citations) and checks them against CrossRef, OpenAlex, Google Books and other sources. AI often invents bibliography.",
     strictTip: "Filters out the noisy hits. Only shows you what's almost certainly AI.",
@@ -728,7 +732,7 @@ function renderHit(hit, t) {
       <div class="glyph s-${hit.severity}">${glyph}</div>
       <div class="body">
         <div class="ctx">${lead}${before}<span class="match">${matched}</span>${after}${tail}</div>
-        <div class="meta">${escapeHtml(hit.message)} <span class="id">${escapeHtml(hit.id)}</span> · ${t.line}${hit.line}</div>
+        <div class="meta">${escapeHtml(hit.message)}</div>
         ${hit.suggestion ? `<div class="sug">${escapeHtml(hit.suggestion)}</div>` : ""}
       </div>
     </div>`;
@@ -744,7 +748,6 @@ function renderStructural(s, t) {
       <div class="glyph s-${s.severity}">${glyph}</div>
       <div class="body">
         <div class="ctx" style="color: var(--fg);">${escapeHtml(s.message)}</div>
-        <div class="meta"><span class="id">${escapeHtml(s.kind)}</span> · ${where}</div>
         ${s.suggestion ? `<div class="sug">${escapeHtml(s.suggestion)}</div>` : ""}
       </div>
     </div>`;
@@ -874,14 +877,9 @@ function render(report) {
       </div>
     </div>`;
 
-  if (report.sections && report.sections.length) {
-    const secHtml = report.sections.map((s) => {
-      const spct = Math.round((s.score || 0) * 100);
-      const reason = (s.reasons && s.reasons[0]) ? s.reasons[0] : "";
-      return `<span class="bs-cell"><strong>${escapeHtml(s.name)}</strong> ${spct}%${reason ? ` · ${escapeHtml(reason)}` : ""}</span>`;
-    }).join("");
-    scoreHtml += `<div class="biblio-summary" style="margin-top:10px">${secHtml}</div>`;
-  }
+  // Sections (apertura/cuerpo/cierre) intentionally removed —
+  // their per-section scorer was inconsistent with the global one
+  // (could read 0% per section while the global verdict was 100%).
 
   if (report.score >= 0.6) {
     scoreHtml += renderIntelectaNudge("smell");
@@ -1047,21 +1045,74 @@ els.input.addEventListener("input", () => {
   document.body.classList.toggle("has-text", els.input.value.trim().length > 0);
 });
 
-// Example chips — pre-load fixture text so user can try without finding their own
+// Example chips — pools of variants. Each click cycles to the next one.
 const EXAMPLES = {
-  ai: `El presente ensayo aborda la cuestión de la migración digital desde tres ejes principales. En primer lugar, examinaremos la transformación cultural que esta implica. En segundo lugar, analizaremos el impacto económico que ha tenido en las últimas décadas. En tercer lugar, exploraremos las consecuencias políticas que se derivan de este proceso.
+  ai: [
+    `El presente ensayo aborda la cuestión de la migración digital desde tres ejes principales. En primer lugar, examinaremos la transformación cultural que esta implica. En segundo lugar, analizaremos el impacto económico que ha tenido en las últimas décadas. En tercer lugar, exploraremos las consecuencias políticas que se derivan de este proceso.
 
 Es importante destacar que la migración digital no es solo un fenómeno tecnológico, sino que constituye un cambio estructural profundo en la forma en que las sociedades contemporáneas se organizan, se comunican y se relacionan entre sí. Lo que enseña la historia es que estos procesos rara vez son neutros: se imponen, se resisten, se traducen, se renegocian.
 
 En definitiva, comprender la migración digital requiere adoptar una mirada interdisciplinar que combine perspectivas de la sociología, la economía y la ciencia política. Solo así podremos abordar de manera integral los desafíos que este fenómeno plantea para el siglo XXI.`,
 
-  human: `Mi abuela tenía una caja de costura de hojalata con un dibujo descolorido de Cibeles. Adentro había botones de nácar de tres tamaños, un dedal con un golpe en el borde, agujas clavadas en un trozo de fieltro rojo. Cuando murió en 1997 nadie quiso la caja y terminó en mi pieza, encima del armario, juntando polvo unos quince años.
+    `En el mundo actual, la inteligencia artificial se ha convertido en una herramienta fundamental para abordar los desafíos del siglo XXI. Desde la salud hasta la educación, sus aplicaciones son prácticamente ilimitadas y prometen transformar profundamente la forma en que vivimos y trabajamos.
+
+Es fundamental comprender que la IA no es solo una tecnología, sino un cambio de paradigma que requiere una reflexión ética profunda. Diversos expertos coinciden en que su desarrollo debe guiarse por principios sólidos de transparencia, equidad y responsabilidad.
+
+En conclusión, el futuro de la inteligencia artificial dependerá de nuestra capacidad colectiva para equilibrar innovación y regulación. Solo a través de un diálogo abierto y multidisciplinar podremos garantizar que esta tecnología beneficie a toda la humanidad.`,
+
+    `La sostenibilidad ambiental constituye uno de los desafíos más apremiantes de nuestra era. Cabe destacar que las decisiones que tomemos hoy tendrán un impacto duradero en las generaciones futuras, lo cual exige un compromiso firme y articulado por parte de todos los actores sociales.
+
+En primer lugar, resulta imperativo reconocer que el cambio climático no es solo un problema ambiental, sino que constituye un desafío multidimensional que afecta a la economía, la salud pública y la estabilidad social. En segundo lugar, debemos considerar que las soluciones requieren un enfoque integral. En tercer lugar, la cooperación internacional resulta esencial.
+
+En síntesis, abordar la crisis climática requiere voluntad política, innovación tecnológica y cambios profundos en nuestros patrones de consumo. Estamos ante una oportunidad histórica para construir un mundo más justo y sostenible para todos.`,
+
+    `La educación en el siglo XXI atraviesa una transformación sin precedentes. Las metodologías tradicionales, basadas en la transmisión unidireccional del conocimiento, están dando paso a modelos más dinámicos, colaborativos y centrados en el estudiante.
+
+Es importante señalar que esta transformación no se limita a la incorporación de tecnología en el aula. Más bien, supone repensar profundamente los objetivos educativos, los roles de docentes y estudiantes, así como los criterios de evaluación. En este contexto, conceptos como el aprendizaje significativo, las competencias del siglo XXI y la educación inclusiva adquieren una relevancia fundamental.
+
+Para concluir, el futuro de la educación dependerá de nuestra capacidad para integrar lo mejor de la tradición pedagógica con las posibilidades que ofrecen las nuevas tecnologías. Sin duda, estamos ante un momento apasionante.`,
+
+    `El liderazgo efectivo en las organizaciones modernas requiere una combinación única de habilidades técnicas, emocionales y estratégicas. Los líderes contemporáneos deben navegar entornos cada vez más complejos, volátiles e inciertos, lo que demanda capacidades adaptativas excepcionales.
+
+En primer lugar, la inteligencia emocional emerge como un factor crítico de éxito. En segundo lugar, la visión estratégica permite anticipar tendencias y oportunidades. En tercer lugar, la capacidad de comunicación inspira y moviliza a los equipos. Estos tres pilares constituyen la base del liderazgo transformacional.
+
+Cabe mencionar que el liderazgo no es solo una posición jerárquica, sino una influencia que se ejerce a través del ejemplo, la coherencia y el compromiso genuino con el desarrollo de las personas. En última instancia, los grandes líderes son aquellos que dejan un legado de transformación positiva.`,
+  ],
+
+  human: [
+    `Mi abuela tenía una caja de costura de hojalata con un dibujo descolorido de Cibeles. Adentro había botones de nácar de tres tamaños, un dedal con un golpe en el borde, agujas clavadas en un trozo de fieltro rojo. Cuando murió en 1997 nadie quiso la caja y terminó en mi pieza, encima del armario, juntando polvo unos quince años.
 
 La abrí el otro día buscando un botón para una camisa. El dedal tenía las iniciales MR grabadas con una aguja: María Reyes, mi bisabuela, que la abuela apenas conoció porque murió de tifus cuando ella tenía cuatro. Eso me lo había contado mi mamá hace mucho, en una sobremesa, sin darle importancia, mientras pelaba una manzana.
 
 Las cosas que heredamos no son las cosas. Son una conversación interrumpida que uno trata de seguir leyendo años después, sin todos los personajes, con la mitad de las páginas perdidas. El dedal funciona perfecto. Lo usé para coser el botón. Pesaba tres gramos. La caja sigue arriba del armario.`,
 
-  fakebib: `La transformación digital de las prácticas pedagógicas constituye uno de los desafíos centrales del siglo XXI. Diversos estudios han mostrado el impacto sustancial de las tecnologías inmersivas en el aprendizaje significativo (Mendoza & Ruiz, 2021).
+    `Compré la bici en marzo del 2018, una Trek de segunda con la pintura amarilla rayada en el cuadro y un timbre que sonaba a juguete. El tipo que me la vendió me dijo que la había usado tres veranos para ir al trabajo, dejó de andar en bici cuando se compró auto. Le faltaba una pastilla de freno.
+
+La armé en el patio con mi vieja mirando desde la cocina, tomando té. Me prestó un destornillador philips que tenía guardado de cuando mi papá vivía. Yo no sabía nada de bicis. Aprendí mirando videos en YouTube, con la pantalla del teléfono apoyada en una maceta porque no tenía donde dejarla. Tardé cuatro horas en algo que un mecánico hace en quince minutos.
+
+Esa bici me llevó al trabajo dos años. Se la regalé a un primo cuando me mudé. Capaz un día le pregunto si todavía la usa. Capaz no.`,
+
+    `Mi mamá cocina pollo al horno los domingos. Siempre demás, porque calcula para diez aunque seamos cuatro. Después la mitad va al freezer en tuppers que ella reutiliza desde antes que yo naciera, con el plástico amarillento por dentro y la fecha escrita en la tapa con marcador.
+
+El olor de su cocina es lo que más extraño cuando estoy fuera. No el pollo en sí, que tampoco está tan rico. Es la mezcla. Cebolla, ajo, orégano, una vela de citronella que tiene en la ventana desde hace años para los mosquitos, el detergente de loza marca Ariel que compra en el almacén de la esquina porque dice que el del super no espuma igual.
+
+La última vez que fui me dio un tupper para llevar. Lo dejé en la heladera de mi pieza dos semanas hasta que se echó a perder. No lo quise tirar al tacho del depto. Lo llevé al tacho de la calle, una cuadra abajo. No sé bien por qué.`,
+
+    `Mi vecino del 4B muere los lunes a las 6 de la mañana cuando le suena el despertador y no lo apaga. Vive solo desde que su mujer se fue a vivir con la hija a Mendoza, hace como cinco años. Nos saludamos en el ascensor. Nunca hablamos.
+
+Una vez le golpeé la puerta a las 6:30 porque el despertador llevaba media hora sonando y yo trabajo en casa y no podía pensar. Tardó en abrir. Estaba en pijama, con cara de no haber dormido. Me pidió disculpas tres veces. Le dije que no pasaba nada, que solo quería avisarle. Volví a mi depto y me sentí pésimo el resto del día.
+
+Después pasaron meses sin que sonara el despertador. Pensé que se había mudado. La semana pasada lo vi en el ascensor. Me dijo "buen día" antes que yo. Me pareció que estaba más flaco.`,
+
+    `El gato de la casa es viejo. Se llama Mateo, tiene catorce años, y duerme arriba de mi notebook cuando trabajo. Cuando lo saco se enoja, se va a la otra punta del living, me mira con cara de odio, y vuelve diez minutos después como si no hubiera pasado nada.
+
+La veterinaria dice que está bien para su edad, pero le falta un diente y le bajó la función renal. Tomamos la decisión de no operarlo. Le damos pastillas dos veces al día, escondidas en paté. Él las pesca igual: come el paté, escupe la pastilla, y nos mira como diciendo "soy más vivo que ustedes". Eventualmente se la da. Eventualmente.
+
+Pienso a veces en el día que se muera. No quiero pensarlo, pero pienso. Cuando vuelva a casa y no esté arriba del notebook va a ser raro. La casa va a quedar más vacía. Y todavía nos van a quedar las pastillas en el cajón, sin gato a quien dárselas.`,
+  ],
+
+  fakebib: [
+    `La transformación digital de las prácticas pedagógicas constituye uno de los desafíos centrales del siglo XXI. Diversos estudios han mostrado el impacto sustancial de las tecnologías inmersivas en el aprendizaje significativo (Mendoza & Ruiz, 2021).
 
 Referencias
 
@@ -1074,17 +1125,82 @@ Calderón-Vivas, M. (2020). Digital natives reconsidered: a Latin American persp
 Pinker, S. (2014). The language instinct: How the mind creates language. Harper Perennial.
 
 García Canclini, N. (2018). Culturas híbridas: estrategias para entrar y salir de la modernidad. Grijalbo.`,
+
+    `La economía conductual ha transformado nuestra comprensión de la toma de decisiones financieras. Como sostiene Kahneman (2011), los seres humanos no operan como agentes perfectamente racionales, sino que están sujetos a sesgos sistemáticos que afectan sus elecciones cotidianas.
+
+Bibliografía
+
+Kahneman, D. (2011). Thinking, fast and slow. Farrar, Straus and Giroux.
+
+Velasco-Ramírez, J. (2020). Sesgos cognitivos en mercados emergentes: una perspectiva latinoamericana. Revista de Economía Conductual, 14(3), 287-312. https://doi.org/10.1108/recb.2020.0331
+
+Thaler, R. H., & Sunstein, C. R. (2008). Nudge: Improving decisions about health, wealth, and happiness. Yale University Press.
+
+Achterhof, M. (2019). Decision-making under uncertainty in post-pandemic economies. Journal of Behavioral Finance, 20(4), 521-549.
+
+Castiglione-Pérez, A., & Wong, T. (2022). Heurísticas de inversión en milenials: estudio comparado Chile-Singapur. Estudios Económicos del Cono Sur, 56(2), 89-117. https://doi.org/10.4067/eecs.2022.5621`,
+
+    `La filosofía contemporánea de la mente se ha visto profundamente influenciada por los avances en neurociencia cognitiva. La cuestión de la conciencia, el problema duro al que alude Chalmers (1995), sigue siendo objeto de intenso debate.
+
+Referencias
+
+Chalmers, D. J. (1995). Facing up to the problem of consciousness. Journal of Consciousness Studies, 2(3), 200-219.
+
+Dennett, D. C. (1991). Consciousness explained. Little, Brown and Company.
+
+Vargas-Llosa, F. (2018). Mente extendida y cognición situada: una crítica fenomenológica. Análisis Filosófico, 38(1), 67-94. https://doi.org/10.36446/af.2018.3814
+
+Tononi, G., & Koch, C. (2015). Consciousness: here, there and everywhere? Philosophical Transactions of the Royal Society B, 370(1668), 20140167.
+
+Bressan-Quintana, P. (2021). Qualia y representacionalismo: una propuesta integradora. Cuadernos de Filosofía de la Mente, 9(2), 145-178. https://doi.org/10.5377/cfm.v9i2.11824`,
+
+    `Los estudios de género han redefinido las categorías analíticas con que abordamos las relaciones sociales. La obra fundacional de Butler (1990) abrió un campo de investigación que sigue produciendo debate y desarrollo teórico.
+
+Bibliografía
+
+Butler, J. (1990). Gender trouble: Feminism and the subversion of identity. Routledge.
+
+Lugones, M. (2008). Colonialidad y género. Tabula Rasa, 9, 73-101.
+
+Sandoval-Hernández, K. (2019). Performatividad y resistencia en cuerpos disidentes del sur global. Revista Latinoamericana de Estudios de Género, 12(1), 33-58. https://doi.org/10.32870/rleg.v12i1.7842
+
+hooks, b. (2000). Feminism is for everybody: Passionate politics. South End Press.
+
+Echeverría-Quispe, R. (2022). Decolonialidad y feminismos comunitarios andinos: tensiones y diálogos. Andina: Revista de Estudios Decoloniales, 7(3), 211-244. https://doi.org/10.18800/are.20223.7301`,
+
+    `La crisis climática plantea desafíos urgentes a la gobernanza global. El Acuerdo de París marcó un hito, pero las trayectorias actuales de emisiones siguen siendo incompatibles con sus metas (IPCC, 2021).
+
+Referencias
+
+IPCC. (2021). Climate change 2021: The physical science basis. Working Group I contribution to the Sixth Assessment Report.
+
+Naomi Klein. (2014). This changes everything: Capitalism vs. the climate. Simon & Schuster.
+
+Mansilla-Aravena, D. (2020). Justicia climática y deuda ecológica en América Latina: un análisis crítico. Ecología Política Latinoamericana, 18(2), 99-128. https://doi.org/10.4324/eplat.2020.1822
+
+Steffen, W., et al. (2018). Trajectories of the Earth System in the Anthropocene. Proceedings of the National Academy of Sciences, 115(33), 8252-8259.
+
+Quispe-Achacollo, M. (2021). Saberes ancestrales andinos frente al cambio climático: el caso del altiplano boliviano. Pacha: Revista de Estudios Contemporáneos del Sur, 4(11), 178-205. https://doi.org/10.46652/pacha.v4i11.222`,
+  ],
 };
+
+// Round-robin counter per chip so each click rotates to the next variant.
+const _exampleCursor = { ai: 0, human: 0, fakebib: 0 };
 
 document.querySelectorAll(".ex-chip").forEach((chip) => {
   chip.addEventListener("click", () => {
     const key = chip.dataset.example;
-    const text = EXAMPLES[key];
-    if (!text) return;
-    els.input.value = text;
+    const pool = EXAMPLES[key];
+    if (!pool || !pool.length) return;
+    const idx = _exampleCursor[key] % pool.length;
+    _exampleCursor[key] = idx + 1;
+    els.input.value = pool[idx];
     document.body.classList.add("has-text");
     els.input.focus();
     els.input.scrollTop = 0;
+    // Tiny visual hint: flash the chip so user sees it changed
+    chip.classList.add("ex-chip-flash");
+    setTimeout(() => chip.classList.remove("ex-chip-flash"), 250);
   });
 });
 
@@ -1118,12 +1234,17 @@ function renderBiblioRow(ref, res) {
   const icon = { exists: "✓", not_found: "✗", error: "?", unverifiable: "·" }[res.status] || "·";
   const cls = `biblio-${res.status}`;
   const ident = ref.identifier || (ref.title ? ref.title.slice(0, 70) : ref.raw.slice(0, 70));
+  const identSafe = escapeHtml(ident);
+  // If verified and has URL, make the title clickable.
+  const identHtml = (res.status === "exists" && res.url)
+    ? `<a href="${escapeHtml(res.url)}" target="_blank" rel="noopener" class="biblio-link">${identSafe} ↗</a>`
+    : identSafe;
   const detail = res.detail ? `<div class="biblio-detail">${escapeHtml(res.detail)}</div>` : "";
   return `
     <div class="biblio-row ${cls}">
       <div class="biblio-icon">${icon}</div>
       <div class="biblio-body">
-        <div class="biblio-ident">[${ref.kind}] ${escapeHtml(ident)} <span class="biblio-line">L${ref.line}</span></div>
+        <div class="biblio-ident">[${ref.kind}] ${identHtml} <span class="biblio-line">L${ref.line}</span></div>
         ${detail}
       </div>
     </div>`;
@@ -1494,7 +1615,8 @@ async function verifyDoiJs(doi) {
     }
     let detail = title;
     if (author) detail = year ? `${author} (${year}) ${title}` : `${author}: ${title}`;
-    return { status: "exists", detail };
+    const url = m.URL || `https://doi.org/${doi}`;
+    return { status: "exists", detail, url };
   } catch (e) {
     return { status: "error", detail: e.message };
   }
@@ -1502,6 +1624,7 @@ async function verifyDoiJs(doi) {
 
 async function verifyArxivJs(id) {
   const url = `https://export.arxiv.org/api/query?id_list=${encodeURIComponent(id)}`;
+  const publicUrl = `https://arxiv.org/abs/${encodeURIComponent(id)}`;
   try {
     const r = await fetch(url);
     if (!r.ok) return { status: "error", detail: `HTTP ${r.status}` };
@@ -1509,7 +1632,7 @@ async function verifyArxivJs(id) {
     if (!text.includes("<entry>")) return { status: "not_found", detail: "arXiv: not found" };
     const m = text.match(/<entry>[\s\S]*?<title>([\s\S]*?)<\/title>/);
     const title = m ? m[1].replace(/\s+/g, " ").trim() : "";
-    return { status: "exists", detail: title };
+    return { status: "exists", detail: title, url: publicUrl };
   } catch (e) {
     return { status: "error", detail: e.message };
   }
@@ -1541,7 +1664,8 @@ async function verifyCrossrefJs(ref) {
       const found = (item.title && item.title[0]) || "";
       const score = item.score || 0;
       if (score >= 45 && titleSimilar(ref.title, found)) {
-        return { status: "exists", detail: `CrossRef: ${found}` };
+        const url = item.DOI ? `https://doi.org/${item.DOI}` : (item.URL || null);
+        return { status: "exists", detail: `CrossRef: ${found}`, url };
       }
     }
     return { status: "not_found", detail: "sin match en CrossRef" };
@@ -1563,7 +1687,9 @@ async function verifyOpenLibrarySearchJs(ref) {
       const year = item.first_publish_year ? String(item.first_publish_year) : "";
       if (titleSimilar(ref.title, found) && (!ref.year || !year || Math.abs(parseInt(year) - parseInt(ref.year)) <= 1)) {
         const authors = (item.author_name || []).slice(0, 2).join(", ");
-        return { status: "exists", detail: `OpenLibrary${year ? ` (${year})` : ""}: ${authors ? authors + " — " : ""}${found}` };
+        const olKey = item.key || (item.cover_edition_key ? `/books/${item.cover_edition_key}` : null);
+        const url = olKey ? `https://openlibrary.org${olKey}` : null;
+        return { status: "exists", detail: `OpenLibrary${year ? ` (${year})` : ""}: ${authors ? authors + " — " : ""}${found}`, url };
       }
     }
     return { status: "not_found", detail: "sin match en OpenLibrary" };
@@ -1586,7 +1712,9 @@ async function verifyArxivSearchJs(ref) {
       const m = entry.match(/<title>([\s\S]*?)<\/title>/);
       const found = m ? m[1].replace(/\s+/g, " ").trim() : "";
       if (titleSimilar(ref.title, found)) {
-        return { status: "exists", detail: `arXiv: ${found}` };
+        const idMatch = entry.match(/<id>([\s\S]*?)<\/id>/);
+        const url = idMatch ? idMatch[1].trim() : null;
+        return { status: "exists", detail: `arXiv: ${found}`, url };
       }
     }
     return { status: "not_found", detail: "sin match en arXiv" };
@@ -1667,7 +1795,8 @@ async function verifyOpenAlexJs(ref) {
       const found = item.display_name || item.title || "";
       const year = item.publication_year ? String(item.publication_year) : "";
       if (titleSimilar(ref.title, found) && (!ref.year || !year || year === ref.year)) {
-        return { status: "exists", detail: `OpenAlex${year ? ` (${year})` : ""}: ${found}` };
+        const url = item.doi ? `https://doi.org/${item.doi.replace(/^https?:\/\/doi\.org\//i, "")}` : (item.id || null);
+        return { status: "exists", detail: `OpenAlex${year ? ` (${year})` : ""}: ${found}`, url };
       }
     }
     return { status: "not_found", detail: "sin match en OpenAlex" };
@@ -1687,7 +1816,8 @@ async function verifySemanticScholarJs(ref) {
       const found = item.title || "";
       const year = item.year ? String(item.year) : "";
       if (titleSimilar(ref.title, found) && (!ref.year || !year || year === ref.year)) {
-        return { status: "exists", detail: `Semantic Scholar${year ? ` (${year})` : ""}: ${found}` };
+        const url = item.paperId ? `https://www.semanticscholar.org/paper/${item.paperId}` : null;
+        return { status: "exists", detail: `Semantic Scholar${year ? ` (${year})` : ""}: ${found}`, url };
       }
     }
     return { status: "not_found", detail: "sin match en Semantic Scholar" };
@@ -1720,7 +1850,9 @@ async function verifyGoogleBooksJs(ref) {
         const detail = authors
           ? `Google Books${year ? ` (${year})` : ""}: ${authors} — ${fullTitle}`
           : `Google Books${year ? ` (${year})` : ""}: ${fullTitle}`;
-        return { status: "exists", detail };
+        const url = v.canonicalVolumeLink || v.previewLink || (v.industryIdentifiers && v.industryIdentifiers[0]
+          ? `https://books.google.com/books?vid=ISBN${v.industryIdentifiers[0].identifier}` : null);
+        return { status: "exists", detail, url };
       }
     }
     return { status: "not_found", detail: "sin match en Google Books" };
@@ -1737,7 +1869,7 @@ async function verifyIsbnJs(isbn) {
     if (r.status === 404) return { status: "not_found", detail: "OpenLibrary: not found" };
     if (!r.ok) return { status: "error", detail: `OpenLibrary HTTP ${r.status}` };
     const d = await r.json();
-    return d.title ? { status: "exists", detail: `OpenLibrary: ${d.title}` } : { status: "not_found", detail: "OpenLibrary sin título" };
+    return d.title ? { status: "exists", detail: `OpenLibrary: ${d.title}`, url: `https://openlibrary.org/isbn/${encodeURIComponent(clean)}` } : { status: "not_found", detail: "OpenLibrary sin título" };
   } catch (e) {
     return { status: "error", detail: e.message };
   }
@@ -1770,19 +1902,75 @@ async function handleFile(file) {
   if (name.endsWith(".docx")) {
     return await annotateDocx(file);
   }
+  if (name.endsWith(".pdf")) {
+    return await handlePdf(file);
+  }
   const isText = ["text/plain", "text/markdown", ""].includes(file.type) ||
                  /\.(txt|md|markdown)$/i.test(file.name);
   if (!isText) {
-    if (name.endsWith(".pdf")) {
-      setStatus(t.pdf_browser_unsupported, true);
-    } else {
-      setStatus(`${t.error} ${file.name}`, true);
-    }
+    setStatus(`${t.error} ${file.name}`, true);
     return;
   }
   const text = await file.text();
   els.input.value = text;
   await analyze();
+}
+
+// PDF text extraction via pdf.js (Mozilla). No OCR — only embedded text layers.
+let _pdfjsLib = null;
+async function loadPdfJs() {
+  if (_pdfjsLib) return _pdfjsLib;
+  const PDFJS_VER = "4.7.76";
+  const base = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VER}/build`;
+  const mod = await import(`${base}/pdf.min.mjs`);
+  mod.GlobalWorkerOptions.workerSrc = `${base}/pdf.worker.min.mjs`;
+  _pdfjsLib = mod;
+  return mod;
+}
+
+async function extractPdfText(file) {
+  const pdfjs = await loadPdfJs();
+  const buf = await file.arrayBuffer();
+  const doc = await pdfjs.getDocument({ data: buf }).promise;
+  const out = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    const content = await page.getTextContent();
+    // Reconstruct lines: pdf.js gives us items with positions. Group by Y.
+    const lines = new Map();
+    for (const item of content.items) {
+      if (!item.str) continue;
+      const y = Math.round(item.transform[5]);
+      if (!lines.has(y)) lines.set(y, []);
+      lines.get(y).push(item);
+    }
+    const ys = [...lines.keys()].sort((a, b) => b - a);
+    for (const y of ys) {
+      const items = lines.get(y).sort((a, b) => a.transform[4] - b.transform[4]);
+      out.push(items.map((x) => x.str).join(" ").replace(/\s+/g, " ").trim());
+    }
+    out.push(""); // page break
+  }
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+async function handlePdf(file) {
+  const t = I18N[UILANG];
+  setStatus(t.pdf_extracting || "extrayendo texto del PDF…");
+  try {
+    const text = await extractPdfText(file);
+    if (!text || text.length < 20) {
+      setStatus(t.pdf_no_text || "El PDF no tiene capa de texto (probablemente escaneado). Sin OCR no puedo leerlo.", true);
+      return;
+    }
+    els.input.value = text;
+    document.body.classList.add("has-text");
+    setStatus(null);
+    await analyze();
+  } catch (err) {
+    console.error("pdf extract failed", err);
+    setStatus(`${t.error} PDF: ${err.message}`, true);
+  }
 }
 
 async function annotateDocx(file) {
