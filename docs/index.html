@@ -87,21 +87,28 @@
   }
   header .lang-switch {
     float: right;
-    color: var(--dim);
-    font-size: 12px;
+    display: inline-flex;
+    border: 1px solid var(--line);
+    overflow: hidden;
   }
   header .lang-switch button {
-    background: none;
+    background: var(--bg);
     border: none;
     color: var(--dim);
     cursor: pointer;
     font: inherit;
-    padding: 10px 8px;
-    min-height: 40px;
-    min-width: 40px;
+    font-size: 12px;
+    padding: 8px 14px;
+    min-height: 36px;
+    min-width: 44px;
     text-decoration: none;
+    letter-spacing: 0.6px;
   }
-  header .lang-switch button.on { color: var(--fg); text-decoration: underline; text-underline-offset: 3px; }
+  header .lang-switch button.on {
+    background: var(--hl);
+    color: #1a1a1a;
+    font-weight: 700;
+  }
 
   main {
     max-width: 940px;
@@ -151,6 +158,58 @@
     padding: 3px 6px;
   }
   .toolbar input[type="checkbox"] { padding: 0; }
+
+  /* Example chips below the textarea */
+  .examples-row {
+    border-top: 1px solid var(--line);
+    padding: 10px 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    font-size: 11.5px;
+    color: var(--dim);
+  }
+  .examples-lbl { letter-spacing: 0.4px; text-transform: lowercase; margin-right: 4px; }
+  .ex-chip {
+    background: transparent;
+    color: var(--dim);
+    border: 1px dashed var(--line);
+    font: inherit;
+    font-size: 11.5px;
+    padding: 5px 10px;
+    cursor: pointer;
+    text-transform: lowercase;
+    letter-spacing: 0.3px;
+  }
+  .ex-chip:hover { color: var(--fg); border-color: var(--fg); border-style: solid; }
+  .ex-chip:focus { outline: 1px solid var(--hl); outline-offset: 2px; }
+
+  /* About toggle — keep noise behind a disclosure */
+  details.about-toggle {
+    margin-top: 28px;
+    border-top: 1px dashed var(--line);
+    padding-top: 14px;
+  }
+  details.about-toggle > summary {
+    cursor: pointer;
+    color: var(--dim);
+    font-size: 12px;
+    text-transform: lowercase;
+    letter-spacing: 0.4px;
+    padding: 6px 0;
+    list-style: none;
+  }
+  details.about-toggle > summary::-webkit-details-marker { display: none; }
+  details.about-toggle > summary::before {
+    content: "+ ";
+    color: var(--hl);
+    margin-right: 4px;
+  }
+  details.about-toggle[open] > summary::before { content: "− "; }
+  details.about-toggle > summary:hover { color: var(--fg); }
+  details.about-toggle .about { margin-top: 18px; }
+
   .btn {
     background: var(--hl);
     color: #1a1a1a;
@@ -929,6 +988,23 @@
     .score .pct { font-size: 32px; }
     .toolbar { font-size: 12px; gap: 8px; }
     .btn { padding: 7px 14px; }
+
+    /* Sticky analyze button on mobile when there's text */
+    body.has-text .toolbar .right {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      margin: 0;
+      padding: 10px 14px;
+      background: var(--bg);
+      border-top: 1px solid var(--line);
+      justify-content: flex-end;
+      gap: 8px;
+      z-index: 50;
+      box-shadow: 0 -8px 20px rgba(0,0,0,0.4);
+    }
+    body.has-text main { padding-bottom: 70px; }
   }
 </style>
 </head>
@@ -936,11 +1012,10 @@
 
 <header>
   <div class="lang-switch" id="langSwitch">
-    <button data-lang="es" class="on">es</button> ·
-    <button data-lang="en">en</button>
+    <button data-lang="es" class="on">ES</button><button data-lang="en">EN</button>
   </div>
   <h1><span class="nose">👃</span><span data-i18n="title">aismell</span></h1>
-  <p class="tag" data-i18n="tagline">Detector de IA y verificador de bibliografía. Pega o sube tu texto: marcamos línea por línea lo que huele a IA y cazamos las citas que la IA inventa. Todo en tu navegador.</p>
+  <p class="tag" data-i18n="tagline">Olfatea si tu texto suena demasiado a IA. Y si trae bibliografía, revisa que no sea inventada.</p>
 </header>
 
 <main>
@@ -951,6 +1026,12 @@
 
   <div class="panel">
     <textarea id="input" placeholder="Pega tu texto acá. O suelta un archivo (.txt / .md / .docx)."></textarea>
+    <div class="examples-row">
+      <span class="examples-lbl" data-i18n="examples_lbl">probar con ejemplo:</span>
+      <button type="button" class="ex-chip" data-example="ai" data-i18n="example_ai">texto IA</button>
+      <button type="button" class="ex-chip" data-example="human" data-i18n="example_human">texto humano</button>
+      <button type="button" class="ex-chip" data-example="fakebib" data-i18n="example_fakebib">bibliografía falsa</button>
+    </div>
     <div class="toolbar">
       <label>
         <span data-i18n="lang">idioma</span>:
@@ -980,31 +1061,34 @@
     <div class="findings" id="findings"></div>
   </div>
 
-  <div class="about">
-    <div class="about-col">
-      <h2 data-i18n="why">qué hace</h2>
-      <p data-i18n="whyText">Marca línea por línea tres tipos de pista: muletillas y conectores forzados, estructura editorial (encabezados, listas simétricas, fragmentos dramáticos) y ritmo plano. Si detecta bibliografía, verifica cada cita contra fuentes públicas para cazar las que la IA inventa.</p>
-    </div>
+  <details class="about-toggle">
+    <summary data-i18n="about_toggle">qué hace, qué no hace, cli</summary>
+    <div class="about">
+      <div class="about-col">
+        <h2 data-i18n="why">qué hace</h2>
+        <p data-i18n="whyText">Marca línea por línea tres tipos de pista: muletillas y conectores forzados, estructura editorial (encabezados, listas simétricas, fragmentos dramáticos) y ritmo plano. Si detecta bibliografía, verifica cada cita contra fuentes públicas para cazar las que la IA inventa.</p>
+      </div>
 
-    <div class="about-col">
-      <h2 data-i18n="not">qué NO hace</h2>
-      <ul>
-        <li data-i18n="not1"><strong>No reescribe.</strong> Tú decides qué cambiar.</li>
-        <li data-i18n="not2"><strong>No burla detectores.</strong> Ese juego es scam.</li>
-        <li data-i18n="not3"><strong>No es forense.</strong> Falsos positivos pasan; humanos también escriben así.</li>
-      </ul>
-    </div>
+      <div class="about-col">
+        <h2 data-i18n="not">qué NO hace</h2>
+        <ul>
+          <li data-i18n="not1"><strong>No reescribe.</strong> Tú decides qué cambiar.</li>
+          <li data-i18n="not2"><strong>No burla detectores.</strong> Ese juego es scam.</li>
+          <li data-i18n="not3"><strong>No es forense.</strong> Falsos positivos pasan; humanos también escriben así.</li>
+        </ul>
+      </div>
 
-    <div class="about-col full">
-      <h2 data-i18n="cli">también CLI</h2>
-      <p data-i18n="cliText">¿Trabajas con PDFs? Hay una versión CLI que anota Word y PDF con highlights y comentarios al margen. <a href="https://github.com/brm-src/aismell#cli" target="_blank" rel="noopener">Ver en GitHub</a>.</p>
+      <div class="about-col full">
+        <h2 data-i18n="cli">también CLI</h2>
+        <p data-i18n="cliText">¿Trabajas con PDFs? Hay una versión CLI que anota Word y PDF con highlights y comentarios al margen. <a href="https://github.com/brm-src/aismell#cli" target="_blank" rel="noopener">Ver en GitHub</a>.</p>
 
-      <div class="donate-note">
-        <span data-i18n="donateNote">Si te sirvió, considera donarme. Lo mantengo solo, sin tracking, cobros ni APIs.</span>
-        <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener" class="kofi" data-i18n="donate">☕ donar</a>
+        <div class="donate-note">
+          <span data-i18n="donateNote">Si te sirvió, considera donarme. Lo mantengo solo, sin tracking, cobros ni APIs.</span>
+          <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener" class="kofi" data-i18n="donate">☕ donar</a>
+        </div>
       </div>
     </div>
-  </div>
+  </details>
 
 </main>
 

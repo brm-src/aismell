@@ -4,7 +4,12 @@
 const I18N = {
   es: {
     title: "aismell",
-    tagline: "Detector de IA y verificador de bibliografía. Pega o sube tu texto: marcamos línea por línea lo que huele a IA y cazamos las citas que la IA inventa. Todo en tu navegador.",
+    tagline: "Olfatea si tu texto suena demasiado a IA. Y si trae bibliografía, revisa que no sea inventada.",
+    examples_lbl: "probar con ejemplo:",
+    example_ai: "texto IA",
+    example_human: "texto humano",
+    example_fakebib: "bibliografía falsa",
+    about_toggle: "qué hace, qué no hace, cli",
     tagline_biblio: "Las citas viajan a CrossRef, OpenAlex, Google Books y otras fuentes públicas. El resto del texto se queda contigo.",
     how_title: "cómo funciona",
     how_layer1: "<strong>Patrones de frase.</strong> Muletillas, conectores forzados, calcos del inglés.<small>Regex auditable, sin caja negra.</small>",
@@ -153,7 +158,12 @@ const I18N = {
   },
   en: {
     title: "aismell",
-    tagline: "AI detector and bibliography verifier. Paste or drop your text: we flag every line that smells AI-written and catch the citations AI invents. All in your browser.",
+    tagline: "Sniffs whether your text sounds too AI. And if it has a bibliography, checks that it isn't made up.",
+    examples_lbl: "try with sample:",
+    example_ai: "ai text",
+    example_human: "human text",
+    example_fakebib: "fake bibliography",
+    about_toggle: "what it does, what it doesn't, cli",
     tagline_biblio: "Citations travel to CrossRef, OpenAlex, Google Books and other public sources. The rest of your text stays with you.",
     how_title: "how it works",
     how_layer1: "<strong>Phrase patterns.</strong> Filler phrases, forced connectors, English calques.<small>Auditable regex, no black box.</small>",
@@ -1003,6 +1013,53 @@ els.clearBtn.addEventListener("click", () => {
   els.resultPanel.hidden = true;
   clearBiblio();
   els.input.focus();
+  document.body.classList.remove("has-text");
+});
+
+// Toggle "has-text" class for mobile sticky button
+els.input.addEventListener("input", () => {
+  document.body.classList.toggle("has-text", els.input.value.trim().length > 0);
+});
+
+// Example chips — pre-load fixture text so user can try without finding their own
+const EXAMPLES = {
+  ai: `El presente ensayo aborda la cuestión de la migración digital desde tres ejes principales. En primer lugar, examinaremos la transformación cultural que esta implica. En segundo lugar, analizaremos el impacto económico que ha tenido en las últimas décadas. En tercer lugar, exploraremos las consecuencias políticas que se derivan de este proceso.
+
+Es importante destacar que la migración digital no es solo un fenómeno tecnológico, sino que constituye un cambio estructural profundo en la forma en que las sociedades contemporáneas se organizan, se comunican y se relacionan entre sí. Lo que enseña la historia es que estos procesos rara vez son neutros: se imponen, se resisten, se traducen, se renegocian.
+
+En definitiva, comprender la migración digital requiere adoptar una mirada interdisciplinar que combine perspectivas de la sociología, la economía y la ciencia política. Solo así podremos abordar de manera integral los desafíos que este fenómeno plantea para el siglo XXI.`,
+
+  human: `Mi abuela tenía una caja de costura de hojalata con un dibujo descolorido de Cibeles. Adentro había botones de nácar de tres tamaños, un dedal con un golpe en el borde, agujas clavadas en un trozo de fieltro rojo. Cuando murió en 1997 nadie quiso la caja y terminó en mi pieza, encima del armario, juntando polvo unos quince años.
+
+La abrí el otro día buscando un botón para una camisa. El dedal tenía las iniciales MR grabadas con una aguja: María Reyes, mi bisabuela, que la abuela apenas conoció porque murió de tifus cuando ella tenía cuatro. Eso me lo había contado mi mamá hace mucho, en una sobremesa, sin darle importancia, mientras pelaba una manzana.
+
+Las cosas que heredamos no son las cosas. Son una conversación interrumpida que uno trata de seguir leyendo años después, sin todos los personajes, con la mitad de las páginas perdidas. El dedal funciona perfecto. Lo usé para coser el botón. Pesaba tres gramos. La caja sigue arriba del armario.`,
+
+  fakebib: `La transformación digital de las prácticas pedagógicas constituye uno de los desafíos centrales del siglo XXI. Diversos estudios han mostrado el impacto sustancial de las tecnologías inmersivas en el aprendizaje significativo (Mendoza & Ruiz, 2021).
+
+Referencias
+
+Mendoza, P., & Ruiz, A. (2021). Pedagogías inmersivas y aprendizaje situado. Revista Iberoamericana de Educación, 87(2), 145-168. https://doi.org/10.35362/rie8723421
+
+Halberstam, J. K. (2019). Embodied cognition in virtual learning environments. Journal of Educational Technology Research, 67(4), 891-915.
+
+Calderón-Vivas, M. (2020). Digital natives reconsidered: a Latin American perspective. Educación y Sociedad, 41(3), 412-438. https://doi.org/10.1590/s1517-9702202044123456
+
+Pinker, S. (2014). The language instinct: How the mind creates language. Harper Perennial.
+
+García Canclini, N. (2018). Culturas híbridas: estrategias para entrar y salir de la modernidad. Grijalbo.`,
+};
+
+document.querySelectorAll(".ex-chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    const key = chip.dataset.example;
+    const text = EXAMPLES[key];
+    if (!text) return;
+    els.input.value = text;
+    document.body.classList.add("has-text");
+    els.input.focus();
+    els.input.scrollTop = 0;
+  });
 });
 
 // Cmd/Ctrl+Enter to analyze
