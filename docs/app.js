@@ -1347,36 +1347,131 @@ async function verifyArxivJs(id) {
   }
 }
 
-async function verifyCitationJs(ref) {
-  if (!ref.title) return { status: "unverifiable", detail: "" };
-  const q = ref.author ? `${ref.title} ${ref.author}` : ref.title;
-  const url = `https://api.crossref.org/works?rows=1&query.bibliographic=${encodeURIComponent(q)}`;
+// Bulletproof citation verification: try every source, classify by best signal.
+// - 8s timeout per source (AbortController) → no hangs
+// - parallel-ish fallback chain, returns first "exists"
+// - if no source confirms but ≥1 errored, mark as "error" (not "not_found")
+async function fetchWithTimeout(url, opts = {}, ms = 8000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
   try {
-    const r = await fetch(url, { headers: { Accept: "application/json" } });
-    if (r.ok) {
-      const d = await r.json();
-      const items = (d.message && d.message.items) || [];
-      if (items.length) {
-        const item = items[0];
-        const found = (item.title && item.title[0]) || "";
-        const score = item.score || 0;
-        if (score >= 45 && titleSimilar(ref.title, found)) return { status: "exists", detail: `CrossRef: ${found}` };
-        if (score >= 60) return { status: "not_found", detail: `título distinto: ${found}` };
+    return await fetch(url, { ...opts, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function verifyCrossrefJs(ref) {
+  const q = ref.author ? `${ref.title} ${ref.author}` : ref.title;
+  const url = `https://api.crossref.org/works?rows=3&query.bibliographic=${encodeURIComponent(q)}`;
+  try {
+    const r = await fetchWithTimeout(url, { headers: { Accept: "application/json" } });
+    if (!r.ok) return { status: "error", detail: `CrossRef HTTP ${r.status}` };
+    const d = await r.json();
+    const items = (d.message && d.message.items) || [];
+    for (const item of items) {
+      const found = (item.title && item.title[0]) || "";
+      const score = item.score || 0;
+      if (score >= 45 && titleSimilar(ref.title, found)) {
+        return { status: "exists", detail: `CrossRef: ${found}` };
       }
     }
-    const oa = await verifyOpenAlexJs(ref);
-    if (oa.status === "exists") return oa;
-    const ss = await verifySemanticScholarJs(ref);
-    if (ss.status === "exists") return ss;
-    // Fallback to book sources — papers rarely live here, books often do
-    const gb = await verifyGoogleBooksJs(ref);
-    if (gb.status === "exists") return gb;
-    const apa = ref.apa_status === "suspicious" && ref.apa_issues && ref.apa_issues.length
-      ? ` · APA débil: ${ref.apa_issues.slice(0, 2).join(", ")}` : "";
-    return { status: "not_found", detail: `sin match en CrossRef/OpenAlex/Semantic Scholar/Google Books${apa}` };
+    return { status: "not_found", detail: "sin match en CrossRef" };
   } catch (e) {
-    return { status: "error", detail: e.message };
+    return { status: "error", detail: `CrossRef: ${e.name === "AbortError" ? "timeout" : e.message}` };
   }
+}
+
+async function verifyOpenLibrarySearchJs(ref) {
+  const params = new URLSearchParams({ q: ref.title, limit: "3" });
+  if (ref.author) params.set("author", ref.author);
+  const url = `https://openlibrary.org/search.json?${params.toString()}`;
+  try {
+    const r = await fetchWithTimeout(url, { headers: { Accept: "application/json" } });
+    if (!r.ok) return { status: "error", detail: `OpenLibrary HTTP ${r.status}` };
+    const d = await r.json();
+    for (const item of (d.docs || []).slice(0, 5)) {
+      const found = item.title || "";
+      const year = item.first_publish_year ? String(item.first_publish_year) : "";
+      if (titleSimilar(ref.title, found) && (!ref.year || !year || Math.abs(parseInt(year) - parseInt(ref.year)) <= 1)) {
+        const authors = (item.author_name || []).slice(0, 2).join(", ");
+        return { status: "exists", detail: `OpenLibrary${year ? ` (${year})` : ""}: ${authors ? authors + " — " : ""}${found}` };
+      }
+    }
+    return { status: "not_found", detail: "sin match en OpenLibrary" };
+  } catch (e) {
+    return { status: "error", detail: `OpenLibrary: ${e.name === "AbortError" ? "timeout" : e.message}` };
+  }
+}
+
+async function verifyArxivSearchJs(ref) {
+  // arXiv has a query API, returns Atom XML. We only need a yes/no.
+  const q = `ti:"${(ref.title || "").replace(/"/g, "")}"`;
+  const url = `https://export.arxiv.org/api/query?search_query=${encodeURIComponent(q)}&max_results=3`;
+  try {
+    const r = await fetchWithTimeout(url);
+    if (!r.ok) return { status: "error", detail: `arXiv HTTP ${r.status}` };
+    const xml = await r.text();
+    // Parse <entry><title>...</title>...</entry> blocks
+    const entries = xml.match(/<entry>[\s\S]*?<\/entry>/g) || [];
+    for (const entry of entries) {
+      const m = entry.match(/<title>([\s\S]*?)<\/title>/);
+      const found = m ? m[1].replace(/\s+/g, " ").trim() : "";
+      if (titleSimilar(ref.title, found)) {
+        return { status: "exists", detail: `arXiv: ${found}` };
+      }
+    }
+    return { status: "not_found", detail: "sin match en arXiv" };
+  } catch (e) {
+    return { status: "error", detail: `arXiv: ${e.name === "AbortError" ? "timeout" : e.message}` };
+  }
+}
+
+async function verifyCitationJs(ref) {
+  if (!ref.title) return { status: "unverifiable", detail: "" };
+
+  // Run all 6 sources sequentially. Stop at first "exists".
+  // Track errors separately so we can distinguish "all sources errored" (network down)
+  // from "every source said no match" (probably fake).
+  const sources = [
+    verifyCrossrefJs,
+    verifyOpenAlexJs,
+    verifySemanticScholarJs,
+    verifyGoogleBooksJs,
+    verifyOpenLibrarySearchJs,
+    verifyArxivSearchJs,
+  ];
+
+  let errors = 0;
+  let notFound = 0;
+  const errorDetails = [];
+
+  for (const src of sources) {
+    let res;
+    try {
+      res = await src(ref);
+    } catch (e) {
+      // Defensive — every src already has try/catch, but belt + suspenders
+      res = { status: "error", detail: `unexpected: ${e.message}` };
+    }
+    if (res.status === "exists") return res;
+    if (res.status === "error") { errors++; if (res.detail) errorDetails.push(res.detail); }
+    else if (res.status === "not_found") notFound++;
+  }
+
+  const apa = ref.apa_status === "suspicious" && ref.apa_issues && ref.apa_issues.length
+    ? ` · APA débil: ${ref.apa_issues.slice(0, 2).join(", ")}` : "";
+
+  // If every source errored, this isn't "no match" — it's a network problem.
+  if (errors === sources.length) {
+    return { status: "error", detail: `red caída o APIs no disponibles: ${errorDetails.slice(0, 2).join("; ")}` };
+  }
+  // If most errored and only 1-2 actually checked → still flag as error to be honest.
+  if (errors >= sources.length - 1 && notFound <= 1) {
+    return { status: "error", detail: `${errors}/${sources.length} fuentes con error de red: ${errorDetails.slice(0, 2).join("; ")}` };
+  }
+  // Otherwise enough sources said "no" — call it not_found.
+  return { status: "not_found", detail: `sin match en CrossRef/OpenAlex/Semantic Scholar/Google Books/OpenLibrary/arXiv${apa}` };
 }
 
 function titleSimilar(a, b) {
@@ -1397,7 +1492,7 @@ async function verifyOpenAlexJs(ref) {
   if (ref.year) params.set("filter", `from_publication_date:${ref.year}-01-01,to_publication_date:${ref.year}-12-31`);
   const url = `https://api.openalex.org/works?${params.toString()}`;
   try {
-    const r = await fetch(url, { headers: { Accept: "application/json" } });
+    const r = await fetchWithTimeout(url, { headers: { Accept: "application/json" } });
     if (!r.ok) return { status: "error", detail: `OpenAlex HTTP ${r.status}` };
     const d = await r.json();
     for (const item of (d.results || [])) {
@@ -1409,7 +1504,7 @@ async function verifyOpenAlexJs(ref) {
     }
     return { status: "not_found", detail: "sin match en OpenAlex" };
   } catch (e) {
-    return { status: "error", detail: `OpenAlex: ${e.message}` };
+    return { status: "error", detail: `OpenAlex: ${e.name === "AbortError" ? "timeout" : e.message}` };
   }
 }
 
@@ -1417,7 +1512,7 @@ async function verifySemanticScholarJs(ref) {
   const params = new URLSearchParams({ query: ref.title, limit: "3", fields: "title,year" });
   const url = `https://api.semanticscholar.org/graph/v1/paper/search?${params.toString()}`;
   try {
-    const r = await fetch(url, { headers: { Accept: "application/json" } });
+    const r = await fetchWithTimeout(url, { headers: { Accept: "application/json" } });
     if (!r.ok) return { status: "error", detail: `Semantic Scholar HTTP ${r.status}` };
     const d = await r.json();
     for (const item of (d.data || [])) {
@@ -1429,7 +1524,7 @@ async function verifySemanticScholarJs(ref) {
     }
     return { status: "not_found", detail: "sin match en Semantic Scholar" };
   } catch (e) {
-    return { status: "error", detail: `Semantic Scholar: ${e.message}` };
+    return { status: "error", detail: `Semantic Scholar: ${e.name === "AbortError" ? "timeout" : e.message}` };
   }
 }
 
@@ -1442,7 +1537,7 @@ async function verifyGoogleBooksJs(ref) {
   if (!q) return { status: "unverifiable", detail: "Google Books: sin título" };
   const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=3&printType=books`;
   try {
-    const r = await fetch(url);
+    const r = await fetchWithTimeout(url);
     if (!r.ok) return { status: "error", detail: `Google Books HTTP ${r.status}` };
     const d = await r.json();
     const items = d.items || [];
