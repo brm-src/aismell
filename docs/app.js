@@ -335,8 +335,13 @@ function applyI18n() {
 els.langSwitch.addEventListener("click", (e) => {
   const t = e.target.closest("button");
   if (!t) return;
+  const prev = UILANG;
   UILANG = t.dataset.lang;
   applyI18n();
+  // Re-translate the status line if it's currently the "ready" message
+  if (els.status && els.status.textContent.trim() === I18N[prev].ready) {
+    setStatus(I18N[UILANG].ready);
+  }
 });
 applyI18n();
 
