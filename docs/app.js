@@ -24,6 +24,8 @@ const I18N = {
       "olfateando conectores forzados…",
       "revisando calcos del inglés…",
       "detectando estructura editorial IA…",
+      "cargando modelo semántico…",
+      "midiendo cohesión entre párrafos…",
       "calculando smell…",
       "armando reporte…",
     ],
@@ -170,6 +172,8 @@ const I18N = {
       "sniffing forced connectors…",
       "checking English calques…",
       "detecting AI editorial structure…",
+      "loading semantic model…",
+      "measuring paragraph cohesion…",
       "scoring smell…",
       "building report…",
     ],
@@ -426,6 +430,18 @@ function startScanning(steps, opts = {}) {
       hitsEl.textContent = (t.scan_hits || "señales").replace("{n}", String(n));
       hitsEl.classList.toggle("alert", n > 0);
     },
+    setModelProgress(ratio, fileName) {
+      if (cancelled || !labelEl || !fillEl) return;
+      const pct = Math.round(ratio * 100);
+      const file = fileName ? ` (${fileName})` : "";
+      labelEl.textContent = (UILANG === "es"
+        ? `descargando modelo semántico${file}: ${pct}%`
+        : `downloading semantic model${file}: ${pct}%`);
+      // Visually wire model download to the bar between 70% and 92%.
+      const bar = 70 + Math.round(ratio * 22);
+      fillEl.style.width = bar + "%";
+      pctEl.textContent = bar + "%";
+    },
     async finish() {
       cancelled = true;
       clearInterval(ticker);
@@ -569,6 +585,12 @@ def extract_docx_text(input_bytes):
     extractDocxTextFn = pyodide.globals.get("extract_docx_text");
     setStatus(I18N[UILANG].ready);
     els.analyzeBtn.disabled = false;
+    // Silently start downloading the embedding model in the background
+    // so the first analysis doesn't block waiting for ~120 MB.
+    // No UI side-effects: errors are swallowed; analyze() will retry.
+    import("./embedding-analysis.js")
+      .then((m) => m.preloadEmbeddings())
+      .catch(() => {});
   } catch (err) {
     setStatus(`${I18N[UILANG].error} ${err.message}`, true);
     console.error(err);
@@ -910,6 +932,45 @@ async function analyze() {
     const res = analyzeFn(text, els.langSel.value, els.strictSel.checked);
     const obj = res.toJs({ dict_converter: Object.fromEntries });
     res.destroy();
+
+    // Carril 2 — semantic embedding analysis (browser-side, after Python core).
+    // Augments findings; never sends text out. First run downloads ~120 MB model
+    // and caches it in IndexedDB.
+    try {
+      progress.advance(7);
+      const { analyzeEmbeddings, onModelProgress } = await import("./embedding-analysis.js");
+      const offProgress = onModelProgress((evt) => {
+        if (evt && evt.status === "progress" && typeof evt.progress === "number") {
+          progress.setModelProgress(evt.progress, evt.file || "");
+        }
+      });
+      try {
+        const semantic = await analyzeEmbeddings(text, obj.lang || "es");
+        if (semantic && semantic.findings && semantic.findings.length) {
+          obj.structural = (obj.structural || []).concat(
+            semantic.findings.map((f) => ({
+              line: 0,
+              kind: f.kind,
+              severity: f.severity,
+              message: f.message,
+              suggestion: f.suggestion,
+            })),
+          );
+          // Bump score if a strong semantic signal lands.
+          const strongSemantic = semantic.findings.some((f) => f.severity >= 3);
+          if (strongSemantic && obj.score < 0.55) {
+            obj.score = Math.max(obj.score, 0.55);
+            if (obj.score >= 0.6) obj.label = obj.lang === "es" ? "alto" : "high";
+            else if (obj.score >= 0.3) obj.label = obj.lang === "es" ? "moderado" : "moderate";
+          }
+        }
+      } finally {
+        offProgress();
+      }
+    } catch (err) {
+      // Embedding layer is best-effort. Never block on it.
+      console.warn("embedding analysis failed:", err);
+    }
 
     // Live hit count once analysis is back
     const totalHits = (obj.hits ? obj.hits.length : 0) + (obj.structural ? obj.structural.length : 0);
