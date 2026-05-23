@@ -501,6 +501,54 @@ def _check_vague_sentence_stack(sentences: list[str], lang: str) -> list[Structu
     return []
 
 
+# --- LLM-essay scaffolding: meta-announce + enumeration + dramatic close ---
+_ESSAY_META_ANNOUNCE = re.compile(
+    r"(?i)\b(el\s+presente\s+(ensayo|trabajo|texto|artículo|análisis|capítulo)|"
+    r"este\s+(ensayo|trabajo|texto|artículo|análisis|capítulo)\s+(recorre|aborda|revisa|examina|propone|sostiene|argumenta|explora))\b"
+)
+_ESSAY_ENUMERATION = re.compile(
+    r"(?i)\b(tres|cuatro|cinco|seis)\s+(ejes|principios|pilares|aspectos|dimensiones|razones|elementos|factores|cuestiones|puntos|niveles|caminos|vías|claves)\b"
+)
+_ESSAY_FIRST_SECOND = re.compile(
+    r"(?i)\bprimero,\b.{1,400}\bsegundo,\b", re.DOTALL,
+)
+_ESSAY_FOLLOWING_AUTHOR = re.compile(
+    r"(?i)\bsiguiendo\s+a\s+[A-ZÁÉÍÓÚÑ]\w+"
+)
+_ESSAY_DRAMATIC_CLOSE = re.compile(
+    r"(?i)\b(ese|este|el|aquel)\s+(debate|tema|asunto|problema|dilema|paradoja)\s+(sigue|permanece|continúa|queda)\s+(muy\s+)?(abierto|vigente|sin\s+resolverse|en\s+pie)\b|"
+    r"\blo\s+que\s+(enseña|muestra|deja\s+ver|revela|sugiere|indica|importa|recuerda)\b.{1,40}\bes\s+que\b"
+)
+
+
+def _check_essay_scaffolding(text: str, lang: str) -> list[StructuralFinding]:
+    """Detect the unmistakable LLM essay shape:
+    meta-announce + numbered scaffold + impersonal voice + dramatic close.
+    When 3+ of these coexist, the text is almost certainly LLM."""
+    if lang != "es":
+        return []
+    signals = []
+    if _ESSAY_META_ANNOUNCE.search(text):
+        signals.append("meta-anuncio del ensayo")
+    if _ESSAY_ENUMERATION.search(text):
+        signals.append("enumeración numerada")
+    if _ESSAY_FIRST_SECOND.search(text):
+        signals.append("estructura primero/segundo")
+    if _ESSAY_FOLLOWING_AUTHOR.search(text):
+        signals.append("'siguiendo a X'")
+    if _ESSAY_DRAMATIC_CLOSE.search(text):
+        signals.append("cierre dramático pop-essay")
+    if len(signals) < 3:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="essay-scaffolding",
+        severity=3,
+        message=f"andamiaje completo de ensayo IA: {', '.join(signals)}",
+        suggestion="rompe el molde: empieza por una escena, dato o pregunta concreta y deja caer la estructura formal",
+    )]
+
+
 def _sentence_score(sentence: str, lang: str, role: str) -> tuple[float, list[str]]:
     reasons: list[str] = []
     score = 0.0
@@ -612,27 +660,73 @@ def analyze(
         report.structural.extend(_check_synthetic_academic_texture(text, lang))
         report.structural.extend(_check_low_specificity(text, lang))
         report.structural.extend(_check_vague_sentence_stack(sentences, lang))
+        report.structural.extend(_check_essay_scaffolding(text, lang))
     report.structural.extend(_check_rhythm(sentences))
     report.sections = _score_sections(sentences, lang)
 
-    # score
-    weight = sum(h.pattern.severity for h in report.hits)
-    weight += sum(f.severity for f in report.structural)
-    # Normalize local matches against sentence count, but do not let long uploads
-    # dilute strong whole-text structural signals into a fake-clean score.
-    normalized_score = weight / max(len(sentences), 1) / 3.0
+    # score — multi-dimensional combiner instead of flat weight/sentences
     structural_kinds = {f.kind for f in report.structural}
     severe_structural = sum(1 for f in report.structural if f.severity >= 3)
-    structural_floor = 0.0
-    if {"synthetic-academic", "low-specificity"} <= structural_kinds:
-        structural_floor = 0.35
+
+    # Dimension 1: lexical hits — saturating, not diluted by length.
+    sev3_hits = sum(1 for h in report.hits if h.pattern.severity >= 3)
+    sev2_hits = sum(1 for h in report.hits if h.pattern.severity == 2)
+    distinct_sev3_ids = len({h.pattern.id for h in report.hits if h.pattern.severity >= 3})
+    # Distinct sev-3 patterns matter more than 10 hits of the same one.
+    lex_d = min(1.0, distinct_sev3_ids * 0.18 + sev3_hits * 0.04 + sev2_hits * 0.02)
+
+    # Dimension 2: structural macro-signals (essay-scaffolding, synthetic-academic, etc.)
+    macro_kinds = {
+        "essay-scaffolding", "synthetic-academic", "low-specificity",
+        "vague-sentence-stack", "paragraph-connectors", "paragraph-symmetry",
+        "rhetorical-qa",
+    }
+    macro_present = macro_kinds & structural_kinds
+    macro_d = min(1.0, 0.30 * len(macro_present) + 0.10 * severe_structural)
+
+    # Dimension 3: rhythm/format (em-dash, ellipses, headers, emphasis, tricolon, rhythm).
+    rhythm_kinds = {
+        "em-dash", "ellipses", "section-headers", "emphasis-overload",
+        "tricolon", "rhythm",
+    }
+    rhythm_d = min(1.0, 0.18 * len(rhythm_kinds & structural_kinds))
+
+    # Dimension 4: anchor density — only fires with strong evidence,
+    # because the anchor regex is narrow (digits/dates/some pronouns) and
+    # would otherwise punish prose-heavy human writing.
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    anchor_starved = 0
+    for p in paragraphs:
+        if _word_count(p) >= 40 and len(_CONCRETE_ANCHORS.findall(p)) == 0:
+            anchor_starved += 1
+    anchor_d = 0.0
+    if len(paragraphs) >= 3 and anchor_starved >= 3:
+        ratio = anchor_starved / len(paragraphs)
+        if ratio >= 0.7:
+            anchor_d = 0.45
+        elif ratio >= 0.5:
+            anchor_d = 0.30
+
+    # Combine: 1 - prod(1 - d_i). Reacts strongly when multiple dimensions signal.
+    dims = [lex_d, macro_d, rhythm_d, anchor_d]
+    combined = 1.0
+    for d in dims:
+        combined *= (1.0 - d)
+    combined = 1.0 - combined
+
+    # Backstop floors for the strongest single signals.
+    if "essay-scaffolding" in structural_kinds and "synthetic-academic" in structural_kinds:
+        combined = max(combined, 0.70)
+    elif "essay-scaffolding" in structural_kinds:
+        combined = max(combined, 0.55)
+    elif {"synthetic-academic", "low-specificity"} <= structural_kinds:
+        combined = max(combined, 0.50)
     elif "synthetic-academic" in structural_kinds:
-        structural_floor = 0.28
+        combined = max(combined, 0.40)
     elif severe_structural >= 2:
-        structural_floor = 0.30
-    elif len(report.structural) >= 3:
-        structural_floor = 0.22
-    report.score = min(1.0, max(normalized_score, structural_floor))
+        combined = max(combined, 0.35)
+
+    report.score = min(1.0, combined)
 
     if report.score >= 0.6:
         report.severity_label = "alto" if lang == "es" else "high"

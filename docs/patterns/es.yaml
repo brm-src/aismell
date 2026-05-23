@@ -1137,3 +1137,117 @@ patterns:
     pattern: '(?i)\b(oscuro y sombrío|fuerte y contundente|rápido y ágil|inteligente, capaz y decidido|oscuro, frío y amenazante)\b'
     message: pareja/tríada de adjetivos genéricos — textura IA
     suggestion: deja el detalle más específico
+
+  # ---- LLM-essay académico (muletillas de ensayo cuidadito) ----
+  - id: es.no_solo_sino_amplio
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bno\s+(es|son|fue|fueron|se\s+trata\s+de)\s+(solo|sólo|simplemente|meramente|una\s+mera|un\s+mero)\b'
+    message: apertura "no es solo X (sino Y)" típica de IA
+    suggestion: afirma directo lo que es, sin contraste de relleno
+
+  - id: es.tres_ejes
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(tres|cuatro|cinco|seis)\s+(ejes|principios|pilares|aspectos|dimensiones|razones|elementos|factores|cuestiones|puntos|niveles|caminos|vías|claves)\b'
+    message: enumeración numerada — andamiaje típico de ensayo IA
+    suggestion: borra el conteo, ve directo a los puntos
+
+  - id: es.primero_segundo_finalmente
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bprimero,\b'
+    message: enumeración formal "primero / segundo / finalmente" — patrón IA
+    suggestion: encadena los puntos sin numerarlos
+
+  - id: es.se_argumenta
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bse\s+(argumenta|sostiene|defiende|afirma|propone|plantea|concluye|aduce)\b'
+    message: voz académica impersonal típica de IA
+    suggestion: di quién lo argumenta, o ponlo en activa
+  
+  - id: es.lo_que_X_es_que
+    kind: regex
+    severity: 3
+    pattern: '(?i)\blo\s+que\s+(enseña|muestra|deja\s+ver|revela|sugiere|indica|importa|dice|cuenta|recuerda)\b.{1,40}\bes\s+que\b'
+    message: meta-narración de ensayista IA ("lo que enseña X es que…")
+    suggestion: di la lección directa sin la cápsula meta
+
+  - id: es.siguiendo_a
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bsiguiendo\s+a\s+[A-ZÁÉÍÓÚÑ]\w+'
+    message: apelación académica formularia ("siguiendo a X")
+    suggestion: cita lo que dijo y atribúyelo, sin la fórmula
+
+  - id: es.cierre_debate_abierto
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(ese|este|el|aquel)\s+(debate|tema|asunto|problema|dilema|paradoja)\s+(sigue|permanece|continúa|queda)\s+(muy\s+)?(abierto|vigente|sin\s+resolverse|en\s+pie)\b'
+    message: cierre dramático pop-essay típico de IA
+    suggestion: borra el cierre o di la conclusión concreta
+
+  - id: es.gesto_simbolico
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(el\s+gesto|la\s+decisión|el\s+acto|la\s+elección|el\s+detalle)\s+(era|fue|resulta(ba)?|sigue\s+siendo)\s+(simbólico|simbólica|profundo|profunda|revelador|reveladora|elocuente)\b'
+    message: meta-comentario simbólico — cliché de ensayo IA
+    suggestion: muestra qué simboliza, no anuncies que es simbólico
+
+  - id: es.terminos_relativos_absolutos
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(en\s+términos\s+(relativos|absolutos|nominales|reales)|en\s+valores\s+(relativos|absolutos))\b'
+    message: calco del inglés ("in relative/absolute terms")
+    suggestion: di la cifra o el contraste concreto
+
+  - id: es.tricolon_verbal_se
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bse\s+\w{3,15},\s*se\s+\w{3,15}\s*(y|e)\s+se\s+\w{3,15}\b'
+    message: tricolon verbal "se X, se Y y se Z" — ritmo de ensayo IA
+    suggestion: rompe el tres, deja dos verbos o cuatro
+
+  - id: es.tricolon_verbal_simple
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b\w{4,15}(an|en|aban|ían|aron|ieron|ó|aba|ía),\s+\w{4,15}(an|en|aban|ían|aron|ieron|ó|aba|ía)\s+(y|e)\s+\w{4,15}(an|en|aban|ían|aron|ieron|ó|aba|ía)\b'
+    message: tricolon verbal rítmico — patrón de cierre IA
+    suggestion: rompe la simetría rítmica de tres verbos
+
+  - id: es.presente_ensayo
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(el\s+presente\s+(ensayo|trabajo|texto|artículo|capítulo|análisis)|este\s+(ensayo|trabajo|texto|artículo|capítulo|análisis)\s+(recorre|aborda|revisa|examina|propone|sostiene|argumenta))\b'
+    message: meta-anuncio de ensayo IA ("el presente ensayo recorre…")
+    suggestion: empieza por el contenido, no anuncies el ensayo
+
+  - id: es.no_es_una_mera
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bno\s+es\s+(una?\s+)?(mera|mero|simple|mero\s+asunto|mera\s+cuestión|mera\s+coincidencia)\b'
+    message: false-dichotomy típico ("no es una mera X")
+    suggestion: di lo que sí es, sin negar lo trivial
+
+  - id: es.X_abstracta_sino
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b\w+\s+abstract[ao]s?,?\s+sino\b|\b(superioridad|cuestión|razón|virtud|importancia)\s+\w*,?\s+sino\b'
+    message: estructura "X abstracta, sino Y concreta" — andamiaje IA
+    suggestion: di el Y directo
+
+  - id: es.tanto_como
+    kind: regex
+    severity: 1
+    pattern: '(?i)\btanto\s+\w+\s+como\s+\w+'
+    message: paralelismo formal "tanto X como Y" — sobreuso IA
+    suggestion: usa "X y Y" si la simetría no aporta
+
+  - id: es.puede_sintetizarse
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(puede|cabe|conviene|corresponde)\s+(resumirse|sintetizarse|destacarse|señalarse|subrayarse|afirmarse|concluirse)\b'
+    message: muletilla académica AI impersonal
+    suggestion: borra el meta-anuncio y di la idea
+
