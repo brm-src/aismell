@@ -841,13 +841,19 @@
     padding-top: 18px;
     border-top: 1px dashed var(--line);
     color: var(--dim);
-    font-size: 12px;
+    font-size: 12.5px;
     display: flex;
-    justify-content: space-between;
     flex-wrap: wrap;
-    gap: 18px;
+    justify-content: flex-end;
+    gap: 8px 18px;
   }
-  footer .links { display: flex; gap: 16px; flex-wrap: wrap; }
+  footer .links {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+  }
   footer .links a, footer .links button {
     color: var(--dim);
     background: none;
@@ -862,17 +868,19 @@
     text-underline-offset: 3px;
   }
   footer .links a:hover, footer .links button:hover { color: var(--fg); }
-  footer .donate a {
+  footer .links .kofi-link {
     color: var(--hl);
     text-decoration: none;
     border: 1px solid var(--hl);
-    padding: 6px 14px;
-    transition: background 0.1s;
+    padding: 4px 10px;
+    min-height: 28px;
   }
-  footer .donate a:hover { background: var(--hl); color: #1a1a1a; }
+  footer .links .kofi-link:hover { background: var(--hl); color: #1a1a1a; }
+  footer .links .mit { text-decoration: none; }
   footer .brand-intelecta {
     flex-basis: 100%;
     color: var(--dim);
+    text-align: right;
   }
   footer .brand-intelecta a {
     color: var(--dim);
@@ -1111,7 +1119,8 @@
     <a href="https://github.com/brm-src/aismell">github.com/brm-src/aismell</a>
     <button type="button" id="aboutBtn" data-i18n="footer_about">sobre</button>
     <button type="button" id="disclaimerBtn" data-i18n="footer_disclaimer">descargo</button>
-    <span>· MIT</span>
+    <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener" class="kofi-link">☕ ko-fi</a>
+    <span class="mit">· MIT</span>
   </div>
   <div class="brand-intelecta" data-i18n="footer_brand">
     herramienta abierta de <a href="https://intelecta.cl" target="_blank" rel="noopener"><strong>Intelecta</strong></a>
