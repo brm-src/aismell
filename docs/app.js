@@ -4,8 +4,8 @@
 const I18N = {
   es: {
     title: "aismell",
-    tagline: "Pega o sube tu archivo. Olfateamos línea por línea y marcamos lo que huele a IA. Todo pasa en tu navegador, sin servidores, sin cuentos.",
-    tagline_biblio: "También revisa si tus <strong>citas son reales o inventadas</strong> — la IA suele alucinar bibliografía.",
+    tagline: "Detector de IA y verificador de bibliografía. Pega o sube tu texto: marcamos línea por línea lo que huele a IA y cazamos las citas que la IA inventa. Todo en tu navegador.",
+    tagline_biblio: "Las citas viajan a CrossRef, OpenAlex, Google Books y otras fuentes públicas. El resto del texto se queda contigo.",
     how_title: "cómo funciona",
     how_layer1: "<strong>Patrones de frase.</strong> Muletillas, conectores forzados, calcos del inglés.<small>Regex auditable, sin caja negra.</small>",
     how_layer2: "<strong>Estructura.</strong> Encabezados decorativos, listas simétricas, fragmentos dramáticos.<small>Lo que delata un texto editorialmente \"armado\" por IA.</small>",
@@ -150,8 +150,8 @@ const I18N = {
   },
   en: {
     title: "aismell",
-    tagline: "Paste or drop your file. We sniff line by line and flag what smells AI-written. Everything runs in your browser — no servers, no tricks.",
-    tagline_biblio: "It also checks whether your <strong>citations are real or made up</strong> — AI loves to hallucinate bibliography.",
+    tagline: "AI detector and bibliography verifier. Paste or drop your text: we flag every line that smells AI-written and catch the citations AI invents. All in your browser.",
+    tagline_biblio: "Citations travel to CrossRef, OpenAlex, Google Books and other public sources. The rest of your text stays with you.",
     how_title: "how it works",
     how_layer1: "<strong>Phrase patterns.</strong> Filler phrases, forced connectors, English calques.<small>Auditable regex, no black box.</small>",
     how_layer2: "<strong>Structure.</strong> Decorative headings, symmetric lists, dramatic fragments.<small>What gives away an editorially AI-built text.</small>",
