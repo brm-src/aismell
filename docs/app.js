@@ -1244,7 +1244,7 @@ function renderBiblioRow(ref, res) {
     <div class="biblio-row ${cls}">
       <div class="biblio-icon">${icon}</div>
       <div class="biblio-body">
-        <div class="biblio-ident">[${ref.kind}] ${identHtml} <span class="biblio-line">L${ref.line}</span></div>
+        <div class="biblio-ident">[${ref.kind}] ${identHtml}</div>
         ${detail}
       </div>
     </div>`;
@@ -2055,14 +2055,33 @@ async function annotateDocx(file) {
     }
 
     // 5) Append a download bar at the top of findings — manual click, no auto-download.
+    //    If smell is high, fuse the Intelecta nudge into the same card so it
+    //    doesn't repeat the same message twice.
+    const isHighSmell = report && report.score >= 0.6;
+    const intelectaInline = isHighSmell ? `
+      <div class="docx-intelecta">
+        <span class="mark">⚠</span>
+        <span class="text">${escapeHtml(t.high_smell_note)}</span>
+        <a href="https://intelecta.cl/cotizador" target="_blank" rel="noopener">${escapeHtml(t.high_smell_cta)}</a>
+      </div>` : "";
     const downloadHtml = `
-      <div class="docx-download">
-        <div class="docx-download-text">
-          ${t.docx_done.replace("{name}", `<strong>${escapeHtml(outName)}</strong>`)}
+      <div class="docx-download${isHighSmell ? " docx-download-fused" : ""}">
+        <div class="docx-download-row">
+          <div class="docx-download-text">
+            ${t.docx_done.replace("{name}", `<strong>${escapeHtml(outName)}</strong>`)}
+          </div>
+          <a class="btn" id="docxDownloadBtn" href="${url}" download="${escapeHtml(outName)}">⬇ ${escapeHtml(t.download_docx_btn || outName)}</a>
         </div>
-        <a class="btn" id="docxDownloadBtn" href="${url}" download="${escapeHtml(outName)}">⬇ ${escapeHtml(t.download_docx_btn || outName)}</a>
+        ${intelectaInline}
       </div>`;
     els.findings.insertAdjacentHTML("afterbegin", downloadHtml);
+
+    // If we already inlined the smell nudge, remove any duplicate one
+    // that render() might have placed in the score panel.
+    if (isHighSmell) {
+      const dup = els.score.querySelector(".intelecta-nudge[data-intelecta-nudge='smell']");
+      if (dup) dup.remove();
+    }
 
     // Keep the blob alive for a couple of minutes so the user can click when ready.
     setTimeout(() => URL.revokeObjectURL(url), 120000);

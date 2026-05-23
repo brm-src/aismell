@@ -363,12 +363,15 @@
 
   /* Docx download bar (shown after annotateDocx finishes) */
   .docx-download {
+    border: 1px solid var(--hl);
+    background: rgba(245, 197, 24, 0.05);
+    margin-bottom: 14px;
+  }
+  .docx-download-row {
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 14px 18px;
-    border-bottom: 1px dashed var(--line);
-    background: rgba(245, 197, 24, 0.05);
+    padding: 14px 16px;
     flex-wrap: wrap;
   }
   .docx-download-text {
@@ -378,6 +381,34 @@
     font-size: 13px;
     line-height: 1.5;
   }
+  .docx-intelecta {
+    border-top: 1px dashed var(--hl);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    color: var(--dim);
+    font-size: 12.5px;
+  }
+  .docx-intelecta .mark {
+    color: var(--hl);
+    font-size: 15px;
+  }
+  .docx-intelecta .text {
+    flex: 1;
+    min-width: 200px;
+    color: var(--fg);
+    line-height: 1.5;
+  }
+  .docx-intelecta a {
+    color: var(--hl);
+    border: 1px solid var(--hl);
+    padding: 6px 12px;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .docx-intelecta a:hover { background: var(--hl); color: #1a1a1a; }
   .docx-download .btn {
     padding: 8px 14px;
     font-size: 13px;
