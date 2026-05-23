@@ -32,8 +32,9 @@ const I18N = {
     scan_hits: "{n} señales detectadas",
     show_more: "ver los otros {n}",
     show_less: "colapsar",
-    download_docx_btn: "descargar archivo anotado",
-    biblio_summary_label: "BIBLIOGRAFÍA",
+    download_docx_btn: "descarga el archivo comentado",
+    biblio_summary_label: "VERIFICANDO BIBLIOGRAFÍA",
+    biblio_check_running: "cruzando cada cita con CrossRef, OpenAlex, Google Books y otras fuentes públicas para confirmar si existe.",
     biblio_progress_starting: "abriendo conexión con fuentes públicas…",
     biblio_progress_checking: "olfateando: {title}",
     biblio_progress_done: "listo. cruzando datos…",
@@ -82,7 +83,7 @@ const I18N = {
     analyze: "analizar",
     clear: "limpiar",
     why: "qué hace",
-    whyText: "aismell lee tu texto y marca línea por línea tres tipos de pista: muletillas y conectores forzados, estructura editorial (encabezados, listas simétricas, fragmentos dramáticos) y ritmo plano de oraciones. Las tres juntas dan un score de 0 a 100 y un veredicto: limpio, mixto o probable IA. Si detecta bibliografía, las citas (DOI, título, autor) viajan a fuentes públicas como CrossRef, OpenAlex y Google Books para confirmar si existen. El resto del texto se queda en tu navegador.",
+    whyText: "aismell lee tu texto y marca línea por línea tres tipos de pista: muletillas y conectores forzados, estructura editorial (encabezados, listas simétricas, fragmentos dramáticos) y ritmo plano de oraciones. Las tres juntas dan un score de 0 a 100 y un veredicto: limpio, mixto o probable IA. Si detecta bibliografía, las citas se cruzan con fuentes públicas para confirmar si existen.",
     not: "qué NO hace",
     not1: "<strong>No reescribe tu texto.</strong> Tú decides qué cambiar.",
     not2: "<strong>No promete burlar detectores.</strong> Ese juego es scam.",
@@ -180,8 +181,9 @@ const I18N = {
     scan_hits: "{n} signals detected",
     show_more: "show the other {n}",
     show_less: "collapse",
-    download_docx_btn: "download annotated file",
-    biblio_summary_label: "BIBLIOGRAPHY",
+    download_docx_btn: "download commented file",
+    biblio_summary_label: "VERIFYING BIBLIOGRAPHY",
+    biblio_check_running: "cross-checking every citation against CrossRef, OpenAlex, Google Books and other public sources to confirm it exists.",
     biblio_progress_starting: "opening connection to public sources…",
     biblio_progress_checking: "sniffing: {title}",
     biblio_progress_done: "done. crunching data…",
@@ -230,7 +232,7 @@ const I18N = {
     analyze: "analyze",
     clear: "clear",
     why: "what it does",
-    whyText: "aismell reads your text and flags three kinds of cues line by line: filler phrases and forced connectors, editorial structure (decorative headings, symmetric lists, dramatic fragments) and flat sentence rhythm. Together they yield a 0-to-100 score and a verdict: clean, mixed or likely AI. If a bibliography is detected, citations (DOI, title, author) travel to public sources like CrossRef, OpenAlex and Google Books to confirm they exist. The rest of your text stays in your browser.",
+    whyText: "aismell reads your text and flags three kinds of cues line by line: filler phrases and forced connectors, editorial structure (decorative headings, symmetric lists, dramatic fragments) and flat sentence rhythm. Together they yield a 0-to-100 score and a verdict: clean, mixed or likely AI. If a bibliography is detected, citations are cross-checked against public sources to confirm they exist.",
     not: "what it does NOT do",
     not1: "<strong>Does not rewrite your text.</strong> You decide what to change.",
     not2: "<strong>Does not promise to bypass detectors.</strong> That game is a scam.",
@@ -857,11 +859,8 @@ function render(report) {
     return;
   }
 
-  // Findings — collapsed summary by default, expandable to full list.
+  // Findings — collapsed by default, expandable to full list.
   const sorted = [...report.hits].sort((a, b) => (b.severity - a.severity) || (a.line - b.line));
-  const TOP_N = 5;
-  const top = sorted.slice(0, TOP_N);
-  const rest = sorted.slice(TOP_N);
 
   // Severity counts (for the compact summary line)
   let sevHigh = 0, sevMod = 0, sevLow = 0;
@@ -876,6 +875,9 @@ function render(report) {
     else sevLow++;
   }
 
+  const detailLbl = (UILANG === "es") ? "ver detalle de hallazgos" : "show finding details";
+  const detailHide = (UILANG === "es") ? "colapsar" : "collapse";
+
   let html = `
     <div class="findings-summary">
       <span class="fs-count"><strong>${totalFindings}</strong> ${t.findings}</span>
@@ -883,27 +885,17 @@ function render(report) {
       <span class="fs-sev s-high">${sevHigh} ${t.sev_high}</span>
       <span class="fs-sev s-mod">${sevMod} ${t.sev_mod}</span>
       <span class="fs-sev s-low">${sevLow} ${t.sev_low}</span>
-    </div>`;
+    </div>
+    <details class="findings-more">
+      <summary>
+        <span class="more-show">${detailLbl}</span>
+        <span class="more-hide">${detailHide}</span>
+      </summary>
+      ${sorted.map((h) => renderHit(h, t)).join("")}
+      ${report.structural.length ? `<div class="finding" style="border-bottom: 1px dashed var(--line); color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-top: 14px;"><div></div><div>${t.structural}</div></div>` : ""}
+      ${report.structural.map((s) => renderStructural(s, t)).join("")}
+    </details>`;
 
-  if (top.length) {
-    html += top.map((h) => renderHit(h, t)).join("");
-  }
-  if (rest.length) {
-    const moreLbl = (t.show_more || "ver los otros {n}").replace("{n}", rest.length);
-    const lessLbl = t.show_less || "colapsar";
-    html += `
-      <details class="findings-more">
-        <summary>
-          <span class="more-show">${moreLbl}</span>
-          <span class="more-hide">${lessLbl}</span>
-        </summary>
-        ${rest.map((h) => renderHit(h, t)).join("")}
-      </details>`;
-  }
-  if (report.structural.length) {
-    html += `<div class="finding" style="border-bottom: 1px dashed var(--line); color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;"><div></div><div>${t.structural}</div></div>`;
-    html += report.structural.map((s) => renderStructural(s, t)).join("");
-  }
   els.findings.innerHTML = html;
   els.resultPanel.hidden = false;
 }
@@ -1067,8 +1059,8 @@ async function verifyBibliography(text) {
   }
 
   // Header + privacy note (always shown when refs are detected)
-  appendBiblio(`<div class="biblio-header">${t.biblio_summary_label} — ${t.biblio_sum_total.replace("{n}", refs.length)}</div>`);
-  appendBiblio(`<div class="biblio-note">🔒 ${t.biblio_privacy}</div>`);
+  appendBiblio(`<div class="biblio-header"><span class="biblio-emoji">📚</span> ${t.biblio_summary_label} — ${t.biblio_sum_total.replace("{n}", refs.length)}</div>`);
+  appendBiblio(`<div class="biblio-note">${t.biblio_check_running}</div>`);
 
   // Animated progress strip with per-source dots
   const progressId = "biblio-progress-" + Math.random().toString(36).slice(2, 8);
