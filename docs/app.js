@@ -32,6 +32,9 @@ const I18N = {
     show_less: "colapsar",
     download_docx_btn: "descargar archivo anotado",
     biblio_summary_label: "BIBLIOGRAFÍA",
+    biblio_progress_starting: "abriendo conexión con fuentes públicas…",
+    biblio_progress_checking: "olfateando: {title}",
+    biblio_progress_done: "listo. cruzando datos…",
     biblio_sum_total: "{n} referencias detectadas",
     biblio_sum_verified: "verificadas",
     biblio_sum_not_found: "sin coincidencia",
@@ -77,7 +80,7 @@ const I18N = {
     analyze: "analizar",
     clear: "limpiar",
     why: "qué hace",
-    whyText: "aismell lee tu texto y marca línea por línea tres tipos de pista: muletillas y conectores forzados, estructura editorial (encabezados, listas simétricas, fragmentos dramáticos) y ritmo plano de oraciones. Las tres juntas dan un score de 0 a 100 y un veredicto: limpio, mixto o probable IA. El análisis corre en tu navegador; solo si activas <strong>verificar bibliografía</strong> las citas viajan a fuentes públicas para confirmarlas.",
+    whyText: "aismell lee tu texto y marca línea por línea tres tipos de pista: muletillas y conectores forzados, estructura editorial (encabezados, listas simétricas, fragmentos dramáticos) y ritmo plano de oraciones. Las tres juntas dan un score de 0 a 100 y un veredicto: limpio, mixto o probable IA. Si detecta bibliografía, las citas (DOI, título, autor) viajan a fuentes públicas como CrossRef, OpenAlex y Google Books para confirmar si existen. El resto del texto se queda en tu navegador.",
     not: "qué NO hace",
     not1: "<strong>No reescribe tu texto.</strong> Tú decides qué cambiar.",
     not2: "<strong>No promete burlar detectores.</strong> Ese juego es scam.",
@@ -175,6 +178,9 @@ const I18N = {
     show_less: "collapse",
     download_docx_btn: "download annotated file",
     biblio_summary_label: "BIBLIOGRAPHY",
+    biblio_progress_starting: "opening connection to public sources…",
+    biblio_progress_checking: "sniffing: {title}",
+    biblio_progress_done: "done. crunching data…",
     biblio_sum_total: "{n} references detected",
     biblio_sum_verified: "verified",
     biblio_sum_not_found: "no match",
@@ -220,7 +226,7 @@ const I18N = {
     analyze: "analyze",
     clear: "clear",
     why: "what it does",
-    whyText: "aismell reads your text and flags three kinds of cues line by line: filler phrases and forced connectors, editorial structure (decorative headings, symmetric lists, dramatic fragments) and flat sentence rhythm. The three combined produce a 0–100 score and a verdict: clean, mixed or likely AI. Analysis runs in your browser; only if you enable <strong>verify bibliography</strong> do the citations travel to public sources to be confirmed.",
+    whyText: "aismell reads your text and flags three kinds of cues line by line: filler phrases and forced connectors, editorial structure (decorative headings, symmetric lists, dramatic fragments) and flat sentence rhythm. Together they yield a 0-to-100 score and a verdict: clean, mixed or likely AI. If a bibliography is detected, citations (DOI, title, author) travel to public sources like CrossRef, OpenAlex and Google Books to confirm they exist. The rest of your text stays in your browser.",
     not: "what it does NOT do",
     not1: "<strong>Does not rewrite your text.</strong> You decide what to change.",
     not2: "<strong>Does not promise to bypass detectors.</strong> That game is a scam.",
@@ -295,8 +301,8 @@ const els = {
   input: document.getElementById("input"),
   langSel: document.getElementById("langSel"),
   strictSel: document.getElementById("strictSel"),
-  biblioSel: document.getElementById("biblioSel"),
-  biblioInlineNote: document.getElementById("biblioInlineNote"),
+  biblioSel: null,
+  biblioInlineNote: null,
   analyzeBtn: document.getElementById("analyzeBtn"),
   clearBtn: document.getElementById("clearBtn"),
   fileBtn: document.getElementById("fileBtn"),
@@ -334,15 +340,9 @@ els.langSwitch.addEventListener("click", (e) => {
 });
 applyI18n();
 
-// Show/hide inline biblio privacy note when checkbox toggles
+// Biblio checkbox removed (now always-on); leave dead handler block as no-op
 if (els.biblioSel && els.biblioInlineNote) {
-  const syncBiblioNote = () => {
-    const on = !!els.biblioSel.checked;
-    els.biblioInlineNote.hidden = !on;
-    els.biblioInlineNote.classList.toggle("visible", on);
-  };
-  els.biblioSel.addEventListener("change", syncBiblioNote);
-  syncBiblioNote();
+  // intentionally empty — checkbox no longer exists
 }
 
 // ---------- Pyodide ----------
@@ -917,8 +917,9 @@ async function analyze() {
 
     render(obj);
 
-    // Optional: verify bibliography (network call to CrossRef/arXiv).
-    if (els.biblioSel && els.biblioSel.checked && extractRefsFn) {
+    // Auto-run bibliography verification on every analysis (no opt-in needed).
+    // verifyBibliography skips itself if no references are detected.
+    if (extractRefsFn) {
       await verifyBibliography(text);
     }
 
@@ -995,17 +996,36 @@ async function verifyBibliography(text) {
   const refs = refsPy.toJs({ dict_converter: Object.fromEntries });
   refsPy.destroy();
   if (!refs || refs.length === 0) {
-    appendBiblio(`<div class="biblio-empty">${t.biblio_none}</div>`);
+    // No references in the text — silently skip. No need to show "biblio: none".
     return;
   }
 
-  // Header + privacy note
+  // Header + privacy note (always shown when refs are detected)
   appendBiblio(`<div class="biblio-header">${t.biblio_summary_label} — ${t.biblio_sum_total.replace("{n}", refs.length)}</div>`);
-  appendBiblio(`<div class="biblio-note">${t.biblio_privacy}</div>`);
+  appendBiblio(`<div class="biblio-note">🔒 ${t.biblio_privacy}</div>`);
 
-  // Live progress placeholder
-  appendBiblio(`<div id="biblio-progress" class="biblio-progress">verificando 0 / ${refs.length}…</div>`);
-  const progEl = () => document.getElementById("biblio-progress");
+  // Animated progress strip with per-source dots
+  const progressId = "biblio-progress-" + Math.random().toString(36).slice(2, 8);
+  appendBiblio(`
+    <div id="${progressId}" class="biblio-progress-box">
+      <div class="biblio-progress-bar"><div class="biblio-progress-fill" style="width:0%"></div></div>
+      <div class="biblio-progress-meta">
+        <span class="biblio-progress-count">0 / ${refs.length}</span>
+        <span class="biblio-progress-current">${t.biblio_progress_starting}</span>
+      </div>
+    </div>`);
+  const box = document.getElementById(progressId);
+  const fill = box && box.querySelector(".biblio-progress-fill");
+  const countEl = box && box.querySelector(".biblio-progress-count");
+  const currentEl = box && box.querySelector(".biblio-progress-current");
+
+  const updateProgress = (done, label) => {
+    if (!box) return;
+    const pct = Math.round((done / refs.length) * 100);
+    if (fill) fill.style.width = pct + "%";
+    if (countEl) countEl.textContent = `${done} / ${refs.length}`;
+    if (currentEl && label) currentEl.textContent = label;
+  };
 
   const results = [];
   const verifyOne = async (r) => {
@@ -1022,12 +1042,18 @@ async function verifyBibliography(text) {
   const CONCURRENCY = 4;
   for (let i = 0; i < refs.length; i += CONCURRENCY) {
     const batch = refs.slice(i, i + CONCURRENCY);
+    // Show the title of the first ref of the current batch as preview
+    const preview = (batch[0].title || batch[0].identifier || batch[0].raw || "").slice(0, 60);
+    updateProgress(i, t.biblio_progress_checking.replace("{title}", preview || "…"));
     const done = await Promise.all(batch.map(verifyOne));
     results.push(...done);
-    if (progEl()) progEl().textContent = `verificando ${Math.min(i + batch.length, refs.length)} / ${refs.length}…`;
-    await sleep(80);
+    updateProgress(Math.min(i + batch.length, refs.length), preview ? t.biblio_progress_checking.replace("{title}", preview) : "");
+    await sleep(60);
   }
-  if (progEl()) progEl().remove();
+  updateProgress(refs.length, t.biblio_progress_done);
+  // Brief pause so the user sees the bar fill, then collapse
+  await sleep(400);
+  if (box) box.remove();
 
   // Summary stats
   const counts = { exists: 0, not_found: 0, unverifiable: 0, error: 0 };
@@ -1714,7 +1740,7 @@ async function annotateDocx(file) {
     setStatus(null);
 
     // Optional: bibliography verification on the extracted text
-    if (extractedText.trim() && els.biblioSel && els.biblioSel.checked && extractRefsFn) {
+    if (extractedText.trim() && extractRefsFn) {
       await verifyBibliography(extractedText);
     }
 

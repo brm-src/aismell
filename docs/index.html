@@ -407,6 +407,50 @@
     font-size: 12px;
     font-style: italic;
   }
+  .biblio-progress-box {
+    padding: 14px 18px;
+    border-bottom: 1px dashed var(--line);
+    background: rgba(232, 197, 71, 0.04);
+  }
+  .biblio-progress-bar {
+    width: 100%;
+    height: 3px;
+    background: var(--line);
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .biblio-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--hl), #f0d160);
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 6px rgba(232, 197, 71, 0.4);
+  }
+  .biblio-progress-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--dim);
+  }
+  .biblio-progress-count {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--fg);
+    flex-shrink: 0;
+  }
+  .biblio-progress-current {
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+    animation: biblio-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes biblio-pulse {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+  }
   .biblio-download {
     padding: 12px 18px;
     border-bottom: 1px dashed var(--line);
@@ -916,12 +960,6 @@
         <span data-i18n="strict">solo alta confianza</span>
         <span class="info" data-i18n-tip="strictTip" data-tip="Filtra los avisos dudosos. Solo te muestra lo que casi seguro es IA.">i</span>
       </label>
-      <label>
-        <input type="checkbox" id="biblioSel">
-        <span data-i18n="biblio">verificar bibliografía</span>
-        <span class="info" data-i18n-tip="biblioTip" data-tip="Busca las referencias del texto (DOIs, papers, libros, citas) y verifica si existen en CrossRef, OpenAlex, Google Books y otras fuentes. La IA suele inventar bibliografía.">i</span>
-      </label>
-      <p class="biblio-inline-note" id="biblioInlineNote" data-i18n="biblio_note_inline" hidden>Al activar esto, solo las citas (DOI / título / autor / arXiv ID) se consultan en CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books y OpenLibrary. El resto del texto no sale de tu navegador.</p>
       <div class="right">
         <input type="file" id="fileInput" accept=".txt,.md,.docx" style="display:none">
         <button class="btn ghost" id="fileBtn" data-i18n="upload">subir archivo</button>
@@ -940,7 +978,7 @@
   <div class="about">
     <div class="about-col">
       <h2 data-i18n="why">qué hace</h2>
-      <p data-i18n="whyText">Marca línea por línea tres tipos de pista: muletillas y conectores forzados, estructura editorial (encabezados, listas simétricas, fragmentos dramáticos) y ritmo plano de oraciones. Las tres juntas dan un score de 0 a 100 y un veredicto: limpio, mixto o probable IA. El análisis corre en tu navegador; solo si activas <strong>verificar bibliografía</strong> las citas viajan a fuentes públicas para confirmarlas.</p>
+      <p data-i18n="whyText">Marca línea por línea tres tipos de pista: muletillas y conectores forzados, estructura editorial (encabezados, listas simétricas, fragmentos dramáticos) y ritmo plano. Si detecta bibliografía, verifica cada cita en CrossRef, OpenAlex, Google Books y otras fuentes públicas para cazar las que la IA inventa. El resto del texto se queda en tu navegador.</p>
     </div>
 
     <div class="about-col">
