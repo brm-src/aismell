@@ -135,6 +135,19 @@ const I18N = {
     biblio_cta_btn: "revisión académica con Intelecta",
     footer_brand: "herramienta abierta de <a href=\"https://intelecta.cl\" target=\"_blank\" rel=\"noopener\"><strong>Intelecta</strong></a>",
     footer_disclaimer: "descargo",
+    footer_about: "sobre",
+    about_title: "sobre mí y sobre el sitio",
+    about_body: `
+      <p>Eterno estudiante. Lector que entiende el 50% de lo que lee y vuelve igual al mismo libro un par de años después como si fuera otro. Saco fotos cuando puedo, escribo cuando me sale. Asesoro a tesistas en redacción y corrección de estilo. Si necesitas ese tipo de apoyo, los servicios profesionales están en <a href="https://intelecta.cl" target="_blank" rel="noopener">intelecta.cl</a>.</p>
+
+      <h3>creé esto porque la IA no sabe escribir</h3>
+      <p><strong>Técnicamente:</strong> los modelos de lenguaje predicen, token a token, cuál es la palabra estadísticamente más probable dado un contexto. No razonan, no tienen criterio, no tienen voz. Es estadística aplicada a secuencias de texto, y el resultado suena fluido porque fluidez es exactamente lo que el modelo optimiza.</p>
+      <p><strong>En la práctica:</strong> los patrones son reconocibles. Las frases que abren con "Es fundamental…", los listados de tres puntos, las conclusiones que no concluyen nada, el entusiasmo genérico sobre cualquier tema. Y eso sin contar la alucinación: la IA inventa citas, autores y datos con una confianza impecable.</p>
+
+      <p>aismell no reescribe tu texto. Marca lo que no suena humano y te da algo concreto sobre lo que trabajar. La voz sigue siendo tuya.</p>
+
+      <p class="about-foot">Si te sirvió, <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener">considera donarme</a> ☕<br>Escríbeme a <code>[tu@correo]</code></p>
+    `,
     disc_title: "descargo de responsabilidad",
     disc_body: `
       <h3>qué hace aismell</h3>
@@ -289,6 +302,19 @@ const I18N = {
     biblio_cta_btn: "academic review by Intelecta",
     footer_brand: "an open tool by <a href=\"https://intelecta.cl\" target=\"_blank\" rel=\"noopener\"><strong>Intelecta</strong></a>",
     footer_disclaimer: "disclaimer",
+    footer_about: "about",
+    about_title: "about me and this site",
+    about_body: `
+      <p>Eternal student. Reader who understands maybe 50% of what he reads and comes back to the same book a couple of years later as if it were a different one. I take photos when I can, I write when it comes. I help thesis writers with editing and style. If you need that kind of support, the professional services are at <a href="https://intelecta.cl" target="_blank" rel="noopener">intelecta.cl</a>.</p>
+
+      <h3>I made this because AI can't write</h3>
+      <p><strong>Technically:</strong> language models predict, token by token, the statistically most likely next word given a context. They don't reason, they don't have judgment, they don't have a voice. It's statistics applied to text sequences, and the result sounds fluent because fluency is exactly what the model optimizes for.</p>
+      <p><strong>In practice:</strong> the patterns are recognizable. Sentences that open with "It's essential…", three-point lists, conclusions that don't conclude anything, the generic enthusiasm about any topic. And that's without counting hallucination: AI invents citations, authors and data with impeccable confidence.</p>
+
+      <p>aismell doesn't rewrite your text. It flags what doesn't sound human and gives you something concrete to work on. The voice is still yours.</p>
+
+      <p class="about-foot">If it helped, <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener">consider donating</a> ☕<br>Write to me at <code>[your@email]</code></p>
+    `,
     disc_title: "disclaimer",
     disc_body: `
       <h3>what aismell does</h3>
@@ -1891,8 +1917,23 @@ disclaimerModal.querySelector(".close").addEventListener("click", closeDisclaime
 disclaimerModal.addEventListener("click", (e) => {
   if (e.target === disclaimerModal) closeDisclaimer();
 });
+
+// ---------- About modal ----------
+const aboutModal = document.getElementById("aboutModal");
+const aboutBtn = document.getElementById("aboutBtn");
+function openAbout() { aboutModal.hidden = false; document.body.style.overflow = "hidden"; }
+function closeAbout() { aboutModal.hidden = true; document.body.style.overflow = ""; }
+if (aboutBtn) aboutBtn.addEventListener("click", openAbout);
+if (aboutModal) {
+  aboutModal.querySelector(".close").addEventListener("click", closeAbout);
+  aboutModal.addEventListener("click", (e) => {
+    if (e.target === aboutModal) closeAbout();
+  });
+}
+
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !disclaimerModal.hidden) closeDisclaimer();
+  if (e.key === "Escape" && aboutModal && !aboutModal.hidden) closeAbout();
 });
 
 // ---------- Donation nudge (non-invasive) ----------

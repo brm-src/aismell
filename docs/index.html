@@ -969,6 +969,20 @@
   }
   .modal p { color: var(--dim); margin-top: 8px; }
   .modal strong { color: var(--fg); }
+  .modal code {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    padding: 1px 6px;
+    color: var(--hl);
+    font-size: 12.5px;
+  }
+  .modal .about-foot {
+    margin-top: 22px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--line);
+    color: var(--dim);
+    font-size: 12.5px;
+  }
   .modal .close {
     position: absolute;
     top: 14px;
@@ -1095,6 +1109,7 @@
 <footer>
   <div class="links">
     <a href="https://github.com/brm-src/aismell">github.com/brm-src/aismell</a>
+    <button type="button" id="aboutBtn" data-i18n="footer_about">sobre</button>
     <button type="button" id="disclaimerBtn" data-i18n="footer_disclaimer">descargo</button>
     <span>· MIT</span>
   </div>
@@ -1102,6 +1117,14 @@
     herramienta abierta de <a href="https://intelecta.cl" target="_blank" rel="noopener"><strong>Intelecta</strong></a>
   </div>
 </footer>
+
+<div class="modal-backdrop" id="aboutModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+    <button type="button" class="close" aria-label="cerrar">×</button>
+    <h2 id="aboutTitle" data-i18n="about_title">sobre mí y sobre el sitio</h2>
+    <div data-i18n="about_body"></div>
+  </div>
+</div>
 
 <div class="modal-backdrop" id="disclaimerModal" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
