@@ -14,6 +14,28 @@
     "text": "Nuestra solución integral permite optimizar procesos y aprovechar al máximo el potencial de cada equipo. Además, facilita la interacción entre áreas clave mediante capacidades robustas y sin fisuras. En este sentido, se consolida como una herramienta relevante para transformar la experiencia del usuario y generar valor sostenible. El futuro se ve prometedor para quienes adoptan este nuevo paradigma."
   },
   {
+    "id": "en_stop_slop_cleaned_tells",
+    "lang": "en",
+    "label": "ai",
+    "min_score": 0.60,
+    "text": "Here's the thing: building products is hard. Not because the technology is complex. Because people are complex. Let that sink in. The complaint becomes a fix. The decision emerges after the conversation moves toward alignment. The data tells us the market rewards clarity. Mistakes were made. The decision was reached. What makes this hard is trust. Why does it matter? Because teams hide confusion. How this changes work is simple."
+  },
+  {
+    "id": "es_stop_slop_cleaned_tells",
+    "lang": "es",
+    "label": "ai",
+    "min_score": 0.60,
+    "text": "La verdad es que construir productos es difícil. No porque la tecnología sea compleja. Porque las personas son complejas. Que eso decante. La queja se convierte en una mejora. La decisión emerge y la conversación se mueve hacia la claridad. Los datos nos dicen que el mercado premia la confianza. Se cometieron errores. La decisión fue tomada. Qué hace esto difícil es la confianza. Por qué importa? Porque los equipos esconden confusión. Cómo cambia el trabajo es simple."
+  },
+  {
+    "id": "en_quoted_examples_should_stay_clean",
+    "lang": "en",
+    "label": "human",
+    "min_score": 0.0,
+    "max_score": 0.25,
+    "text": "This note explains which phrases the reviewer should avoid.\n\n> It is worth noting that we should delve into the complexities.\n\n```\nHope this helps. A rich tapestry stands as a testament to progress.\n```\n\nAvoid those phrases in drafts and replace them with plain claims."
+  },
+  {
     "id": "es_human_messy_note",
     "lang": "es",
     "label": "human",

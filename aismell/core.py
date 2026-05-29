@@ -7,7 +7,6 @@ import re
 import statistics
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 try:
     import yaml
@@ -131,6 +130,61 @@ def split_sentences(text: str) -> list[str]:
     return [s.strip() for s in _SENT_SPLIT.split(text) if s.strip()]
 
 
+def _authorial_lines(lines: list[str]) -> list[tuple[int, str]]:
+    """Return lines that should count as the author's prose.
+
+    aismell often documents bad phrases as examples. Code blocks,
+    blockquotes, and Markdown tables are examples more often than author voice,
+    so lexical hits there should not poison the score.
+    """
+    out: list[tuple[int, str]] = []
+    in_fence = False
+    for i, line in enumerate(lines, start=1):
+        stripped = line.strip()
+        if stripped.startswith(("```", "~~~")):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if stripped.startswith(">"):
+            continue
+        if stripped.startswith("|") and stripped.endswith("|"):
+            continue
+        out.append((i, line))
+    return out
+
+
+def _inside_spans(line: str, start: int, end: int, delimiters: list[tuple[str, str]]) -> bool:
+    for opener, closer in delimiters:
+        pos = 0
+        while True:
+            left = line.find(opener, pos)
+            if left == -1:
+                break
+            right = line.find(closer, left + len(opener))
+            if right == -1:
+                break
+            span_start = left + len(opener)
+            span_end = right
+            if span_start <= start and end <= span_end:
+                return True
+            pos = right + len(closer)
+    return False
+
+
+def _match_is_quoted_example(line: str, start: int, end: int) -> bool:
+    """Skip inline examples like *"delve into"* or `hope this helps`.
+
+    This keeps documentation of slop from being scored as slop.
+    """
+    return _inside_spans(line, start, end, [
+        ("`", "`"),
+        ('"', '"'),
+        ("“", "”"),
+        ("*", "*"),
+    ])
+
+
 # ---------- structural checks ----------
 
 def _check_em_dashes(text: str, lines: list[str]) -> list[StructuralFinding]:
@@ -212,15 +266,27 @@ def _check_ellipses(text: str, lang: str) -> list[StructuralFinding]:
 
 
 def _check_section_headers(text: str, lang: str) -> list[StructuralFinding]:
-    """Google Doc AI-isms: labeled sections in otherwise prose-like text."""
+    """Google Doc AI-isms: generic essay/chatbot headings.
+
+    Markdown documentation legitimately has many headings. Flag the LLM-ish
+    shape only when the heading labels themselves are generic response scaffolds.
+    """
+    generic = re.compile(
+        r"^(understanding|overview|key takeaways|the problem|the solution|"
+        r"moving forward|conclusion|summary|contexto|introducción|desarrollo|"
+        r"conclusión|resumen|puntos clave|el problema|la solución)\b",
+        re.I,
+    )
     headers = 0
     for ln in text.splitlines():
         s = ln.strip()
+        if not s:
+            continue
         if re.match(r"^#{1,4}\s+\S", s):
-            headers += 1
-        elif re.match(r"^(understanding|overview|key takeaways|the problem|the solution|moving forward|conclusion|summary)\b", s, re.I):
-            headers += 1
-        elif re.match(r"^(contexto|introducción|desarrollo|conclusión|resumen|puntos clave|el problema|la solución)\b", s, re.I):
+            label = re.sub(r"^#{1,4}\s+", "", s).strip()
+            if generic.match(label):
+                headers += 1
+        elif generic.match(s):
             headers += 1
     if headers < 3:
         return []
@@ -229,23 +295,44 @@ def _check_section_headers(text: str, lang: str) -> list[StructuralFinding]:
         kind="section-headers",
         severity=2,
         message=(
-            f"{headers} encabezados de sección — formato de respuesta IA"
+            f"{headers} encabezados genéricos — formato de respuesta IA"
             if lang == "es" else
-            f"{headers} section headers — AI answer formatting"
+            f"{headers} generic section headers — AI answer formatting"
         ),
         suggestion=(
-            "si es prosa, deja que los párrafos hagan el trabajo"
+            "reemplaza los rótulos genéricos por subtítulos específicos o por prosa"
             if lang == "es" else
-            "if this is prose, let paragraphs do the work"
+            "replace generic labels with specific headings or prose"
         ),
     )]
 
 
 def _check_emphasis_overload(text: str, lang: str) -> list[StructuralFinding]:
-    """Google Doc AI-isms: excessive markdown emphasis."""
-    bold = len(re.findall(r"\*\*[^*]+\*\*", text))
-    ital = len(re.findall(r"(?<!\*)\*[^*\n]+\*(?!\*)", text))
-    total = bold + ital
+    """Google Doc AI-isms: excessive markdown emphasis in prose.
+
+    README-style bold labels ("**pipx:**", "**1. Phrase patterns.**") are
+    structure, not breathless emphasis, so they do not count here.
+    """
+    total = 0
+    emphasis_rx = re.compile(r"\*\*([^*]+)\*\*|(?<!\*)\*([^*\n]+)\*(?!\*)")
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        label_prefix = re.match(r"^(?:[-*•]\s+|\d+\.\s+)?", stripped)
+        label_start = label_prefix.end() if label_prefix else 0
+        for match in emphasis_rx.finditer(stripped):
+            content = (match.group(1) or match.group(2) or "").strip()
+            tail = stripped[match.end():].lstrip()
+            span_starts_label = match.start() == label_start
+            label_like = span_starts_label and (
+                content.endswith((":", "."))
+                or re.match(r"\d+\.\s+.+", content)
+                or tail.startswith((":", "."))
+            )
+            if label_like:
+                continue
+            total += 1
     if total < 4:
         return []
     return [StructuralFinding(
@@ -305,6 +392,117 @@ def _check_rhetorical_qa(sentences: list[str], lang: str) -> list[StructuralFind
             "turn the question-answer pair into a statement"
         ),
     )]
+
+
+def _check_binary_reframes(text: str, lang: str) -> list[StructuralFinding]:
+    if lang == "es":
+        patterns = [
+            r"\bno\s+porque\b[^.!?]{1,160}[.!?]\s*porque\b",
+            r"\bno\s+es\s+el\s+problema\b[^.!?]{0,160}[.!?]\s*[^.!?]{0,80}\b(sí|lo\s+es)\b",
+            r"\bla\s+respuesta\s+no\s+es\b[^.!?]{1,120}[.!?]\s*\bes\b",
+            r"\bparece\b[^.!?]{1,160}[.!?]\s*\ben\s+realidad\b",
+            r"\bno\b[^.!?]{1,120}[.!?]\s*\bsino\b",
+        ]
+        msg = "contraste binario partido — reencuadre mecánico típico de IA"
+        suggestion = "afirma el punto fuerte directo, sin la pista falsa previa"
+    else:
+        patterns = [
+            r"\bnot\s+because\b[^.!?]{1,160}[.!?]\s*because\b",
+            r"\b(isn['’]?t|is\s+not|aren['’]?t|are\s+not)\s+the\s+problem\b[^.!?]{0,160}[.!?]\s*[^.!?]{0,80}\b(is|are)\b",
+            r"\bthe\s+answer\s+(isn['’]?t|is\s+not)\b[^.!?]{1,120}[.!?]\s*\bit['’]?s\b",
+            r"\bit\s+feels\s+like\b[^.!?]{1,160}[.!?]\s*\b(it['’]?s\s+actually|actually)\b",
+            r"\bnot\b[^.!?]{1,120}[.!?]\s*\bbut\b",
+        ]
+        msg = "split binary reframe — mechanical AI contrast"
+        suggestion = "state the stronger point directly, without the decoy"
+    if any(re.search(p, text, re.IGNORECASE | re.DOTALL) for p in patterns):
+        return [StructuralFinding(line=0, kind="binary-reframe", severity=3, message=msg, suggestion=suggestion)]
+    return []
+
+
+def _check_negative_listing(text: str, lang: str) -> list[StructuralFinding]:
+    if lang == "es":
+        pattern = r"\bno\s+(era|fue|es)\b[^.!?]{1,120}[.!?]\s*\bno\s+(era|fue|es)\b[^.!?]{1,120}[.!?]\s*\b(era|fue|es)\b"
+        msg = "listado negativo antes del punto — acumulación dramática de IA"
+        suggestion = "di qué era, sin runway de negaciones"
+    else:
+        pattern = r"\bnot\s+(a|an|the)?\b[^.!?]{1,120}[.!?]\s*\bnot\s+(a|an|the)?\b[^.!?]{1,120}[.!?]\s*\b(a|an|the|it\s+was)\b"
+        msg = "negative listing before the point — AI dramatic buildup"
+        suggestion = "state what it is, without the runway"
+    if re.search(pattern, text, re.IGNORECASE | re.DOTALL):
+        return [StructuralFinding(line=0, kind="negative-listing", severity=2, message=msg, suggestion=suggestion)]
+    return []
+
+
+def _check_false_agency(text: str, lang: str) -> list[StructuralFinding]:
+    if lang == "es":
+        patterns = [
+            r"\bla\s+decisi[oó]n\s+emerge\b",
+            r"\blos\s+datos\s+nos\s+dicen\b",
+            r"\bel\s+mercado\s+premia\b",
+            r"\bla\s+conversaci[oó]n\s+se\s+mueve\s+hacia\b",
+            r"\bla\s+cultura\s+cambia\b",
+            r"\bla\s+queja\s+se\s+convierte\s+en\b",
+        ]
+        msg = "cosas abstractas actúan como personas — falsa agencia de IA"
+        suggestion = "nombra quién decide, lee, cambia o arregla"
+    else:
+        patterns = [
+            r"\bthe\s+decision\s+emerges\b",
+            r"\bthe\s+data\s+tells\s+us\b",
+            r"\bthe\s+market\s+rewards\b",
+            r"\bthe\s+conversation\s+moves\s+toward\b",
+            r"\bthe\s+culture\s+shifts\b",
+            r"\bthe\s+complaint\s+becomes\s+a\s+fix\b",
+        ]
+        msg = "abstract things act like people — false AI agency"
+        suggestion = "name who decides, reads, changes, or fixes it"
+    hits = sum(1 for p in patterns if re.search(p, text, re.IGNORECASE))
+    if hits >= 1:
+        sev = 3 if hits >= 2 else 2
+        return [StructuralFinding(line=0, kind="false-agency", severity=sev, message=f"{hits} casos: {msg}", suggestion=suggestion)]
+    return []
+
+
+def _check_passive_voice(text: str, lang: str) -> list[StructuralFinding]:
+    if lang == "es":
+        patterns = [
+            r"\bse\s+cometieron\s+errores\b",
+            r"\bla\s+decisi[oó]n\s+fue\s+tomada\b",
+            r"\bel\s+producto\s+fue\s+creado\b",
+            r"\bse\s+cree\s+que\b",
+        ]
+        msg = "voz pasiva evasiva — esconde quién hizo qué"
+        suggestion = "pon a la persona o equipo como sujeto"
+    else:
+        patterns = [
+            r"\bmistakes\s+were\s+made\b",
+            r"\bthe\s+decision\s+was\s+reached\b",
+            r"\bthe\s+product\s+was\s+created\b",
+            r"\bit\s+is\s+believed\s+that\b",
+        ]
+        msg = "evasively passive voice — hides who did what"
+        suggestion = "put the person or team in the subject slot"
+    hits = sum(1 for p in patterns if re.search(p, text, re.IGNORECASE))
+    if hits >= 1:
+        sev = 3 if hits >= 2 else 2
+        return [StructuralFinding(line=0, kind="passive-voice", severity=sev, message=f"{hits} casos: {msg}", suggestion=suggestion)]
+    return []
+
+
+def _check_wh_starters(sentences: list[str], lang: str) -> list[StructuralFinding]:
+    if lang == "es":
+        rx = re.compile(r"^(qu[eé]|por\s+qu[eé]|c[oó]mo|cu[aá]ndo|d[oó]nde)\b", re.IGNORECASE)
+        msg = "arranques interrogativos repetidos — molde de explicación IA"
+        suggestion = "abre con sujetos y acciones, no con pregunta-retórica en cadena"
+    else:
+        rx = re.compile(r"^(what|why|how|when|where|which|who)\b", re.IGNORECASE)
+        msg = "repeated Wh- starters — AI explainer template"
+        suggestion = "lead with subjects and actions, not stacked rhetorical prompts"
+    hits = sum(1 for s in sentences if rx.search(s.strip()))
+    if hits >= 2:
+        return [StructuralFinding(line=0, kind="wh-starters", severity=2, message=f"{hits} casos: {msg}", suggestion=suggestion)]
+    return []
 
 
 _PARAGRAPH_CONNECTORS_ES = re.compile(
@@ -626,17 +824,21 @@ def analyze(
     patterns = load_patterns(lang)
 
     lines = text.splitlines()
-    sentences = split_sentences(text)
+    authorial = _authorial_lines(lines)
+    authorial_text = "\n".join(line for _, line in authorial)
+    sentences = split_sentences(authorial_text)
     report = Report(sentences=len(sentences))
 
     min_severity = 2 if strict else 1
 
     # phrase / regex hits, line-anchored
-    for i, line in enumerate(lines, start=1):
+    for i, line in authorial:
         for p in patterns:
             if p.severity < min_severity:
                 continue
             for m in p.compile().finditer(line):
+                if _match_is_quoted_example(line, m.start(), m.end()):
+                    continue
                 report.hits.append(Hit(
                     line=i,
                     col=m.start(),
@@ -648,19 +850,24 @@ def analyze(
 
     # structural checks
     if not strict:
-        report.structural.extend(_check_em_dashes(text, lines))
-        report.structural.extend(_check_list_density(text))
-        report.structural.extend(_check_ellipses(text, lang))
-        report.structural.extend(_check_section_headers(text, lang))
-        report.structural.extend(_check_emphasis_overload(text, lang))
+        report.structural.extend(_check_em_dashes(authorial_text, [line for _, line in authorial]))
+        report.structural.extend(_check_list_density(authorial_text))
+        report.structural.extend(_check_ellipses(authorial_text, lang))
+        report.structural.extend(_check_section_headers(authorial_text, lang))
+        report.structural.extend(_check_emphasis_overload(authorial_text, lang))
         report.structural.extend(_check_tricolon(sentences))
         report.structural.extend(_check_rhetorical_qa(sentences, lang))
-        report.structural.extend(_check_paragraph_connectors(text, lang))
-        report.structural.extend(_check_paragraph_symmetry(text, lang))
-        report.structural.extend(_check_synthetic_academic_texture(text, lang))
-        report.structural.extend(_check_low_specificity(text, lang))
+        report.structural.extend(_check_binary_reframes(authorial_text, lang))
+        report.structural.extend(_check_negative_listing(authorial_text, lang))
+        report.structural.extend(_check_false_agency(authorial_text, lang))
+        report.structural.extend(_check_passive_voice(authorial_text, lang))
+        report.structural.extend(_check_wh_starters(sentences, lang))
+        report.structural.extend(_check_paragraph_connectors(authorial_text, lang))
+        report.structural.extend(_check_paragraph_symmetry(authorial_text, lang))
+        report.structural.extend(_check_synthetic_academic_texture(authorial_text, lang))
+        report.structural.extend(_check_low_specificity(authorial_text, lang))
         report.structural.extend(_check_vague_sentence_stack(sentences, lang))
-        report.structural.extend(_check_essay_scaffolding(text, lang))
+        report.structural.extend(_check_essay_scaffolding(authorial_text, lang))
     report.structural.extend(_check_rhythm(sentences))
     report.sections = _score_sections(sentences, lang)
 
@@ -679,7 +886,8 @@ def analyze(
     macro_kinds = {
         "essay-scaffolding", "synthetic-academic", "low-specificity",
         "vague-sentence-stack", "paragraph-connectors", "paragraph-symmetry",
-        "rhetorical-qa",
+        "rhetorical-qa", "binary-reframe", "negative-listing", "false-agency",
+        "passive-voice", "wh-starters",
     }
     macro_present = macro_kinds & structural_kinds
     macro_d = min(1.0, 0.30 * len(macro_present) + 0.10 * severe_structural)
@@ -723,6 +931,8 @@ def analyze(
         combined = max(combined, 0.50)
     elif "synthetic-academic" in structural_kinds:
         combined = max(combined, 0.40)
+    elif "binary-reframe" in structural_kinds and distinct_sev3_ids >= 1 and len(report.hits) >= 4:
+        combined = max(combined, 0.60)
     elif severe_structural >= 2:
         combined = max(combined, 0.35)
 

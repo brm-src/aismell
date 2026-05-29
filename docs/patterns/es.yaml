@@ -1237,7 +1237,7 @@ patterns:
     message: '"X abstracta, sino Y concreta" — armado de ensayo IA'
     suggestion: di el Y directo
 
-  - id: es.tanto_como
+  - id: es.tanto_como_simple
     kind: regex
     severity: 1
     pattern: '(?i)\btanto\s+\w+\s+como\s+\w+'
@@ -1251,3 +1251,136 @@ patterns:
     message: '"puede sintetizarse en" — académico impersonal IA'
     suggestion: borra el meta-anuncio y di la idea
 
+  # ---- Stop Slop taxonomy: muletillas / énfasis performativo ----
+  - id: es.la_verdad_es_que
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\bla verdad es que\\b"
+    message: '"la verdad es que" — antesala innecesaria'
+    suggestion: empieza con la verdad, no con el anuncio
+
+  - id: es.lo_cierto_es_que
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\blo cierto es que\\b"
+    message: '"lo cierto es que" — muletilla de autoridad'
+    suggestion: borra y afirma directo
+
+  - id: es.resulta_que
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bresulta que\\b"
+    message: '"resulta que" — marco de revelación flojo'
+    suggestion: parte con el hecho
+
+  - id: es.el_verdadero_problema
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bel verdadero (problema|desafío|reto) es\\b"
+    message: '"el verdadero problema" — dramatización de reencuadre'
+    suggestion: nombra el problema sin inflarlo
+
+  - id: es.dejame_ser_claro
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bd[eé]jame ser clar[oa]\\b"
+    message: '"déjame ser claro" — claridad performativa'
+    suggestion: sé claro sin anunciarlo
+
+  - id: es.voy_a_ser_honesto
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bvoy a ser honest[oa]\\b"
+    message: '"voy a ser honesto" — anuncio de sinceridad'
+    suggestion: sé honesto sin preámbulo
+
+  - id: es.que_pasaria_si
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\bqu[eé] pasar[ií]a si\\b"
+    message: '"qué pasaría si" — gancho retórico armado'
+    suggestion: afirma el punto directamente
+
+  - id: es.esto_es_lo_que_quiero_decir
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\best[oa] es lo que quiero decir\\b"
+    message: '"esto es lo que quiero decir" — anuncia explicación en vez de explicar'
+    suggestion: explica sin el letrero
+
+  - id: es.piensalo
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bpi[eé]nsalo\\b"
+    message: '"piénsalo" — profundidad forzada'
+    suggestion: deja que el argumento pese o agrega evidencia
+
+  - id: es.y_eso_esta_bien
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\by eso est[aá] bien\\b"
+    message: '"y eso está bien" — consuelo enlatado'
+    suggestion: bórralo salvo que cambie el argumento
+
+  - id: es.seamos_claros
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bseamos clar[oa]s\\b"
+    message: '"seamos claros" — énfasis de tribuna'
+    suggestion: borra y di el punto
+
+  - id: es.no_nos_equivoquemos
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bno nos equivoquemos\\b"
+    message: '"no nos equivoquemos" — énfasis performativo'
+    suggestion: cut it, el argumento debe sostenerse solo
+
+  - id: es.esto_importa_porque
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\besto importa porque\\b"
+    message: '"esto importa porque" — anuncia importancia'
+    suggestion: muestra la consecuencia concreta
+
+  - id: es.en_esencia
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\ben esencia\\b"
+    message: '"en esencia" — resumen abstracto de IA'
+    suggestion: usa una frase concreta
+
+  - id: es.al_final_del_dia
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bal final del d[ií]a\\b"
+    message: '"al final del día" — cierre de relleno'
+    suggestion: borrar
+
+  - id: es.cuando_se_trata_de
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bcuando se trata de\\b"
+    message: '"cuando se trata de" — preámbulo lento'
+    suggestion: empieza con el sujeto real
+
+  - id: es.en_un_mundo_donde
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\ben un mundo donde\\b"
+    message: '"en un mundo donde" — apertura tráiler de IA'
+    suggestion: corta la escenografía
+
+  - id: es.que_eso_decante
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\bque eso decante\\b"
+    message: '"que eso decante" — profundidad fabricada'
+    suggestion: confía en quien lee
+
+  - id: es.punto_final_emfatico
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\b(punto final|punto)\\.?$"
+    message: '"punto final" — cierre performativo'
+    suggestion: deja que la frase termine

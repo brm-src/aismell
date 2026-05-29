@@ -100,9 +100,9 @@ Sale con código `0` si está limpio, `1` si encuentra cosas. Sirve para hooks d
 
 Tres capas.
 
-**1. Patrones de frase.** Cosas que la IA dice y los humanos casi nunca: *"vale la pena destacar"*, *"se erige como"*, *"un testimonio de"*, *"espero que esto te sirva"*. ~80 patrones por idioma, incluyendo todo el léxico inflado de Pangram: reino, paradigma, sinergia, robusto, sin fisuras, transformador, multifacético, supremo, más conectores formales (Adicionalmente, En consecuencia, Por otra parte, Furthermore, Moreover, Additionally).
+**1. Patrones de frase.** Cosas que la IA escribe cuando va en piloto automático: `vale la pena destacar`, `se erige como`, `un testimonio de`, `espero que esto te sirva`. Las reglas cubren 130+ patrones en inglés y 180+ en español, incluyendo conectores formales y sustantivos abstractos inflados.
 
-**2. Patrones de estructura.** Pistas más allá de las palabras: paralelismos negativos (*"no se trata solo de X, sino de Y"*), copula avoidance (*"se erige como"* en vez de *"es"*), cierres genéricos (*"el futuro se ve brillante"*), aperturas serviles.
+**2. Patrones de estructura.** Pistas más allá de las palabras: reencuadres binarios partidos, falsa agencia, voz pasiva evasiva, listados negativos, verbos inflados, cierres genéricos, aperturas serviles.
 
 **3. Ritmo y forma.** Varianza de largo de oración, densidad de em-dashes, ratio de bullets, frecuencia de regla de tres, **simetría de largo de párrafos** (los LLMs producen párrafos de longitud sospechosamente parecida), y **densidad de conectores de apertura** (la investigación de Pangram muestra que varios párrafos arrancando con conectores explícitos es la señal más fuerte de IA).
 

@@ -211,6 +211,187 @@ def test_sentence_level_vague_claims_flagged_as_context_not_word_only():
     assert "vague-sentence-stack" in kinds
 
 
+def test_stop_slop_english_canaries_catch_cleaned_ai_tells():
+    text = (
+        "Here's the thing: building products is hard. "
+        "Not because the technology is complex. Because people are complex. "
+        "Let that sink in. "
+        "The complaint becomes a fix. The decision emerges after the conversation moves toward alignment. "
+        "The data tells us the market rewards clarity. "
+        "Mistakes were made. The decision was reached. "
+        "What makes this hard is trust. Why does it matter? Because teams hide confusion. "
+        "How this changes work is simple."
+    )
+    report, _ = analyze(text, lang="en")
+    hit_ids = {h.pattern.id for h in report.hits}
+    kinds = {f.kind for f in report.structural}
+    assert "en.here_is_the_thing" in hit_ids
+    assert "en.let_that_sink_in" in hit_ids
+    assert "binary-reframe" in kinds
+    assert "false-agency" in kinds
+    assert "passive-voice" in kinds
+    assert "wh-starters" in kinds
+    assert report.score >= 0.6
+
+
+def test_stop_slop_spanish_canaries_catch_cleaned_ai_tells():
+    text = (
+        "La verdad es que construir productos es difícil. "
+        "No porque la tecnología sea compleja. Porque las personas son complejas. "
+        "Que eso decante. "
+        "La queja se convierte en una mejora. La decisión emerge y la conversación se mueve hacia la claridad. "
+        "Los datos nos dicen que el mercado premia la confianza. "
+        "Se cometieron errores. La decisión fue tomada. "
+        "Qué hace esto difícil es la confianza. Por qué importa? Porque los equipos esconden confusión. "
+        "Cómo cambia el trabajo es simple."
+    )
+    report, _ = analyze(text, lang="es")
+    hit_ids = {h.pattern.id for h in report.hits}
+    kinds = {f.kind for f in report.structural}
+    assert "es.la_verdad_es_que" in hit_ids
+    assert "es.que_eso_decante" in hit_ids
+    assert "binary-reframe" in kinds
+    assert "false-agency" in kinds
+    assert "passive-voice" in kinds
+    assert "wh-starters" in kinds
+    assert report.score >= 0.6
+
+
+def test_stop_slop_rhetorical_prompts_and_but_reframes():
+    en_text = (
+        "I'm going to be honest. What if I told you the problem was not speed? "
+        "Here's what I mean. It feels like a tooling issue. It's actually a trust issue. "
+        "Not a process problem. But a leadership problem. Think about it. And that's okay."
+    )
+    en_report, _ = analyze(en_text, lang="en")
+    en_hit_ids = {h.pattern.id for h in en_report.hits}
+    assert "en.going_to_be_honest" in en_hit_ids
+    assert "en.what_if_i_told_you" in en_hit_ids
+    assert "en.heres_what_i_mean" in en_hit_ids
+    assert "en.think_about_it" in en_hit_ids
+    assert "en.and_thats_okay" in en_hit_ids
+    assert "binary-reframe" in {f.kind for f in en_report.structural}
+    assert en_report.score >= 0.6
+
+    es_text = (
+        "Voy a ser honesto. Qué pasaría si te dijera que el problema no era la velocidad? "
+        "Esto es lo que quiero decir. Parece un problema de herramientas. En realidad es un problema de confianza. "
+        "No un problema de proceso. Sino de liderazgo. Piénsalo. Y eso está bien."
+    )
+    es_report, _ = analyze(es_text, lang="es")
+    es_hit_ids = {h.pattern.id for h in es_report.hits}
+    assert "es.voy_a_ser_honesto" in es_hit_ids
+    assert "es.que_pasaria_si" in es_hit_ids
+    assert "es.esto_es_lo_que_quiero_decir" in es_hit_ids
+    assert "es.piensalo" in es_hit_ids
+    assert "es.y_eso_esta_bien" in es_hit_ids
+    assert "binary-reframe" in {f.kind for f in es_report.structural}
+    assert es_report.score >= 0.6
+
+
+def test_markdown_examples_do_not_count_as_author_voice():
+    text = (
+        "This note explains which phrases the reviewer should avoid.\n\n"
+        "> It is worth noting that we should delve into the complexities.\n\n"
+        "```\nHope this helps. A rich tapestry stands as a testament to progress.\n```\n\n"
+        "Avoid those phrases in drafts and replace them with plain claims."
+    )
+    report, _ = analyze(text, lang="en")
+    hit_ids = {h.pattern.id for h in report.hits}
+    assert "en.it_is_worth_noting" not in hit_ids
+    assert "en.delve" not in hit_ids
+    assert "en.hope_this_helps" not in hit_ids
+    assert "en.testament" not in hit_ids
+    assert report.score < 0.3
+
+
+def test_markdown_documentation_shape_is_not_ai_format_by_itself():
+    text = """# Tool name
+
+> Short product tagline.
+
+## Install
+
+**pipx:**
+```bash
+pipx install tool
+```
+
+**From source:**
+```bash
+git clone https://example.invalid/tool.git
+```
+
+## Use
+
+```bash
+tool draft.md
+```
+
+## What it catches
+
+**1. Phrase patterns.** Short explanation with concrete examples in `inline code`.
+
+**2. Structure patterns.** Another short explanation.
+
+**3. Rhythm and shape.** One more short explanation.
+
+## What it does not do
+
+- Does not rewrite for you.
+- Does not call an API.
+
+## License
+
+MIT.
+"""
+    report, _ = analyze(text, lang="en")
+    kinds = {f.kind for f in report.structural}
+    assert "section-headers" not in kinds
+    assert "emphasis-overload" not in kinds
+    assert report.score < 0.3
+
+
+def test_current_readmes_stay_below_moderate():
+    root = Path(__file__).resolve().parent.parent
+    for filename, lang in [("README.md", "en"), ("README.es.md", "es")]:
+        report, _ = analyze((root / filename).read_text(encoding="utf-8"), lang=lang)
+        kinds = {f.kind for f in report.structural}
+        assert "section-headers" not in kinds, filename
+        assert "emphasis-overload" not in kinds, filename
+        assert report.score < 0.3, filename
+
+
+def test_generic_ai_answer_headers_still_flagged():
+    text = """# Overview
+
+This guide explains the topic in a broad and polished way.
+
+## Key Takeaways
+
+The main point is that clarity matters across teams.
+
+## The Problem
+
+Teams need alignment across complex decisions.
+
+## The Solution
+
+A structured approach helps everyone move forward.
+"""
+    report, _ = analyze(text, lang="en")
+    assert "section-headers" in {f.kind for f in report.structural}
+
+
+def test_breathless_inline_emphasis_still_flagged():
+    text = (
+        "This is **not just faster** but **fundamentally different**. "
+        "It creates *real momentum* for **every team** that wants **clarity**."
+    )
+    report, _ = analyze(text, lang="en")
+    assert "emphasis-overload" in {f.kind for f in report.structural}
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in list(globals().items()):

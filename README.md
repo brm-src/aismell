@@ -100,9 +100,9 @@ Exit code is `0` when clean, `1` when findings are present. Useful for git hooks
 
 Three layers of detection.
 
-**1. Phrase patterns.** Things AI writes that humans rarely do: *"vale la pena destacar"*, *"delve into"*, *"stands as a testament"*, *"hope this helps"*. ~80 patterns shipped per language, including the full Pangram-derived bloat lexicon: realm, paradigm, synergy, robust, seamless, transformative, multifaceted, paramount, plus formal connectors (Furthermore, Moreover, Additionally, Adicionalmente, En consecuencia, Por otra parte).
+**1. Phrase patterns.** Things AI writes when it coasts: `vale la pena destacar`, `delve into`, `stands as a testament`, `hope this helps`. The rules now cover 130+ English patterns and 180+ Spanish patterns, including formal connectors and bloated abstract nouns.
 
-**2. Structure patterns.** Tells beyond word choice: negative parallelisms (*"it's not just X, it's Y"*), copula avoidance (*"serves as"* instead of *"is"*), generic conclusions (*"the future looks bright"*), sycophantic openers.
+**2. Structure patterns.** Tells beyond word choice: split binary reframes, false agency, evasive passive voice, negative listing, copula avoidance, generic conclusions, sycophantic openers.
 
 **3. Rhythm and shape.** Sentence-length variance, em-dash density, list ratio, rule-of-three frequency, **paragraph-length symmetry** (LLMs produce paragraphs of suspiciously similar length), and **opening-connector density** (Pangram research shows multiple paragraphs starting with explicit connectors is the single strongest AI tell).
 

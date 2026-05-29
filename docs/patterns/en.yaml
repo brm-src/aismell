@@ -890,3 +890,137 @@ patterns:
     pattern: "(?i)\\b(pressed his forehead against hers|pressed her forehead against his|resting his elbows on the counter|lips swollen with kisses|blooming like a promise)\\b"
     message: "fiction-specific AI cliché"
     suggestion: use a specific physical gesture
+
+  # ---- Stop Slop taxonomy: throat-clearing / performative emphasis ----
+  - id: en.here_is_the_thing
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\bhere['’]?s the thing\\b"
+    message: '"here’s the thing" — throat-clearing before the point'
+    suggestion: delete it and start with the point
+
+  - id: en.heres_why
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bhere['’]?s why\\b"
+    message: '"here’s why" — announces the explanation instead of giving it'
+    suggestion: make the claim directly
+
+  - id: en.uncomfortable_truth
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bthe uncomfortable truth is\\b"
+    message: '"the uncomfortable truth is" — manufactured gravity'
+    suggestion: state the truth without stage lighting
+
+  - id: en.it_turns_out
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bit turns out( that)?\\b"
+    message: '"it turns out" — lazy revelation frame'
+    suggestion: start with the fact
+
+  - id: en.let_me_be_clear
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\blet me be clear\\b"
+    message: '"let me be clear" — authority cosplay'
+    suggestion: be clear without announcing it
+
+  - id: en.going_to_be_honest
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\b(i['’]?m|i am) going to be honest\\b"
+    message: '"I’m going to be honest" — sincerity announcement'
+    suggestion: be honest without the preface
+
+  - id: en.what_if_i_told_you
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\bwhat if i told you\\b"
+    message: '"what if I told you" — contrived rhetorical hook'
+    suggestion: make the claim directly
+
+  - id: en.heres_what_i_mean
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bhere['’]?s what i mean\\b"
+    message: '"here’s what I mean" — announces explanation instead of explaining'
+    suggestion: explain without the signpost
+
+  - id: en.think_about_it
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bthink about it\\b"
+    message: '"think about it" — forced profundity'
+    suggestion: trust the point or add evidence
+
+  - id: en.and_thats_okay
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\band that['’]?s okay\\b"
+    message: '"and that’s okay" — canned reassurance'
+    suggestion: cut it unless the reassurance does real work
+
+  - id: en.make_no_mistake
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bmake no mistake\\b"
+    message: '"make no mistake" — performative emphasis'
+    suggestion: cut it
+
+  - id: en.let_that_sink_in
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\blet that sink in\\b"
+    message: '"let that sink in" — forced profundity'
+    suggestion: trust the reader
+
+  - id: en.this_matters_because
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bthis matters because\\b"
+    message: '"this matters because" — announces importance'
+    suggestion: show the consequence directly
+
+  - id: en.at_its_core_plain
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bat its core\\b"
+    message: '"at its core" — abstract scene-setting'
+    suggestion: name the concrete thing
+
+  - id: en.at_the_end_of_the_day
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bat the end of the day\\b"
+    message: '"at the end of the day" — filler closer'
+    suggestion: delete it
+
+  - id: en.when_it_comes_to
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bwhen it comes to\\b"
+    message: '"when it comes to" — slow preface'
+    suggestion: start with the subject
+
+  - id: en.in_a_world_where
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\bin a world where\\b"
+    message: '"in a world where" — trailer voice AI opener'
+    suggestion: cut the setup
+
+  - id: en.the_reality_is
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bthe reality is\\b"
+    message: '"the reality is" — weight without substance'
+    suggestion: state the reality itself
+
+  - id: en.full_stop_emphasis
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\b(full stop|period)\\.?$"
+    message: '"full stop / period" — performative finality'
+    suggestion: let the sentence end
