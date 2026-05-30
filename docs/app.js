@@ -1359,7 +1359,7 @@ async function verifyBibliography(text) {
       return { ref: r, res: { status: "error", detail: e.message } };
     }
   };
-  const CONCURRENCY = 4;
+  const CONCURRENCY = 2;   // 2 parallel → gentler on APIs, fewer rate-limit errors
   for (let i = 0; i < refs.length; i += CONCURRENCY) {
     const batch = refs.slice(i, i + CONCURRENCY);
     // Show the title of the first ref of the current batch as preview
@@ -1368,7 +1368,7 @@ async function verifyBibliography(text) {
     const done = await Promise.all(batch.map(verifyOne));
     results.push(...done);
     updateProgress(Math.min(i + batch.length, refs.length), preview ? t.biblio_progress_checking.replace("{title}", preview) : "");
-    await sleep(60);
+    await sleep(300);  // 300ms between batches → less pressure on rate-limited APIs
   }
   updateProgress(refs.length, t.biblio_progress_done);
   // Brief pause so the user sees the bar fill, then collapse
@@ -1785,14 +1785,26 @@ async function verifyArxivJs(id) {
 // - 8s timeout per source (AbortController) → no hangs
 // - parallel-ish fallback chain, returns first "exists"
 // - if no source confirms but ≥1 errored, mark as "error" (not "not_found")
-async function fetchWithTimeout(url, opts = {}, ms = 8000) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), ms);
-  try {
-    return await fetch(url, { ...opts, signal: ctrl.signal });
-  } finally {
-    clearTimeout(t);
+// fetch with timeout + 1 auto-retry on failure (backoff 1.5s).
+// Timeout bumped to 15s — CrossRef/OpenAlex can be slow under load.
+async function fetchWithTimeout(url, opts = {}, ms = 15000, retries = 1) {
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms);
+    try {
+      const r = await fetch(url, { ...opts, signal: ctrl.signal });
+      clearTimeout(t);
+      return r; // success — don't retry
+    } catch (e) {
+      clearTimeout(t);
+      lastErr = e;
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
   }
+  throw lastErr;
 }
 
 async function verifyCrossrefJs(ref) {
@@ -1873,28 +1885,29 @@ async function verifyCitationJs(ref) {
   // Track errors separately so we can distinguish "all sources errored" (network down)
   // from "every source said no match" (probably fake).
   const sources = [
-    verifyCrossrefJs,
-    verifyOpenAlexJs,
-    verifySemanticScholarJs,
-    verifyGoogleBooksJs,
-    verifyOpenLibrarySearchJs,
-    verifyArxivSearchJs,
+    { fn: verifyCrossrefJs,          name: "CrossRef" },
+    { fn: verifyOpenAlexJs,          name: "OpenAlex" },
+    { fn: verifySemanticScholarJs,   name: "Semantic Scholar" },
+    { fn: verifyGoogleBooksJs,       name: "Google Books" },
+    { fn: verifyOpenLibrarySearchJs, name: "OpenLibrary" },
+    { fn: verifyArxivSearchJs,       name: "arXiv" },
   ];
 
   let errors = 0;
   let notFound = 0;
   const errorDetails = [];
+  const failedSources = [];
 
   for (const src of sources) {
     let res;
     try {
-      res = await src(ref);
+      res = await src.fn(ref);
     } catch (e) {
       // Defensive — every src already has try/catch, but belt + suspenders
-      res = { status: "error", detail: `unexpected: ${e.message}` };
+      res = { status: "error", detail: `${src.name}: ${e.message}` };
     }
     if (res.status === "exists") return res;
-    if (res.status === "error") { errors++; if (res.detail) errorDetails.push(res.detail); }
+    if (res.status === "error") { errors++; if (res.detail) errorDetails.push(res.detail); failedSources.push(src.name); }
     else if (res.status === "not_found") notFound++;
   }
 
@@ -1903,11 +1916,18 @@ async function verifyCitationJs(ref) {
 
   // If every source errored, this isn't "no match" — it's a network problem.
   if (errors === sources.length) {
-    return { status: "error", detail: `red caída o APIs no disponibles: ${errorDetails.slice(0, 2).join("; ")}` };
+    const names = failedSources.join(", ");
+    return { status: "error", detail: `todas las APIs caídas (${names}). Reintenta en unos segundos.` };
   }
   // If most errored and only 1-2 actually checked → still flag as error to be honest.
   if (errors >= sources.length - 1 && notFound <= 1) {
-    return { status: "error", detail: `${errors}/${sources.length} fuentes con error de red: ${errorDetails.slice(0, 2).join("; ")}` };
+    const names = failedSources.join(", ");
+    return { status: "error", detail: `${failedSources.length}/${sources.length} fuentes caídas: ${names}. Reintenta.` };
+  }
+  // Some errors but enough sources said "no" → call it not_found, mention which errored
+  if (errors > 0) {
+    const names = failedSources.join(", ");
+    return { status: "not_found", detail: `sin match (${names} no disponibles)${apa}` };
   }
   // Otherwise enough sources said "no" — call it not_found.
   return { status: "not_found", detail: `sin match en CrossRef/OpenAlex/Semantic Scholar/Google Books/OpenLibrary/arXiv${apa}` };
