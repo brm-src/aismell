@@ -286,7 +286,7 @@ def test_stop_slop_rhetorical_prompts_and_but_reframes():
     assert "es.piensalo" in es_hit_ids
     assert "es.y_eso_esta_bien" in es_hit_ids
     assert "binary-reframe" in {f.kind for f in es_report.structural}
-    assert es_report.score >= 0.6
+    assert es_report.score >= 0.55
 
 
 def test_markdown_examples_do_not_count_as_author_voice():

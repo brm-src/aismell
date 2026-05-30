@@ -636,7 +636,7 @@ def _check_synthetic_academic_texture(text: str, lang: str) -> list[StructuralFi
     return [StructuralFinding(
         line=0,
         kind="synthetic-academic",
-        severity=3,
+        severity=2,
         message=(
             f"textura académica sintética: {abstraction_hits} abstracciones y "
             f"{weak_verbs} verbos débiles en {words} palabras"
@@ -924,17 +924,28 @@ def analyze(
 
     # Backstop floors for the strongest single signals.
     if "essay-scaffolding" in structural_kinds and "synthetic-academic" in structural_kinds:
-        combined = max(combined, 0.70)
-    elif "essay-scaffolding" in structural_kinds:
-        combined = max(combined, 0.55)
-    elif {"synthetic-academic", "low-specificity"} <= structural_kinds:
-        combined = max(combined, 0.50)
-    elif "synthetic-academic" in structural_kinds:
-        combined = max(combined, 0.40)
-    elif "binary-reframe" in structural_kinds and distinct_sev3_ids >= 1 and len(report.hits) >= 4:
         combined = max(combined, 0.60)
-    elif severe_structural >= 2:
+    elif "essay-scaffolding" in structural_kinds:
+        combined = max(combined, 0.50)
+    elif {"synthetic-academic", "low-specificity"} <= structural_kinds:
         combined = max(combined, 0.35)
+    elif "synthetic-academic" in structural_kinds:
+        combined = max(combined, 0.25)
+    elif "binary-reframe" in structural_kinds and distinct_sev3_ids >= 1 and len(report.hits) >= 4:
+        combined = max(combined, 0.58)
+    elif severe_structural >= 2:
+        combined = max(combined, 0.30)
+
+    # Academic dampener: long texts with academic structure are expected to have
+    # synthetic-academic, low-specificity, and even essay-scaffolding (citations,
+    # numbered frameworks are normal academic conventions in theses/books).
+    # Applied AFTER backstops so it can dampen even floor-guaranteed scores.
+    if report.sentences >= 150 and {"synthetic-academic", "low-specificity"} <= structural_kinds:
+        academic_expected = {"synthetic-academic", "low-specificity", "vague-sentence-stack",
+                             "paragraph-symmetry", "essay-scaffolding", "paragraph-connectors"}
+        non_academic_kinds = structural_kinds - academic_expected
+        if not non_academic_kinds or non_academic_kinds <= {"rhythm", "tricolon"}:
+            combined *= 0.55
 
     report.score = min(1.0, combined)
 
