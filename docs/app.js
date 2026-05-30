@@ -1230,22 +1230,80 @@ function clearBiblio() {
   if (panel) panel.remove();
 }
 
+function buildSearchUrl(title, author, kind) {
+  // Builds a search URL for manual lookup.
+  const q = [title, author].filter(Boolean).join(" ");
+  const enc = encodeURIComponent(q);
+  if (kind === "scholar") return `https://scholar.google.com/scholar?q=${enc}`;
+  if (kind === "crossref") return `https://api.crossref.org/works?rows=5&query.bibliographic=${enc}`;
+  if (kind === "openalex") return `https://api.openalex.org/works?search=${enc}`;
+  // generic web search
+  return `https://www.google.com/search?q=${enc}`;
+}
+
 function renderBiblioRow(ref, res) {
+  const t = I18N[UILANG];
   const icon = { exists: "✓", not_found: "✗", error: "?", unverifiable: "·" }[res.status] || "·";
   const cls = `biblio-${res.status}`;
-  const ident = ref.identifier || (ref.title ? ref.title.slice(0, 70) : ref.raw.slice(0, 70));
+  const ident = ref.identifier || (ref.title ? ref.title.slice(0, 80) : ref.raw.slice(0, 80));
   const identSafe = escapeHtml(ident);
   // If verified and has URL, make the title clickable.
   const identHtml = (res.status === "exists" && res.url)
     ? `<a href="${escapeHtml(res.url)}" target="_blank" rel="noopener" class="biblio-link">${identSafe} ↗</a>`
     : identSafe;
   const detail = res.detail ? `<div class="biblio-detail">${escapeHtml(res.detail)}</div>` : "";
+
+  const title = ref.title || "";
+  const author = ref.author || "";
+
+  // Action buttons + advice per status
+  let actions = "";
+  if (res.status === "not_found") {
+    const advice = (UILANG === "es")
+      ? "No se encontró en ninguna fuente. Puede ser una cita inventada por IA, o una fuente legítima no indexada (tesis, capítulo, edición regional)."
+      : "Not found in any source. Could be AI-invented, or a legitimate non-indexed source (thesis, chapter, regional edition).";
+    actions = `
+      <div class="biblio-advice">${advice}</div>
+      <div class="biblio-actions">
+        <a class="biblio-action" href="${buildSearchUrl(title, author, "scholar")}" target="_blank" rel="noopener">🔍 Google Scholar</a>
+        <a class="biblio-action" href="${buildSearchUrl(title, author, "crossref")}" target="_blank" rel="noopener">📖 CrossRef</a>
+        <a class="biblio-action" href="${buildSearchUrl(title, author, "openalex")}" target="_blank" rel="noopener">📚 OpenAlex</a>
+        <a class="biblio-action" href="${buildSearchUrl(title, author, "web")}" target="_blank" rel="noopener">🌐 web</a>
+      </div>`;
+  } else if (res.status === "unverifiable") {
+    const advice = (UILANG === "es")
+      ? "Sin DOI ni identificador parseable. Muchas citas válidas (libros, tesis, informes) no tienen DOI. No es señal de falsedad."
+      : "No DOI or parseable ID. Many valid citations (books, theses, reports) don't have DOIs. Not a sign of fakery.";
+    const searchQ = title || ident;
+    const encoded = encodeURIComponent(searchQ);
+    actions = `
+      <div class="biblio-advice">${advice}</div>
+      <div class="biblio-actions">
+        <a class="biblio-action" href="https://scholar.google.com/scholar?q=${encoded}" target="_blank" rel="noopener">🔍 Google Scholar</a>
+        <a class="biblio-action" href="https://www.google.com/search?q=${encoded}" target="_blank" rel="noopener">🌐 web</a>
+      </div>`;
+  } else if (res.status === "error") {
+    const advice = (UILANG === "es")
+      ? "Error de red al consultar las fuentes. No significa que la cita sea falsa — solo que las APIs no respondieron a tiempo. Reintenta o busca manualmente."
+      : "Network error while checking sources. Doesn't mean the citation is fake — just that the APIs didn't respond in time. Retry or search manually.";
+    const searchQ = title || ident;
+    const encoded = encodeURIComponent(searchQ);
+    actions = `
+      <div class="biblio-advice">${advice}</div>
+      <div class="biblio-actions">
+        <button class="biblio-action biblio-retry" data-ref-index="${ref.line}" data-ref-kind="${ref.kind}" data-ref-id="${escapeHtml(ref.identifier || "")}" data-ref-title="${escapeHtml(title)}" data-ref-author="${escapeHtml(author)}" data-ref-year="${escapeHtml(ref.year || "")}">🔄 reintentar</button>
+        <a class="biblio-action" href="https://scholar.google.com/scholar?q=${encoded}" target="_blank" rel="noopener">🔍 Google Scholar</a>
+        <a class="biblio-action" href="https://www.google.com/search?q=${encoded}" target="_blank" rel="noopener">🌐 web</a>
+      </div>`;
+  }
+
   return `
-    <div class="biblio-row ${cls}">
+    <div class="biblio-row ${cls}" data-sort-id="${identSafe.toLowerCase()}" data-sort-status="${res.status}">
       <div class="biblio-icon">${icon}</div>
       <div class="biblio-body">
         <div class="biblio-ident">[${ref.kind}] ${identHtml}</div>
         ${detail}
+        ${actions}
       </div>
     </div>`;
 }
@@ -1331,19 +1389,104 @@ async function verifyBibliography(text) {
     <div class="biblio-disclaimer">${t.biblio_disclaimer}</div>`;
   appendBiblio(summary);
 
-  // Detail (collapsed)
+  // Detail (collapsed) with sort controls
   let detailHtml = "";
   for (const { ref, res } of results) detailHtml += renderBiblioRow(ref, res);
+
+  const sortLabels = {
+    az: UILANG === "es" ? "A–Z" : "A–Z",
+    verified: UILANG === "es" ? "✓ verificadas" : "✓ verified",
+    notfound: UILANG === "es" ? "✗ sin match" : "✗ no match",
+    unverifiable: UILANG === "es" ? "· sin ID" : "· no ID",
+    error: UILANG === "es" ? "? error red" : "? net err",
+  };
+
   appendBiblio(`
-    <details class="biblio-detail-box">
+    <details class="biblio-detail-box" id="biblio-detail-box">
       <summary>
         <span class="more-show">${t.biblio_show_detail}</span>
         <span class="more-hide">${t.biblio_hide_detail}</span>
       </summary>
-      ${detailHtml}
+      <div class="biblio-sortbar">
+        <span class="biblio-sortbar-label">${UILANG === "es" ? "ordenar:" : "sort:"}</span>
+        <button class="biblio-sortbtn active" data-sort="az">${sortLabels.az}</button>
+        <button class="biblio-sortbtn" data-sort="exists">${sortLabels.verified}</button>
+        <button class="biblio-sortbtn" data-sort="not_found">${sortLabels.notfound}</button>
+        ${counts.unverifiable ? `<button class="biblio-sortbtn" data-sort="unverifiable">${sortLabels.unverifiable}</button>` : ""}
+        ${counts.error ? `<button class="biblio-sortbtn" data-sort="error">${sortLabels.error}</button>` : ""}
+      </div>
+      <div class="biblio-detail-rows">${detailHtml}</div>
     </details>`);
 
-  // Download report — generate self-contained HTML (viewer + download + print-to-PDF)
+  // Sort controls — live sorting
+  const sortBar = document.querySelector("#biblio-detail-box .biblio-sortbar");
+  if (sortBar) {
+    sortBar.addEventListener("click", (e) => {
+      const btn = e.target.closest(".biblio-sortbtn");
+      if (!btn) return;
+      // Mark active
+      sortBar.querySelectorAll(".biblio-sortbtn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const mode = btn.dataset.sort;
+      const rowsEl = document.querySelector("#biblio-detail-box .biblio-detail-rows");
+      if (!rowsEl) return;
+      const rows = [...rowsEl.children];
+      rows.sort((a, b) => {
+        if (mode === "az") {
+          return (a.dataset.sortId || "").localeCompare(b.dataset.sortId || "");
+        }
+        // Status-based: requested status first, then by A-Z
+        const aMatch = a.dataset.sortStatus === mode ? 0 : 1;
+        const bMatch = b.dataset.sortStatus === mode ? 0 : 1;
+        if (aMatch !== bMatch) return aMatch - bMatch;
+        return (a.dataset.sortId || "").localeCompare(b.dataset.sortId || "");
+      });
+      rowsEl.innerHTML = "";
+      for (const r of rows) rowsEl.appendChild(r);
+    });
+  }
+
+  // Retry buttons for errored entries
+  document.querySelectorAll("#biblio-detail-box .biblio-retry").forEach(btn => {
+    btn.addEventListener("click", async function() {
+      const origText = this.textContent;
+      this.textContent = "...";
+      this.disabled = true;
+      const ref = {
+        kind: this.dataset.refKind,
+        identifier: this.dataset.refId,
+        title: this.dataset.refTitle,
+        author: this.dataset.refAuthor,
+        year: this.dataset.refYear,
+        line: this.dataset.refIndex,
+        raw: this.dataset.refTitle || this.dataset.refId || "",
+      };
+      let newRes;
+      try {
+        if (ref.kind === "doi")          newRes = await verifyDoiJs(ref.identifier);
+        else if (ref.kind === "arxiv")    newRes = await verifyArxivJs(ref.identifier);
+        else if (ref.kind === "isbn")     newRes = await verifyIsbnJs(ref.identifier);
+        else if (ref.kind === "citation") newRes = await verifyCitationJs(ref);
+        else newRes = { status: "unverifiable", detail: "" };
+      } catch (e) {
+        newRes = { status: "error", detail: e.message };
+      }
+      // Replace this row in-place
+      const row = this.closest(".biblio-row");
+      if (row && ref.kind) {
+        const newRowHtml = renderBiblioRow(ref, newRes);
+        const temp = document.createElement("div");
+        temp.innerHTML = newRowHtml;
+        const newRow = temp.firstElementChild;
+        row.replaceWith(newRow);
+      } else {
+        this.textContent = origText;
+        this.disabled = false;
+      }
+    });
+  });
+
+  // Download report...
   const reportHtml = buildBiblioReportHtml(results, t);
   const reportBlob = new Blob([reportHtml], { type: "text/html;charset=utf-8" });
   const reportUrl = URL.createObjectURL(reportBlob);
