@@ -944,6 +944,14 @@ def analyze(
     elif severe_structural >= 2:
         combined = max(combined, 0.30)
 
+    # Short demo-style AI answers can be dense without many paragraph-level
+    # structures. If nearly every sentence is marked and there are several
+    # high-severity lexical cues, do not leave the visible example in the
+    # moderate band.
+    sentence_density = min(1.0, len(report.hits) / max(report.sentences, 1))
+    if 4 <= report.sentences < 30 and sentence_density >= 0.70 and sev3_hits >= 2 and len(report.hits) >= 5:
+        combined = max(combined, 0.68)
+
     # Academic dampener: long academic texts naturally contain abstraction,
     # formal transitions, citations, and repeated section shapes.
     if report.sentences >= 150 and {"synthetic-academic", "low-specificity"} <= structural_kinds:

@@ -426,6 +426,24 @@ def test_docx_structural_comments_use_readable_labels_not_internal_kinds():
     assert "Qué cambiar" in comment
 
 
+def test_example_ai_copy_scores_high_not_moderate():
+    text = (
+        "En el mundo actual, la inteligencia artificial se ha convertido en una herramienta fundamental "
+        "para abordar los desafíos del siglo XXI. Desde la salud hasta la educación, sus aplicaciones "
+        "son prácticamente ilimitadas y prometen transformar profundamente la forma en que vivimos y trabajamos. "
+        "Es fundamental comprender que la IA no es solo una tecnología, sino un cambio de paradigma que requiere "
+        "una reflexión ética profunda. Diversos expertos coinciden en que su desarrollo debe guiarse por principios "
+        "sólidos de transparencia, equidad y responsabilidad. En conclusión, el futuro de la inteligencia artificial "
+        "dependerá de nuestra capacidad colectiva para equilibrar innovación y regulación. Solo a través de un diálogo "
+        "abierto y multidisciplinar podremos garantizar que esta tecnología beneficie a toda la humanidad."
+    )
+    report, _ = analyze(text, lang="es")
+    assert report.sentences >= 4
+    assert len(report.hits) >= 5
+    assert report.score >= 0.60
+    assert report.severity_label == "alto"
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in list(globals().items()):
