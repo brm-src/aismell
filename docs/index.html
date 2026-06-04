@@ -49,6 +49,8 @@
     letter-spacing: -0.5px;
     line-height: 1;
   }
+  header h1.brand-home { cursor: pointer; width: fit-content; }
+  header h1.brand-home:focus-visible { outline: 1px dashed var(--hl); outline-offset: 5px; }
   header h1 .nose { display: inline-block; transform: translateY(-2px); margin-right: 4px; filter: grayscale(0.6); }
   header .tag {
     color: var(--dim);
@@ -1162,7 +1164,7 @@
   <div class="lang-switch" id="langSwitch">
     <button data-lang="es" class="on">ES</button><button data-lang="en">EN</button>
   </div>
-  <h1><span class="nose">👃</span><span data-i18n="title">aismell</span></h1>
+  <h1 id="homeReset" class="brand-home" role="button" tabindex="0" aria-label="volver al inicio"><span class="nose">👃</span><span data-i18n="title">aismell</span></h1>
   <p class="tag" data-i18n="tagline">Olfatea si tu texto suena demasiado a IA. Y si trae bibliografía, revisa que no sea inventada.</p>
 </header>
 

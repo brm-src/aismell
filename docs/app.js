@@ -358,10 +358,12 @@ const els = {
   score: document.getElementById("score"),
   findings: document.getElementById("findings"),
   langSwitch: document.getElementById("langSwitch"),
+  homeReset: document.getElementById("homeReset"),
 };
 
 // ---------- i18n ----------
 let UILANG = (navigator.language || "es").startsWith("en") ? "en" : "es";
+let lastReport = null;
 function applyI18n() {
   const t = I18N[UILANG];
   for (const el of document.querySelectorAll("[data-i18n]")) {
@@ -384,9 +386,13 @@ els.langSwitch.addEventListener("click", (e) => {
   const prev = UILANG;
   UILANG = t.dataset.lang;
   applyI18n();
+  const swappedExample = translateCurrentExample(prev, UILANG);
   // Re-translate the status line if it's currently the "ready" message
   if (els.status && els.status.textContent.trim() === I18N[prev].ready) {
     setStatus(I18N[UILANG].ready);
+  }
+  if (!swappedExample && lastReport && !els.resultPanel.hidden) {
+    render(lastReport);
   }
 });
 applyI18n();
@@ -893,6 +899,7 @@ function renderVerdict(report) {
 }
 
 function render(report) {
+  lastReport = report;
   const t = I18N[UILANG];
   const pct = Math.round(report.score * 100);
   const sev = severityClass(report.score);
@@ -1063,13 +1070,34 @@ els.resultPanel.addEventListener("click", (e) => {
     dismissIntelectaNudge(e.target);
   }
 });
-els.clearBtn.addEventListener("click", () => {
+function resetToHome(opts = {}) {
+  const focusInput = opts.focusInput === true;
   els.input.value = "";
+  els.input.scrollTop = 0;
+  els.score.innerHTML = "";
+  els.findings.innerHTML = "";
+  els.scanning.hidden = true;
+  els.scanning.innerHTML = "";
   els.resultPanel.hidden = true;
   clearBiblio();
-  els.input.focus();
+  lastReport = null;
   document.body.classList.remove("has-text");
-});
+  setStatus(analyzeFn ? I18N[UILANG].ready : I18N[UILANG].booting);
+  if (focusInput) els.input.focus();
+  else els.input.blur();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+els.clearBtn.addEventListener("click", () => resetToHome({ focusInput: true }));
+if (els.homeReset) {
+  els.homeReset.addEventListener("click", () => resetToHome({ focusInput: false }));
+  els.homeReset.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      resetToHome({ focusInput: false });
+    }
+  });
+}
 
 // Toggle "has-text" class for mobile sticky button
 els.input.addEventListener("input", () => {
@@ -1078,7 +1106,8 @@ els.input.addEventListener("input", () => {
 
 // Example chips — pools of variants. Each click cycles to the next one.
 const EXAMPLES = {
-  ai: [
+  es: {
+    ai: [
     `El presente ensayo aborda la cuestión de la migración digital desde tres ejes principales. En primer lugar, examinaremos la transformación cultural que esta implica. En segundo lugar, analizaremos el impacto económico que ha tenido en las últimas décadas. En tercer lugar, exploraremos las consecuencias políticas que se derivan de este proceso.
 
 Es importante destacar que la migración digital no es solo un fenómeno tecnológico, sino que constituye un cambio estructural profundo en la forma en que las sociedades contemporáneas se organizan, se comunican y se relacionan entre sí. Lo que enseña la historia es que estos procesos rara vez son neutros: se imponen, se resisten, se traducen, se renegocian.
@@ -1213,22 +1242,125 @@ Steffen, W., et al. (2018). Trajectories of the Earth System in the Anthropocene
 
 Quispe-Achacollo, M. (2021). Saberes ancestrales andinos frente al cambio climático: el caso del altiplano boliviano. Pacha: Revista de Estudios Contemporáneos del Sur, 4(11), 178-205. https://doi.org/10.46652/pacha.v4i11.222`,
   ],
+  },
+  en: {
+    ai: [
+      `In today's rapidly changing world, artificial intelligence has become a powerful tool for addressing the challenges of the twenty-first century. From healthcare to education, its applications are virtually limitless and promise to transform the way we live, work and interact with one another.
+
+It is essential to understand that AI is not merely a technological development, but a paradigm shift that requires deep ethical reflection. Experts increasingly agree that its deployment must be guided by robust principles of transparency, fairness and accountability.
+
+In conclusion, the future of artificial intelligence will depend on our collective ability to balance innovation with regulation. Only through open, multidisciplinary dialogue can we ensure that this technology benefits humanity as a whole.`,
+
+      `The present essay examines digital migration through three main dimensions. First, it explores the cultural transformations associated with online life. Second, it analyzes the economic impact of these changes over the past decades. Third, it considers the political consequences that emerge from this process.
+
+It is important to note that digital migration is not simply a technological phenomenon, but a structural shift in how contemporary societies organize, communicate and relate to one another. This makes it necessary to adopt a comprehensive and interdisciplinary perspective.
+
+Ultimately, understanding digital migration requires more than describing new platforms. It requires examining the broader social conditions that make these transformations possible and the tensions they create.`,
+
+      `Environmental sustainability represents one of the most pressing challenges of our time. It is worth highlighting that the decisions made today will have a lasting impact on future generations, which requires a firm and coordinated commitment from all social actors.
+
+First, climate change should not be understood only as an environmental issue. Second, the solutions demand an integrated approach that includes policy, technology and public participation. Third, international cooperation remains essential for meaningful progress.
+
+In summary, addressing the climate crisis requires political will, technological innovation and profound changes in consumption patterns. We are facing a historic opportunity to build a fairer and more sustainable future for everyone.`,
+    ],
+
+    human: [
+      `My grandmother kept a sewing tin on the top shelf of her closet. It had a faded picture of roses on the lid and a dent on one corner where someone must have dropped it years before I was born. Inside were buttons sorted in old matchboxes, a thimble, loose needles and a strip of red felt full of pins.
+
+I opened it last winter because a button came off my coat. The thimble had the initials M.R. scratched into it. My mother said they belonged to my great-grandmother, who died before I was old enough to remember her. She told me this while looking for thread, as if it were nothing.
+
+I fixed the coat badly. The button sits a little crooked, but it holds. The tin went back to the shelf. I still know exactly where it is.`,
+
+      `I bought the bike in March 2018 from a man who lived two streets away. It was yellow, scratched along the frame, and the bell sounded like a toy. He said he had used it for three summers to get to work and then stopped cycling when he bought a car.
+
+I repaired it in the yard with my phone balanced against a flowerpot. I knew nothing about brakes, so I paused the same video maybe twenty times. My mother watched from the kitchen and kept telling me not to lose the small screws.
+
+That bike took me to work for two years. I gave it to my cousin when I moved. I sometimes wonder if he still has it, but I never ask.`,
+
+      `The cat is old now. His name is Mateo and he sleeps on my laptop whenever I am trying to work. If I move him, he walks to the other side of the room, looks offended for ten minutes, and then comes back as if the argument never happened.
+
+The vet says he is doing well for his age, except for his kidneys and one missing tooth. We decided not to put him through surgery. He gets pills twice a day, hidden in soft food. He finds them anyway, eats around them, and spits the tablets onto the floor.
+
+I think about the day he will not come back to the desk. I try not to, but I do. The house will feel larger in the worst way.`,
+    ],
+
+    fakebib: [
+      `Digital transformation in education has become one of the central challenges of contemporary pedagogy. Several studies have emphasized the substantial impact of immersive technologies on meaningful learning outcomes (Mendoza & Ruiz, 2021).
+
+References
+
+Mendoza, P., & Ruiz, A. (2021). Immersive pedagogies and situated learning. Ibero-American Journal of Education, 87(2), 145-168. https://doi.org/10.35362/rie8723421
+
+Halberstam, J. K. (2019). Embodied cognition in virtual learning environments. Journal of Educational Technology Research, 67(4), 891-915.
+
+Pinker, S. (2014). The language instinct: How the mind creates language. Harper Perennial.`,
+
+      `Behavioral economics has transformed the way financial decision-making is understood. As Kahneman (2011) argues, people do not operate as perfectly rational agents, but are shaped by systematic biases in everyday choices.
+
+Bibliography
+
+Kahneman, D. (2011). Thinking, fast and slow. Farrar, Straus and Giroux.
+
+Velasco-Ramirez, J. (2020). Cognitive bias in emerging markets: A Latin American perspective. Journal of Behavioral Finance Studies, 14(3), 287-312. https://doi.org/10.1108/jbfs.2020.0331
+
+Thaler, R. H., & Sunstein, C. R. (2008). Nudge: Improving decisions about health, wealth, and happiness. Yale University Press.`,
+    ],
+  },
 };
 
 // Round-robin counter per chip so each click rotates to the next variant.
-const _exampleCursor = { ai: 0, human: 0, fakebib: 0 };
+const _exampleCursor = {
+  es: { ai: 0, human: 0, fakebib: 0 },
+  en: { ai: 0, human: 0, fakebib: 0 },
+};
+
+function getExamplePool(lang, key) {
+  return (EXAMPLES[lang] && EXAMPLES[lang][key]) || EXAMPLES.es[key] || [];
+}
+
+function findExampleMatch(text, lang) {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const groups = EXAMPLES[lang] || {};
+  for (const [key, pool] of Object.entries(groups)) {
+    const idx = pool.findIndex((sample) => sample.trim() === trimmed);
+    if (idx >= 0) return { key, idx };
+  }
+  return null;
+}
+
+function fillExample(key, idx = null) {
+  const pool = getExamplePool(UILANG, key);
+  if (!pool || !pool.length) return false;
+  const cursor = _exampleCursor[UILANG] || _exampleCursor.es;
+  const sampleIndex = idx === null ? cursor[key] % pool.length : Math.min(idx, pool.length - 1);
+  cursor[key] = sampleIndex + 1;
+  els.input.value = pool[sampleIndex];
+  document.body.classList.add("has-text");
+  els.input.scrollTop = 0;
+  els.resultPanel.hidden = true;
+  els.score.innerHTML = "";
+  els.findings.innerHTML = "";
+  clearBiblio();
+  lastReport = null;
+  return true;
+}
+
+function translateCurrentExample(prevLang, nextLang) {
+  const match = findExampleMatch(els.input.value, prevLang);
+  if (!match) return false;
+  const previousLang = UILANG;
+  UILANG = nextLang;
+  const ok = fillExample(match.key, match.idx);
+  UILANG = previousLang;
+  return ok;
+}
 
 document.querySelectorAll(".ex-chip").forEach((chip) => {
   chip.addEventListener("click", () => {
     const key = chip.dataset.example;
-    const pool = EXAMPLES[key];
-    if (!pool || !pool.length) return;
-    const idx = _exampleCursor[key] % pool.length;
-    _exampleCursor[key] = idx + 1;
-    els.input.value = pool[idx];
-    document.body.classList.add("has-text");
+    if (!fillExample(key)) return;
     els.input.focus();
-    els.input.scrollTop = 0;
     // Tiny visual hint: flash the chip so user sees it changed
     chip.classList.add("ex-chip-flash");
     setTimeout(() => chip.classList.remove("ex-chip-flash"), 250);
