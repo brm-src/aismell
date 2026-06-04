@@ -5,6 +5,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 cp ../aismell/core.py core.py
+cp ../aismell/docx.py docx.py
+cp ../aismell/biblio.py biblio.py
 mkdir -p patterns
 cp ../aismell/patterns/*.yaml patterns/
-echo "synced docs/core.py and docs/patterns/ from aismell/"
+echo "synced docs/core.py, docs/docx.py, docs/biblio.py and docs/patterns/ from aismell/"

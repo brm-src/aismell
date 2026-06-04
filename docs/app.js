@@ -15,7 +15,7 @@ const I18N = {
     how_layer1: "<strong>Patrones de frase.</strong> Muletillas, conectores forzados, calcos del inglés.<small>Regex auditable, sin caja negra.</small>",
     how_layer2: "<strong>Estructura.</strong> Encabezados decorativos, listas simétricas, fragmentos dramáticos.<small>Lo que delata un texto editorialmente \"armado\" por IA.</small>",
     how_layer3: "<strong>Ritmo y forma.</strong> Largo de oraciones demasiado uniforme, cadencia plana.<small>Los humanos varían más; los modelos tienden al promedio.</small>",
-    how_score: "Tres capas combinadas dan un <strong>score de 0 a 100</strong> y un veredicto: limpio, mixto, o probable IA.",
+    how_score: "Tres capas combinadas dan un <strong>índice de señales de 0 a 100</strong> y un veredicto: limpio, mixto, o probable IA. No es una probabilidad matemática.",
     biblio_note_inline: "Al activar esto, solo las citas (DOI / título / autor / arXiv ID) se consultan en CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books y OpenLibrary. El resto del texto no sale de tu navegador.",
     boot: "afinando el olfato…",
     booting: "preparando aismell…",
@@ -23,7 +23,7 @@ const I18N = {
     analyzing: "olfateando…",
     analyzing_steps: [
       "leyendo el texto…",
-      "tokenizando oraciones…",
+      "separando oraciones…",
       "buscando muletillas…",
       "midiendo ritmo de oraciones…",
       "olfateando conectores forzados…",
@@ -31,13 +31,13 @@ const I18N = {
       "detectando estructura editorial IA…",
       "cargando modelo semántico…",
       "midiendo cohesión entre párrafos…",
-      "calculando smell…",
+      "calculando índice de señales…",
       "armando reporte…",
     ],
     scan_hits: "{n} señales detectadas",
     show_more: "ver los otros {n}",
     show_less: "colapsar",
-    download_docx_btn: "descarga el archivo comentado",
+    download_docx_btn: "descargar Word comentado",
     biblio_summary_label: "VERIFICANDO BIBLIOGRAFÍA",
     biblio_check_running: "cruzando cada cita con CrossRef, OpenAlex, Google Books y otras fuentes públicas para confirmar si existe.",
     biblio_progress_starting: "abriendo conexión con fuentes públicas…",
@@ -88,18 +88,18 @@ const I18N = {
     analyze: "analizar",
     clear: "limpiar",
     why: "qué hace",
-    whyText: "aismell lee tu texto y marca línea por línea tres tipos de pista: muletillas y conectores forzados, estructura editorial (encabezados, listas simétricas, fragmentos dramáticos) y ritmo plano de oraciones. Las tres juntas dan un score de 0 a 100 y un veredicto: limpio, mixto o probable IA. Si detecta bibliografía, las citas se cruzan con fuentes públicas para confirmar si existen.",
+    whyText: "aismell lee tu texto y marca línea por línea tres tipos de pista: muletillas y conectores forzados, estructura editorial (encabezados, listas simétricas, fragmentos dramáticos) y ritmo plano de oraciones. Las tres juntas dan un índice de señales de 0 a 100 y un veredicto: limpio, mixto o probable IA. No es una probabilidad matemática. Si detecta bibliografía, las citas se cruzan con fuentes públicas para confirmar si existen.",
     not: "qué NO hace",
     not1: "<strong>No reescribe tu texto.</strong> Tú decides qué cambiar.",
-    not2: "<strong>No promete burlar detectores.</strong> Ese juego es scam.",
+    not2: "<strong>No promete burlar detectores.</strong> Ese juego es una estafa.",
     not3: "<strong>No es forense.</strong> Falsos positivos pasan; humanos también usan estas frases.",
     cli: "también CLI",
-    cliText: "¿Trabajas con PDFs? Hay una versión CLI que anota Word y PDF con highlights y comentarios al margen. <a href=\"https://github.com/brm-src/aismell#cli\" target=\"_blank\" rel=\"noopener\">Ver en GitHub</a>.",
+    cliText: "¿Trabajas con PDFs? Hay una versión CLI que anota Word y PDF con resaltados y comentarios al margen. <a href=\"https://github.com/brm-src/aismell#cli\" target=\"_blank\" rel=\"noopener\">Ver en GitHub</a>.",
     donate: "☕ donar",
-    donateNote: "Si te sirvió, considera donarme. Lo mantengo solo, sin tracking, cobros ni APIs.",
+    donateNote: "Si te sirvió, considera donarme. Lo mantengo solo, sin rastreo, cobros ni APIs.",
     placeholder: "Pega tu texto, o suelta un archivo (.txt / .md / .docx / .pdf).",
     sentences: "oraciones",
-    smell: "smell",
+    smell: "índice",
     findings: "hallazgos",
     sev_high: "severidad alta",
     sev_mod: "media",
@@ -120,7 +120,7 @@ const I18N = {
     drop_hint: "suelta el archivo para analizarlo",
     upload: "subir archivo",
     annotating: "marcando word…",
-    docx_done: "Listo: <strong>{name}</strong> está armado. Bájalo cuando quieras, ábrelo en Word o LibreOffice. Las palabras detectadas como IA aparecen resaltadas en amarillo, y al costado verás un comentario explicando qué huele mal.",
+    docx_done: "Hallazgos listos en <strong>{name}</strong>. Lo amarillo marca frases o zonas que conviene revisar. Al presionar <strong>descargar Word comentado</strong>, baja un .docx con resaltados y comentarios al margen: cada comentario explica qué se detectó, por qué puede sonar a IA y qué cambiar en el contexto del documento.",
     pdf_browser_unsupported: "PDF en la web aún no se puede (la librería no carga en el navegador). Para PDF usa el CLI: aismell paper.pdf --out paper-marcado.pdf",
     pdf_extracting: "extrayendo texto del PDF…",
     pdf_no_text: "El PDF no tiene capa de texto (probablemente escaneado). Sin OCR no puedo leerlo. Para PDFs escaneados usa el CLI con OCR.",
@@ -167,7 +167,7 @@ const I18N = {
       <h3>licencia</h3>
       <p>MIT. Código abierto. Sin garantía expresa o implícita. Úsalo bajo tu propio riesgo.</p>
     `,
-    nudge_text: "Si te sirvió, considera donarme. Lo mantengo solo, sin tracking, cobros ni APIs.",
+    nudge_text: "Si te sirvió, considera donarme. Lo mantengo solo, sin rastreo, cobros ni APIs.",
     nudge_btn: "☕ donar",
     nudge_dismiss: "no, gracias",
   },
@@ -184,7 +184,7 @@ const I18N = {
     how_layer1: "<strong>Phrase patterns.</strong> Filler phrases, forced connectors, English calques.<small>Auditable regex, no black box.</small>",
     how_layer2: "<strong>Structure.</strong> Decorative headings, symmetric lists, dramatic fragments.<small>What gives away an editorially AI-built text.</small>",
     how_layer3: "<strong>Rhythm & shape.</strong> Sentence length too uniform, flat cadence.<small>Humans vary more; models pull toward the mean.</small>",
-    how_score: "The three layers combined produce a <strong>0–100 score</strong> and a verdict: clean, mixed, or likely AI.",
+    how_score: "The three layers combined produce a <strong>0–100 evidence index</strong> and a verdict: clean, mixed, or likely AI. It is not a mathematical probability.",
     biblio_note_inline: "When this is on, only the citations (DOI / title / author / arXiv ID) are queried against CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books and OpenLibrary. The rest of your text stays in your browser.",
     boot: "warming up the nose…",
     booting: "warming up aismell…",
@@ -200,13 +200,13 @@ const I18N = {
       "detecting AI editorial structure…",
       "loading semantic model…",
       "measuring paragraph cohesion…",
-      "scoring smell…",
+      "scoring evidence index…",
       "building report…",
     ],
     scan_hits: "{n} signals detected",
     show_more: "show the other {n}",
     show_less: "collapse",
-    download_docx_btn: "download commented file",
+    download_docx_btn: "download commented Word",
     biblio_summary_label: "VERIFYING BIBLIOGRAPHY",
     biblio_check_running: "cross-checking every citation against CrossRef, OpenAlex, Google Books and other public sources to confirm it exists.",
     biblio_progress_starting: "opening connection to public sources…",
@@ -257,7 +257,7 @@ const I18N = {
     analyze: "analyze",
     clear: "clear",
     why: "what it does",
-    whyText: "aismell reads your text and flags three kinds of cues line by line: filler phrases and forced connectors, editorial structure (decorative headings, symmetric lists, dramatic fragments) and flat sentence rhythm. Together they yield a 0-to-100 score and a verdict: clean, mixed or likely AI. If a bibliography is detected, citations are cross-checked against public sources to confirm they exist.",
+    whyText: "aismell reads your text and flags three kinds of cues line by line: filler phrases and forced connectors, editorial structure (decorative headings, symmetric lists, dramatic fragments) and flat sentence rhythm. Together they yield a 0-to-100 evidence index and a verdict: clean, mixed or likely AI. It is not a mathematical probability. If a bibliography is detected, citations are cross-checked against public sources to confirm they exist.",
     not: "what it does NOT do",
     not1: "<strong>Does not rewrite your text.</strong> You decide what to change.",
     not2: "<strong>Does not promise to bypass detectors.</strong> That game is a scam.",
@@ -268,7 +268,7 @@ const I18N = {
     donateNote: "If it helped, consider donating. I maintain it solo — no tracking, no fees, no APIs.",
     placeholder: "Paste text, or drop a file (.txt / .md / .docx / .pdf).",
     sentences: "sentences",
-    smell: "smell",
+    smell: "index",
     findings: "findings",
     sev_high: "high severity",
     sev_mod: "medium",
@@ -289,7 +289,7 @@ const I18N = {
     drop_hint: "drop the file to analyze",
     upload: "upload file",
     annotating: "annotating word…",
-    docx_done: "Ready: <strong>{name}</strong> is built. Download it whenever, open it in Word or LibreOffice. AI-flagged words are highlighted in yellow, with a margin comment explaining what smells off.",
+    docx_done: "Findings are ready in <strong>{name}</strong>. Yellow marks phrases or areas worth reviewing. Press <strong>download commented Word</strong> to get a .docx with highlights and margin comments: each comment explains what was found, why it may sound AI-written, and what to change in this document.",
     pdf_browser_unsupported: "PDF in the browser isn't supported yet (the library doesn't run in WASM). For PDF use the CLI: aismell paper.pdf --out paper-marked.pdf",
     pdf_extracting: "extracting text from PDF…",
     pdf_no_text: "This PDF has no text layer (probably scanned). Without OCR I can't read it. Use the CLI with OCR for scanned PDFs.",
@@ -714,6 +714,35 @@ function escapeHtml(s) {
     .replaceAll(">", "&gt;");
 }
 
+const FINDING_LABELS = {
+  "em-dash": { es: "guiones largos repetidos", en: "repeated em dashes" },
+  "list-density": { es: "exceso de listas", en: "too many lists" },
+  "ellipses": { es: "pausas dramáticas", en: "dramatic pauses" },
+  "section-headers": { es: "encabezados genéricos", en: "generic headings" },
+  "emphasis-overload": { es: "énfasis tipográfico excesivo", en: "typographic emphasis overload" },
+  "tricolon": { es: "serie de tres elementos", en: "three-part series" },
+  "rhetorical-qa": { es: "pregunta retórica", en: "rhetorical question" },
+  "binary-reframe": { es: "contraste prefabricado", en: "prefabricated contrast" },
+  "negative-listing": { es: "lista negativa", en: "negative list" },
+  "false-agency": { es: "agencia falsa", en: "false agency" },
+  "passive-voice": { es: "voz pasiva evasiva", en: "evasive passive voice" },
+  "wh-starters": { es: "arranques interrogativos repetidos", en: "repeated question-word openings" },
+  "paragraph-connectors": { es: "conectores al inicio de párrafo", en: "paragraph-opening connectors" },
+  "paragraph-symmetry": { es: "párrafos demasiado simétricos", en: "overly symmetric paragraphs" },
+  "synthetic-academic": { es: "textura académica sintética", en: "synthetic academic texture" },
+  "low-specificity": { es: "baja especificidad", en: "low specificity" },
+  "vague-sentence-stack": { es: "frases abstractas acumuladas", en: "stacked abstract sentences" },
+  "essay-scaffolding": { es: "andamiaje de ensayo", en: "essay scaffold" },
+  "rhythm": { es: "ritmo plano", en: "flat rhythm" },
+};
+
+function findingLabel(idOrKind) {
+  if (!idOrKind) return UILANG === "es" ? "hallazgo" : "finding";
+  if (FINDING_LABELS[idOrKind]) return FINDING_LABELS[idOrKind][UILANG] || FINDING_LABELS[idOrKind].es;
+  const tail = String(idOrKind).split(".").pop().replaceAll("_", " ").replaceAll("-", " ");
+  return tail;
+}
+
 function renderHit(hit, t) {
   // Compact context: ±60 chars around the match (was: whole paragraph).
   const CTX = 60;
@@ -724,30 +753,30 @@ function renderHit(hit, t) {
   const before = escapeHtml(hit.text.slice(start, hit.col));
   const matched = escapeHtml(hit.text.slice(hit.col, hit.end));
   const after = escapeHtml(hit.text.slice(hit.end, end));
-  let glyph = "·";
-  if (hit.severity === 3) glyph = "🔴";
-  else if (hit.severity === 2) glyph = "⚠";
+  let glyph = ".";
+  if (hit.severity === 3) glyph = "X";
+  else if (hit.severity === 2) glyph = "!";
   return `
     <div class="finding">
       <div class="glyph s-${hit.severity}">${glyph}</div>
       <div class="body">
         <div class="ctx">${lead}${before}<span class="match">${matched}</span>${after}${tail}</div>
-        <div class="meta">${escapeHtml(hit.message)}</div>
+        <div class="meta"><span class="finding-label">${escapeHtml(findingLabel(hit.id))}</span> · ${escapeHtml(hit.message)}</div>
         ${hit.suggestion ? `<div class="sug">${escapeHtml(hit.suggestion)}</div>` : ""}
       </div>
     </div>`;
 }
 
 function renderStructural(s, t) {
-  let glyph = "·";
-  if (s.severity === 3) glyph = "🔴";
-  else if (s.severity === 2) glyph = "⚠";
+  let glyph = ".";
+  if (s.severity === 3) glyph = "X";
+  else if (s.severity === 2) glyph = "!";
   const where = s.line ? `${t.line}${s.line}` : t.global;
   return `
     <div class="finding">
       <div class="glyph s-${s.severity}">${glyph}</div>
       <div class="body">
-        <div class="ctx" style="color: var(--fg);">${escapeHtml(s.message)}</div>
+        <div class="ctx" style="color: var(--fg);"><span class="finding-label">${escapeHtml(findingLabel(s.kind))}</span> · ${escapeHtml(s.message)}</div>
         ${s.suggestion ? `<div class="sug">${escapeHtml(s.suggestion)}</div>` : ""}
       </div>
     </div>`;
@@ -762,7 +791,7 @@ function computeVerdict(report) {
 
   // Density by sentence count (more reliable than by line — pasted text may be single-line).
   // hits-per-sentence ratio, capped at 100%.
-  const denPct = sentences ? Math.min(100, (hits.length / sentences) * 100) : 0;
+  const denPct = sentences ? Math.min(100, ((hits.length + structural.length) / sentences) * 100) : 0;
 
   // Severe count
   let severe = 0;
@@ -788,7 +817,9 @@ function computeVerdict(report) {
   // Structural signals
   h += Math.min(0.20, structural.length * 0.05);
   // Blend with rule-based score
-  h = h * 0.7 + report.score * 0.3;
+  h = h * 0.55 + report.score * 0.45;
+  if (sentences >= 120 && denPct < 5) h = Math.min(h, 0.28);
+  else if (sentences >= 80 && denPct < 8) h = Math.min(h, 0.40);
   h = Math.max(0, Math.min(1, h));
 
   // Build reasons
@@ -796,7 +827,7 @@ function computeVerdict(report) {
     reasons.push(t.verdict_reasons.density.replace("{pct}", Math.round(denPct)));
   }
   for (const [id, n] of repeats) {
-    reasons.push(t.verdict_reasons.repeats.replace("{id}", id).replace("{n}", n));
+    reasons.push(t.verdict_reasons.repeats.replace("{id}", findingLabel(id)).replace("{n}", n));
   }
   if (structural.length >= 2) {
     reasons.push(t.verdict_reasons.structural.replace("{n}", structural.length));
@@ -873,7 +904,7 @@ function render(report) {
       <div class="pct ${sev}">${pct}%</div>
       <div class="meta">
         <strong>${severityLabel(report.score)}</strong> · ${report.sentences} ${t.sentences} ·
-        ${totalFindings} ${t.findings} · ${report.lang}
+        ${totalFindings} ${t.findings} · ${report.lang}<br><span class="score-note">${UILANG === "es" ? "índice de señales, no probabilidad" : "evidence index, not probability"}</span>
       </div>
     </div>`;
 

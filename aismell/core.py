@@ -105,12 +105,14 @@ def load_patterns(lang: str) -> list[Pattern]:
 
 _ES_HINTS = re.compile(
     r"\b(que|para|como|pero|porque|según|también|así|este|esta|del|los|las|una|uno|"
-    r"hacia|cuando|aunque|entonces|aquí|allí|qué|sí|no)\b",
+    r"hacia|cuando|aunque|entonces|aquí|allí|qué|sí|no|gracias|hola|por favor|"
+    r"señor|señora|muy|está|están|estoy|estamos|era|eras|éramos)\b",
     re.IGNORECASE,
 )
+_ES_ACCENT_CHARS = re.compile(r"[áéíóúüñÁÉÍÓÚÜÑ]")
 _EN_HINTS = re.compile(
     r"\b(the|and|of|to|in|that|is|with|for|on|as|by|are|this|from|but|or|"
-    r"because|when|where|which|though)\b",
+    r"because|when|where|which|though|thank you|please|sir|madam)\b",
     re.IGNORECASE,
 )
 
@@ -118,6 +120,13 @@ _EN_HINTS = re.compile(
 def detect_lang(text: str) -> str:
     es = len(_ES_HINTS.findall(text))
     en = len(_EN_HINTS.findall(text))
+    # strong punctuation + accent marks are strong Spanish hints.
+    es_extra = 0
+    if "¿" in text or "¡" in text:
+        es_extra += 2
+    if _ES_ACCENT_CHARS.search(text):
+        es_extra += 1
+    es = es + es_extra
     return "es" if es >= en else "en"
 
 
@@ -238,7 +247,7 @@ def _check_list_density(text: str) -> list[StructuralFinding]:
             kind="list-density",
             severity=1,
             message=f"{bullets} bullets ({ratio:.0%} del texto) — densidad alta de listas",
-            suggestion="convierte alguno en prosa para variar el formato",
+            suggestion="convierte algunas viñetas en párrafos con una idea completa: afirmación, evidencia y consecuencia",
         )]
     return []
 
@@ -424,11 +433,11 @@ def _check_negative_listing(text: str, lang: str) -> list[StructuralFinding]:
     if lang == "es":
         pattern = r"\bno\s+(era|fue|es)\b[^.!?]{1,120}[.!?]\s*\bno\s+(era|fue|es)\b[^.!?]{1,120}[.!?]\s*\b(era|fue|es)\b"
         msg = "listado negativo antes del punto — acumulación dramática de IA"
-        suggestion = "di qué era, sin runway de negaciones"
+        suggestion = "di primero la tesis central y usa la negación solo si corrige una confusión real"
     else:
         pattern = r"\bnot\s+(a|an|the)?\b[^.!?]{1,120}[.!?]\s*\bnot\s+(a|an|the)?\b[^.!?]{1,120}[.!?]\s*\b(a|an|the|it\s+was)\b"
         msg = "negative listing before the point — AI dramatic buildup"
-        suggestion = "state what it is, without the runway"
+        suggestion = "state the central claim first; use negation only if it corrects a real misconception"
     if re.search(pattern, text, re.IGNORECASE | re.DOTALL):
         return [StructuralFinding(line=0, kind="negative-listing", severity=2, message=msg, suggestion=suggestion)]
     return []
@@ -445,7 +454,7 @@ def _check_false_agency(text: str, lang: str) -> list[StructuralFinding]:
             r"\bla\s+queja\s+se\s+convierte\s+en\b",
         ]
         msg = "cosas abstractas actúan como personas — falsa agencia de IA"
-        suggestion = "nombra quién decide, lee, cambia o arregla"
+        suggestion = "reemplaza la abstracción por un actor concreto: quién decidió, qué dato muestra algo, quién cambió qué"
     else:
         patterns = [
             r"\bthe\s+decision\s+emerges\b",
@@ -456,7 +465,7 @@ def _check_false_agency(text: str, lang: str) -> list[StructuralFinding]:
             r"\bthe\s+complaint\s+becomes\s+a\s+fix\b",
         ]
         msg = "abstract things act like people — false AI agency"
-        suggestion = "name who decides, reads, changes, or fixes it"
+        suggestion = "replace the abstraction with a concrete actor: who decided, what data shows it, who changed what"
     hits = sum(1 for p in patterns if re.search(p, text, re.IGNORECASE))
     if hits >= 1:
         sev = 3 if hits >= 2 else 2
@@ -473,7 +482,7 @@ def _check_passive_voice(text: str, lang: str) -> list[StructuralFinding]:
             r"\bse\s+cree\s+que\b",
         ]
         msg = "voz pasiva evasiva — esconde quién hizo qué"
-        suggestion = "pon a la persona o equipo como sujeto"
+        suggestion = "usa voz activa: nombra quién hizo la acción y qué hizo; por ejemplo, cambia «se cometieron errores» por «el equipo omitió X»"
     else:
         patterns = [
             r"\bmistakes\s+were\s+made\b",
@@ -482,7 +491,7 @@ def _check_passive_voice(text: str, lang: str) -> list[StructuralFinding]:
             r"\bit\s+is\s+believed\s+that\b",
         ]
         msg = "evasively passive voice — hides who did what"
-        suggestion = "put the person or team in the subject slot"
+        suggestion = "use active voice: name who did the action and what they did; e.g. change «mistakes were made» to «the team missed X»"
     hits = sum(1 for p in patterns if re.search(p, text, re.IGNORECASE))
     if hits >= 1:
         sev = 3 if hits >= 2 else 2
@@ -494,11 +503,11 @@ def _check_wh_starters(sentences: list[str], lang: str) -> list[StructuralFindin
     if lang == "es":
         rx = re.compile(r"^(qu[eé]|por\s+qu[eé]|c[oó]mo|cu[aá]ndo|d[oó]nde)\b", re.IGNORECASE)
         msg = "arranques interrogativos repetidos — molde de explicación IA"
-        suggestion = "abre con sujetos y acciones, no con pregunta-retórica en cadena"
+        suggestion = "convierte preguntas retóricas en afirmaciones: sujeto + acción + consecuencia; deja una sola pregunta si de verdad organiza el argumento"
     else:
         rx = re.compile(r"^(what|why|how|when|where|which|who)\b", re.IGNORECASE)
         msg = "repeated Wh- starters — AI explainer template"
-        suggestion = "lead with subjects and actions, not stacked rhetorical prompts"
+        suggestion = "turn rhetorical prompts into claims: subject + action + consequence; keep only one real organizing question"
     hits = sum(1 for s in sentences if rx.search(s.strip()))
     if hits >= 2:
         return [StructuralFinding(line=0, kind="wh-starters", severity=2, message=f"{hits} casos: {msg}", suggestion=suggestion)]
@@ -694,7 +703,7 @@ def _check_vague_sentence_stack(sentences: list[str], lang: str) -> list[Structu
             kind="vague-sentence-stack",
             severity=2,
             message=f"{vague} frases completas hacen afirmaciones abstractas sin anclas concretas",
-            suggestion="revisa frase por frase: cada afirmación debería tener un caso, dato, cita o decisión concreta",
+            suggestion="aterriza esas frases: agrega un caso, una cita, una fecha, un actor o una consecuencia verificable por cada afirmación abstracta",
         )]
     return []
 
@@ -743,7 +752,7 @@ def _check_essay_scaffolding(text: str, lang: str) -> list[StructuralFinding]:
         kind="essay-scaffolding",
         severity=3,
         message=f"andamiaje completo de ensayo IA: {', '.join(signals)}",
-        suggestion="rompe el molde: empieza por una escena, dato o pregunta concreta y deja caer la estructura formal",
+        suggestion="rompe el molde: empieza con un dato, una cita, una escena o una tensión concreta; evita anunciar primero el plan del ensayo",
     )]
 
 
@@ -871,18 +880,21 @@ def analyze(
     report.structural.extend(_check_rhythm(sentences))
     report.sections = _score_sections(sentences, lang)
 
-    # score — multi-dimensional combiner instead of flat weight/sentences
+    # score — evidence-aware combiner.
+    # It is an index of AI-smell evidence, NOT a probability that the author used AI.
     structural_kinds = {f.kind for f in report.structural}
     severe_structural = sum(1 for f in report.structural if f.severity >= 3)
 
-    # Dimension 1: lexical hits — saturating, not diluted by length.
+    # Dimension 1: lexical hits. Repetition matters, but it must saturate:
+    # 15 comments inside a 50-page thesis cannot mean "94% AI" by itself.
     sev3_hits = sum(1 for h in report.hits if h.pattern.severity >= 3)
     sev2_hits = sum(1 for h in report.hits if h.pattern.severity == 2)
+    sev1_hits = sum(1 for h in report.hits if h.pattern.severity <= 1)
     distinct_sev3_ids = len({h.pattern.id for h in report.hits if h.pattern.severity >= 3})
-    # Distinct sev-3 patterns matter more than 10 hits of the same one.
-    lex_d = min(1.0, distinct_sev3_ids * 0.18 + sev3_hits * 0.04 + sev2_hits * 0.02)
+    distinct_ids = len({h.pattern.id for h in report.hits})
+    lex_d = min(0.72, distinct_sev3_ids * 0.12 + distinct_ids * 0.025 + sev3_hits * 0.025 + sev2_hits * 0.012)
 
-    # Dimension 2: structural macro-signals (essay-scaffolding, synthetic-academic, etc.)
+    # Dimension 2: structural macro-signals (essay scaffold, low specificity, symmetry, etc.).
     macro_kinds = {
         "essay-scaffolding", "synthetic-academic", "low-specificity",
         "vague-sentence-stack", "paragraph-connectors", "paragraph-symmetry",
@@ -890,18 +902,14 @@ def analyze(
         "passive-voice", "wh-starters",
     }
     macro_present = macro_kinds & structural_kinds
-    macro_d = min(1.0, 0.30 * len(macro_present) + 0.10 * severe_structural)
+    macro_d = min(0.70, 0.18 * len(macro_present) + 0.08 * severe_structural)
 
-    # Dimension 3: rhythm/format (em-dash, ellipses, headers, emphasis, tricolon, rhythm).
-    rhythm_kinds = {
-        "em-dash", "ellipses", "section-headers", "emphasis-overload",
-        "tricolon", "rhythm",
-    }
-    rhythm_d = min(1.0, 0.18 * len(rhythm_kinds & structural_kinds))
+    # Dimension 3: rhythm/format. These are weak alone; they should not dominate long papers.
+    rhythm_kinds = {"em-dash", "ellipses", "section-headers", "emphasis-overload", "tricolon", "rhythm"}
+    rhythm_d = min(0.32, 0.10 * len(rhythm_kinds & structural_kinds))
 
-    # Dimension 4: anchor density — only fires with strong evidence,
-    # because the anchor regex is narrow (digits/dates/some pronouns) and
-    # would otherwise punish prose-heavy human writing.
+    # Dimension 4: anchor starvation. Only fires when several real paragraphs lack dates,
+    # examples, citations, places, numbers, or concrete actors.
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
     anchor_starved = 0
     for p in paragraphs:
@@ -911,41 +919,61 @@ def analyze(
     if len(paragraphs) >= 3 and anchor_starved >= 3:
         ratio = anchor_starved / len(paragraphs)
         if ratio >= 0.7:
-            anchor_d = 0.45
+            anchor_d = 0.35
         elif ratio >= 0.5:
-            anchor_d = 0.30
+            anchor_d = 0.22
 
-    # Combine: 1 - prod(1 - d_i). Reacts strongly when multiple dimensions signal.
+    # Combine: 1 - prod(1 - d_i). Reacts when independent dimensions agree.
     dims = [lex_d, macro_d, rhythm_d, anchor_d]
     combined = 1.0
     for d in dims:
         combined *= (1.0 - d)
     combined = 1.0 - combined
 
-    # Backstop floors for the strongest single signals.
+    # Backstop floors for genuinely compound signals.
     if "essay-scaffolding" in structural_kinds and "synthetic-academic" in structural_kinds:
-        combined = max(combined, 0.60)
+        combined = max(combined, 0.52)
     elif "essay-scaffolding" in structural_kinds:
-        combined = max(combined, 0.50)
+        combined = max(combined, 0.42)
     elif {"synthetic-academic", "low-specificity"} <= structural_kinds:
         combined = max(combined, 0.35)
     elif "synthetic-academic" in structural_kinds:
         combined = max(combined, 0.25)
     elif "binary-reframe" in structural_kinds and distinct_sev3_ids >= 1 and len(report.hits) >= 4:
-        combined = max(combined, 0.58)
+        combined = max(combined, 0.55)
     elif severe_structural >= 2:
         combined = max(combined, 0.30)
 
-    # Academic dampener: long texts with academic structure are expected to have
-    # synthetic-academic, low-specificity, and even essay-scaffolding (citations,
-    # numbered frameworks are normal academic conventions in theses/books).
-    # Applied AFTER backstops so it can dampen even floor-guaranteed scores.
+    # Academic dampener: long academic texts naturally contain abstraction,
+    # formal transitions, citations, and repeated section shapes.
     if report.sentences >= 150 and {"synthetic-academic", "low-specificity"} <= structural_kinds:
         academic_expected = {"synthetic-academic", "low-specificity", "vague-sentence-stack",
                              "paragraph-symmetry", "essay-scaffolding", "paragraph-connectors"}
         non_academic_kinds = structural_kinds - academic_expected
         if not non_academic_kinds or non_academic_kinds <= {"rhythm", "tricolon"}:
             combined *= 0.55
+
+    # Long-document density cap. Sparse findings in a thesis should read as
+    # "revise these passages", not as a conviction.
+    weighted_findings = (
+        sev3_hits * 1.3 + sev2_hits * 0.8 + sev1_hits * 0.35 +
+        sum(1.2 if f.severity >= 3 else 0.75 if f.severity == 2 else 0.35 for f in report.structural)
+    )
+    evidence_density = weighted_findings / max(report.sentences, 1)
+    if report.sentences >= 150:
+        if evidence_density < 0.035:
+            combined = min(combined, 0.24)
+        elif evidence_density < 0.10:
+            combined = min(combined, 0.34)
+        elif evidence_density < 0.13:
+            combined = min(combined, 0.42)
+    elif report.sentences >= 60:
+        if evidence_density < 0.05:
+            combined = min(combined, 0.30)
+        elif evidence_density < 0.09:
+            combined = min(combined, 0.42)
+    elif report.sentences >= 30 and evidence_density < 0.08:
+        combined = min(combined, 0.50)
 
     report.score = min(1.0, combined)
 

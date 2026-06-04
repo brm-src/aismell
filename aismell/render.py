@@ -25,7 +25,7 @@ DIM = "2"
 BOLD = "1"
 
 
-SEV_GLYPH = {1: "·", 2: "⚠", 3: "🔴"}
+SEV_GLYPH = {1: ".", 2: "!", 3: "X"}
 SEV_COLOR = {1: CYA, 2: YEL, 3: RED}
 
 

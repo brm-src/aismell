@@ -392,6 +392,40 @@ def test_breathless_inline_emphasis_still_flagged():
     assert "emphasis-overload" in {f.kind for f in report.structural}
 
 
+def test_long_sparse_hits_do_not_become_fake_probability():
+    filler = (
+        "En 2019 la escuela registró cambios en la asistencia del curso. "
+        "La profesora comparó esos datos con entrevistas realizadas en marzo. "
+        "El capítulo describe una decisión institucional y sus efectos observables. "
+        "La evidencia aparece vinculada a fechas, actores y documentos concretos. "
+    )
+    marked = "Cabe mencionar que este apartado introduce una transición formal. "
+    text = " ".join([filler] * 55 + [marked] * 15)
+    report, _ = analyze(text, lang="es")
+    assert report.sentences >= 200
+    assert len(report.hits) >= 15
+    assert report.score <= 0.34
+
+
+def test_docx_structural_comments_use_readable_labels_not_internal_kinds():
+    from aismell.core import StructuralFinding
+    from aismell.docx import _format_structural_comment
+
+    comment = _format_structural_comment(
+        StructuralFinding(
+            line=0,
+            kind="negative-listing",
+            severity=2,
+            message="listado negativo antes del punto",
+            suggestion="di primero la tesis central",
+        ),
+        "es",
+    )
+    assert "negative-listing" not in comment
+    assert "lista negativa" in comment
+    assert "Qué cambiar" in comment
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in list(globals().items()):

@@ -32,6 +32,95 @@ from xml.etree import ElementTree as ET
 from .core import Hit, StructuralFinding, analyze
 
 
+KIND_LABELS_ES = {
+    "em-dash": "guiones largos repetidos",
+    "list-density": "exceso de listas",
+    "ellipses": "pausas dramáticas",
+    "section-headers": "encabezados genéricos",
+    "emphasis-overload": "énfasis tipográfico excesivo",
+    "tricolon": "serie de tres elementos",
+    "rhetorical-qa": "pregunta retórica",
+    "binary-reframe": "contraste prefabricado",
+    "negative-listing": "lista negativa",
+    "false-agency": "agencia falsa",
+    "passive-voice": "voz pasiva evasiva",
+    "wh-starters": "arranques interrogativos repetidos",
+    "paragraph-connectors": "conectores al inicio de párrafo",
+    "paragraph-symmetry": "párrafos demasiado simétricos",
+    "synthetic-academic": "textura académica sintética",
+    "low-specificity": "baja especificidad",
+    "vague-sentence-stack": "frases abstractas acumuladas",
+    "essay-scaffolding": "andamiaje de ensayo",
+    "rhythm": "ritmo plano",
+}
+KIND_LABELS_EN = {
+    "em-dash": "repeated em dashes",
+    "list-density": "too many lists",
+    "ellipses": "dramatic pauses",
+    "section-headers": "generic headings",
+    "emphasis-overload": "typographic emphasis overload",
+    "tricolon": "three-part series",
+    "rhetorical-qa": "rhetorical question",
+    "binary-reframe": "prefabricated contrast",
+    "negative-listing": "negative list",
+    "false-agency": "false agency",
+    "passive-voice": "evasive passive voice",
+    "wh-starters": "repeated question-word openings",
+    "paragraph-connectors": "paragraph-opening connectors",
+    "paragraph-symmetry": "overly symmetric paragraphs",
+    "synthetic-academic": "synthetic academic texture",
+    "low-specificity": "low specificity",
+    "vague-sentence-stack": "stacked abstract sentences",
+    "essay-scaffolding": "essay scaffold",
+    "rhythm": "flat rhythm",
+}
+
+
+def _kind_label(kind: str, lang: str) -> str:
+    labels = KIND_LABELS_ES if lang == "es" else KIND_LABELS_EN
+    return labels.get(kind, kind.replace("-", " "))
+
+
+def _format_hit_comment(hit: Hit, lang: str) -> str:
+    matched = hit.matched.strip()
+    msg = hit.pattern.message.strip()
+    sug = (hit.pattern.suggestion or "").strip()
+    if lang == "es":
+        advice = sug or "reescribe esta parte con una afirmación más directa y específica"
+        if "activa" in advice and "voz" not in advice:
+            advice += "; voz activa significa nombrar quién realiza la acción y qué hace"
+        return (
+            f"Hallazgo: expresión con olor a IA.\n"
+            f"Texto marcado: «{matched}».\n"
+            f"Por qué importa: {msg}.\n"
+            f"Qué cambiar: {advice}. Ajusta la frase según el argumento de este documento; no reemplaces mecánicamente."
+        )
+    advice = sug or "rewrite this part with a more direct and specific claim"
+    return (
+        f"Finding: AI-smell expression.\n"
+        f"Marked text: “{matched}”.\n"
+        f"Why it matters: {msg}.\n"
+        f"What to change: {advice}. Adapt it to this document; do not replace mechanically."
+    )
+
+
+def _format_structural_comment(finding: StructuralFinding, lang: str) -> str:
+    label = _kind_label(finding.kind, lang)
+    msg = finding.message.strip()
+    sug = (finding.suggestion or "").strip()
+    if lang == "es":
+        advice = sug or "revisa este patrón en el contexto del párrafo y decide si aporta precisión o solo forma"
+        if finding.kind == "passive-voice":
+            advice = "usa voz activa: nombra quién hizo la acción y qué hizo; por ejemplo, «el equipo omitió X» es más claro que «se cometieron errores»"
+        elif finding.kind == "false-agency":
+            advice = "cambia abstracciones que actúan solas por actores concretos: autor, institución, muestra, entrevistado, dato o decisión documentada"
+        elif finding.kind == "low-specificity":
+            advice = "agrega evidencia local: cita, autor, fecha, caso, muestra, lugar o consecuencia verificable dentro del documento"
+        return f"Hallazgo: {label}.\nPor qué importa: {msg}.\nQué cambiar: {advice}."
+    advice = sug or "review this pattern in context and decide whether it adds precision or only polish"
+    return f"Finding: {label}.\nWhy it matters: {msg}.\nWhat to change: {advice}."
+
+
 # OOXML namespaces
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 PKG_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
@@ -309,9 +398,7 @@ def annotate_docx(
                 continue
             _, marked_run, _ = split
             _wrap_with_comment(p_elem, marked_run, comment_id)
-            comment_text = hit.pattern.message
-            if hit.pattern.suggestion:
-                comment_text += f"  →  {hit.pattern.suggestion}"
+            comment_text = _format_hit_comment(hit, lang_used)
             _append_comment(comments_root, comment_id, author, comment_text)
 
     # Structural findings: we don't have a per-paragraph anchor for some,
@@ -326,9 +413,7 @@ def annotate_docx(
             if anchor is None:
                 continue
             _wrap_with_comment(first_para, anchor, comment_id)
-            text = f"[{finding.kind}] {finding.message}"
-            if finding.suggestion:
-                text += f"  →  {finding.suggestion}"
+            text = _format_structural_comment(finding, lang_used)
             _append_comment(comments_root, comment_id, author, text)
 
     new_doc_xml = _serialize_xml(doc_tree.getroot())
