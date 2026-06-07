@@ -1024,3 +1024,59 @@ patterns:
     pattern: "(?i)\\b(full stop|period)\\.?$"
     message: '"full stop / period" — performative finality'
     suggestion: let the sentence end
+
+  # ==== DEEP TECHNICAL ANALYSIS (June 2026) — frontier model hedging, contraction deficit, humanizer artifacts ====
+
+  # -- Syntactic contraction deficit (strong structural signal, regex-accessible) --
+  - id: en_structural.contraction_deficit
+    kind: regex
+    severity: 3
+    pattern: '\b(do not|is not|cannot|would not|will not|have not)\b'
+    message: 'syntactic contraction deficit — strong indicator of formal machine-generated English (frontier models average 0.00 contractions/chunk)'
+    suggestion: integrate natural contractions ("don't", "isn't", "can't") to vary sentence rhythm
+
+  # -- Post-2024 frontier model hedging (replaced legacy "delve into" / "tapestry") --
+  - id: en_hedging.worth_noting
+    kind: regex
+    severity: 2
+    pattern: '\bit\s+is\s+worth\s+noting\b'
+    message: '"it is worth noting" — post-2024 English bloat filler used by frontier models to maintain logical pacing without adding value'
+    suggestion: state the claim directly without introductory hedging
+
+  - id: en_hedging.important_note
+    kind: regex
+    severity: 2
+    pattern: '\bit\s+is\s+important\s+to\s+note\b'
+    message: '"it is important to note" — passive-aggressive introductory hedging typical of high-alignment model filters'
+    suggestion: remove the introductory phrase and lead directly with the core claim
+
+  # -- Adjective-to-adverb POS imbalance (regex proxy) --
+  - id: en_structural.adj_adv_imbalance
+    kind: regex
+    severity: 3
+    pattern: '\b[a-zA-Z]+ed\s+and\s+[a-zA-Z]+ed\s+[a-zA-Z]+\b'
+    message: 'overly dense parallel adjective groupings with low adverbial support — machine POS signature'
+    suggestion: introduce active verbs and descriptive adverbs to balance part-of-speech distributions
+
+  # -- Adversarial humanizer artifacts (Tier 3 humanizers: Undetectable AI, WriteHuman.ai) --
+  - id: en_humanizer.cgsize
+    kind: regex
+    severity: 3
+    pattern: '\bCGSizeMake\s+pp\s+\d+-\d+\b'
+    message: 'adversarial nonsense tag injected by low-quality humanizers to disrupt perplexity scores (DAMAGE paper)'
+    suggestion: strip raw programming code and corrupted LaTeX fragments from natural prose
+
+  - id: en_humanizer.synonym_artifact
+    kind: regex
+    severity: 2
+    pattern: '\b(require\s+to\s+obtain|vehicle\s+repaired|motor\s+is\s+creating|peculiar\s+sound)\b'
+    message: 'synonym-replacement artifact typical of rules-based Tier 3 humanizers'
+    suggestion: revert to natural human idioms (e.g., "get my car fixed", "strange noise")
+
+  # -- Email: multi-turn conversational prompting artifact --
+  - id: en_email.as_requested
+    kind: regex
+    severity: 2
+    pattern: '\bAs\s+requested\b'
+    message: '"As requested" — artifact of multi-turn conversational prompting, common in automated email campaigns'
+    suggestion: begin with a direct professional greeting (e.g., "Attached is the document you needed")

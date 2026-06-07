@@ -211,8 +211,13 @@ def _check_em_dashes(text: str, lines: list[str]) -> list[StructuralFinding]:
     return out
 
 
-def _check_rhythm(sentences: list[str]) -> list[StructuralFinding]:
-    """If sentence lengths cluster too tight, flag monorhythm."""
+def _check_rhythm(sentences: list[str], lang: str = "en") -> list[StructuralFinding]:
+    """If sentence lengths cluster too tight, flag monorhythm.
+
+    Spanish calibration (Deep Technical Analysis, June 2026):
+    Machine ES: μ≈25-30 words, σ≈3-5 words
+    Human ES: σ≥12 words
+    English keeps original threshold (CV<0.35)."""
     if len(sentences) < 6:
         return []
     lengths = [len(s.split()) for s in sentences]
@@ -224,13 +229,28 @@ def _check_rhythm(sentences: list[str]) -> list[StructuralFinding]:
     except statistics.StatisticsError:
         return []
     cv = std / mean if mean else 0
+
+    # Spanish: stricter because sentences are naturally longer but machine text is even flatter
+    if lang == "es":
+        threshold = 0.30
+        # Extra: if std is very tight in absolute terms (σ < 6) and mean is in machine range (20-35)
+        if cv < threshold or (std < 6 and 20 < mean < 35):
+            return [StructuralFinding(
+                line=0,
+                kind="rhythm",
+                severity=2,
+                message=f"varianza de oración baja (CV={cv:.2f}, σ={std:.1f} palabras) — ritmo plano de IA (texto máquina ES: σ≈3-5, humano: σ≥12)",
+                suggestion="mezcla oraciones cortas (5-10 palabras) y largas (40-60)",
+            )]
+        return []
+
     if cv < 0.35:
         return [StructuralFinding(
             line=0,
             kind="rhythm",
             severity=2,
-            message=f"varianza de oración baja (CV={cv:.2f}) — ritmo plano AI",
-            suggestion="mezcla oraciones cortas y largas",
+            message=f"sentence length variance low (CV={cv:.2f}) — flat machine rhythm",
+            suggestion="mix short and long sentences",
         )]
     return []
 
@@ -775,6 +795,88 @@ def _sentence_score(sentence: str, lang: str, role: str) -> tuple[float, list[st
     return min(1.0, score), reasons
 
 
+# ---- Deep Technical Analysis (June 2026) structural signals ----
+
+def _check_semicolon_ratio(text: str, lang: str) -> list[StructuralFinding]:
+    """Machine text overuses semicolons (lexical cohesion crutch)."""
+    if lang == "es":
+        return []  # semicolons are rare in Spanish, not a reliable signal
+    sentences = split_sentences(text)
+    if len(sentences) < 5:
+        return []
+    period_count = text.count(".")
+    semicolon_count = text.count(";")
+    if period_count == 0:
+        return []
+    ratio = semicolon_count / max(period_count, 1)
+    # Human EN: ~0.02-0.06 semicolons per period. Machine: >0.15
+    if ratio > 0.15:
+        return [StructuralFinding(
+            line=0,
+            kind="semicolon_overuse",
+            severity=2,
+            message=f"semicolon-per-period ratio high ({ratio:.2f}) — lexical cohesion crutch typical of machine text",
+            suggestion="replace semicolons with periods or restructuring",
+        )]
+    return []
+
+
+def _check_nominalization_density(text: str, lang: str) -> list[StructuralFinding]:
+    """Flag high nominalization density (nominalized verbs replace active verbs).
+
+    Spanish calibration: -ción/-sión/-miento/-dad endings.
+    Machine ES: 12-18 per 1000 words. Human ES: 5-10."""
+    words = [w for w in text.split() if re.match(r'[\wáéíóúüñÁÉÍÓÚÜÑ]', w)]
+    total_words = len(words)
+    if total_words < 50:
+        return []
+    if lang == "es":
+        nominalizations = [w for w in words if re.search(r'ción|siones|mientos?|dades?|bilidad', w, re.I)]
+        density = len(nominalizations) / (total_words / 1000)
+        if density > 16:
+            return [StructuralFinding(
+                line=0,
+                kind="nominalization_density",
+                severity=2,
+                message=f"densidad de nominalizaciones alta ({density:.0f}/1K palabras) — IA: 12-18, humano: 5-10",
+                suggestion="sustituye nominalizaciones en -ción/-miento con verbos activos",
+            )]
+        return []
+    else:
+        nominalizations = [w for w in words if re.search(r'tion|ment|ness|ity|ance|ence', w, re.I)]
+        density = len(nominalizations) / (total_words / 1000)
+        if density > 14:
+            return [StructuralFinding(
+                line=0,
+                kind="nominalization_density",
+                severity=2,
+                message=f"nominalization density high ({density:.0f}/1K words) — machine: 10-16, human: 4-8",
+                suggestion="replace -tion/-ment/-ness nouns with active verbs",
+            )]
+        return []
+
+
+def _check_impersonal_se_stacking(text: str, lang: str) -> list[StructuralFinding]:
+    """Three or more close co-occurrences of impersonal 'se' within 200 chars
+    indicate passive-voice stacking typical of machine-generated Spanish."""
+    if lang != "es":
+        return []
+    positions = [m.start() for m in re.finditer(r'\bse\s+\w+', text, re.I)]
+    if len(positions) < 3:
+        return []
+    # check if any 3 positions fall within 200 chars of each other
+    for i in range(len(positions) - 2):
+        if positions[i + 2] - positions[i] <= 200:
+            return [StructuralFinding(
+                line=0,
+                kind="impersonal_se",
+                severity=2,
+                message="apilamiento de 'se' impersonal: alta densidad de pasiva refleja típica de texto IA",
+                suggestion="convierte algunas oraciones pasivas a voz activa",
+            )]
+    return []
+
+
 def _score_sections(sentences: list[str], lang: str) -> list[SectionScore]:
     if not sentences:
         return []
@@ -877,7 +979,11 @@ def analyze(
         report.structural.extend(_check_low_specificity(authorial_text, lang))
         report.structural.extend(_check_vague_sentence_stack(sentences, lang))
         report.structural.extend(_check_essay_scaffolding(authorial_text, lang))
-    report.structural.extend(_check_rhythm(sentences))
+    report.structural.extend(_check_rhythm(sentences, lang))
+    if not strict:
+        report.structural.extend(_check_semicolon_ratio(authorial_text, lang))
+        report.structural.extend(_check_nominalization_density(authorial_text, lang))
+        report.structural.extend(_check_impersonal_se_stacking(authorial_text, lang))
     report.sections = _score_sections(sentences, lang)
 
     # score — evidence-aware combiner.

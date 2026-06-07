@@ -1384,3 +1384,228 @@ patterns:
     pattern: "(?i)\\b(punto final|punto)\\.?$"
     message: '"punto final" — cierre performativo'
     suggestion: deja que la frase termine
+
+  # ==== DEEP TECHNICAL ANALYSIS (June 2026) — Chilean/LATAM academic, admin, educational, bloat ====
+
+  # -- Academic register: Chilean thesis/dissertation tells --
+  - id: es_academic.colegir
+    kind: phrase
+    severity: 2
+    pattern: se puede colegir que
+    message: '"se puede colegir que" — hedging académico de IA (deducción sin respaldo empírico)'
+    suggestion: di la deducción directa o usa "por lo tanto"
+
+  - id: es_academic.pertinente
+    kind: phrase
+    severity: 2
+    pattern: resulta pertinente abordar
+    message: '"resulta pertinente abordar" — transición académica acolchada típica de IA'
+    suggestion: introduce el tema directamente sin relleno introductorio
+
+  - id: es_academic.resumidas_cuentas
+    kind: phrase
+    severity: 2
+    pattern: en resumidas cuentas
+    message: '"en resumidas cuentas" — cierre simplista típico de párrafos IA'
+    suggestion: '"en síntesis" o di el punto final directo'
+
+  - id: es_academic.analisis_precedente
+    kind: phrase
+    severity: 2
+    pattern: el análisis precedente
+    message: '"el análisis precedente" — referencia hacia atrás formuláica de IA'
+    suggestion: varía la transición o refiérete al dato específico analizado
+
+  - id: es_academic.de_alli_pues
+    kind: phrase
+    severity: 3
+    pattern: de allí pues que
+    message: '"de allí pues que" — arcaísmo hiperformal sobreusado por IA para afirmar consecuencia lógica'
+    suggestion: '"por consiguiente" o varía la estructura'
+
+  - id: es_academic.bajo_este_prisma
+    kind: phrase
+    severity: 2
+    pattern: bajo este prisma
+    message: '"bajo este prisma" — metáfora espacial académica hueca típica de modelos frontier'
+    suggestion: di la perspectiva directamente u omite la frase introductoria
+
+  - id: es_academic.conforme_autor
+    kind: phrase
+    severity: 2
+    pattern: conforme al autor citado
+    message: '"conforme al autor citado" — marco de cita repetitivo y simple de IA'
+    suggestion: varía los estilos de cita integrando hallazgos directamente en el texto
+
+  - id: es_academic.tal_como_senala
+    kind: phrase
+    severity: 2
+    pattern: tal como señala
+    message: '"tal como señala" — fórmula pasiva de integración de citas típica de IA'
+    suggestion: integra la afirmación del autor en voz activa o parentéticamente
+
+  - id: es_academic.recapitulando
+    kind: phrase
+    severity: 2
+    pattern: recapitulando lo expuesto
+    message: '"recapitulando lo expuesto" — transición mecánica formuláica de IA para abrir conclusiones'
+    suggestion: omite el relleno y lidera directo con la síntesis final
+
+  # -- Administrative: Chilean public sector (oficio, informe, memorándum) --
+  # HIGH FALSE-POSITIVE RISK in real legal/admin docs — contextual whitelisting recommended
+  - id: es_admin.junto_saludar
+    kind: regex
+    severity: 2
+    pattern: '\b[jJ]unto\s+con\s+saludar\b'
+    message: '"junto con saludar cordialmente" — saludo administrativo sobre-generado por IA en contextos casuales'
+    suggestion: omite la fórmula o varía la apertura
+
+  - id: es_admin.sin_otro_particular
+    kind: regex
+    severity: 2
+    pattern: '\bsin\s+otro\s+particular\b'
+    message: '"sin otro particular" — despedida formal obligatoria sobreusada por IA en textos administrativos informales'
+    suggestion: usa un simple "Atentamente" u omite
+
+  - id: es_admin.vengo_en_resolver
+    kind: regex
+    severity: 3
+    pattern: '\bvengo\s+en\s+resolver\b'
+    message: '"vengo en resolver" — fórmula legal arcaica sobre-generada por IA en decisiones públicas'
+    suggestion: usa verbos administrativos estándar en presente como "resuelvo"
+
+  - id: es_admin.merito_expuesto
+    kind: regex
+    severity: 3
+    pattern: '\ben\s+mérito\s+de\s+lo\s+expuesto\b'
+    message: '"en mérito de lo expuesto" — justificación burocrática rígida típica de textos de política generados por IA'
+    suggestion: referencia los fundamentos legales o empíricos específicos
+
+  - id: es_admin.se_procede_a
+    kind: regex
+    severity: 2
+    pattern: '\bse\s+procede\s+a\s+(?:informar|solicitar|responder)\b'
+    message: '"se procede a" — apilamiento verbal impersonal para tono administrativo distante de IA'
+    suggestion: 'usa formas verbales activas: "informamos", "solicitamos"'
+
+  - id: es_admin.antecedente
+    kind: phrase
+    severity: 2
+    pattern: señalado en el antecedente
+    message: '"señalado en el antecedente" — fórmula administrativa predecible sobreusada por IA en oficios'
+    suggestion: referencia el número de documento o fecha específica
+
+  # -- Educational: Chilean pedagogical / MINEDUC register --
+  - id: es_edu.aprendizaje_significativo
+    kind: regex
+    severity: 2
+    pattern: '\baprendizaje\s+significativo\b'
+    message: '"aprendizaje significativo" — cliché educativo sobreusado por IA en planificaciones'
+    suggestion: describe el resultado de aprendizaje concreto o la pedagogía activa
+
+  - id: es_edu.seran_capaces_de
+    kind: phrase
+    severity: 2
+    pattern: serán capaces de
+    message: '"serán capaces de" — formulación predecible de objetivos de aprendizaje generada por IA'
+    suggestion: lidera directo con verbos activos y medibles en futuro o infinitivo
+
+  - id: es_edu.pensamiento_critico
+    kind: regex
+    severity: 2
+    pattern: '\bpensamiento\s+crítico\b'
+    message: '"pensamiento crítico" — muletilla pedagógica sobreusada en diseños de aprendizaje IA'
+    suggestion: especifica la habilidad analítica exacta que se desarrolla
+
+  - id: es_edu.atender_diversidad
+    kind: regex
+    severity: 2
+    pattern: '\batender\s+a\s+la\s+diversidad\b'
+    message: '"atender a la diversidad" — frase de cobertura educacional estándar sobre-generada por IA'
+    suggestion: detalla las estrategias diferenciadas o adecuaciones específicas
+
+  - id: es_edu.retroalimentacion_formativa
+    kind: regex
+    severity: 2
+    pattern: '\bretroalimentación\s+formativa\b'
+    message: '"retroalimentación formativa" — palabra clave curricular repetitiva típica de materiales pedagógicos IA'
+    suggestion: describe los mecanismos de retroalimentación específicos que se implementan
+
+  - id: es_edu.experiencia_aprendizaje
+    kind: regex
+    severity: 2
+    pattern: '\bexperiencia\s+de\s+aprendizaje\b'
+    message: '"experiencia de aprendizaje" — frase educativa genérica sobreusada por IA para describir actividades de clase rutinarias'
+    suggestion: usa términos más específicos como "actividad", "taller" o "proyecto"
+
+  # -- Modern Spanish bloat lexicon (2025-2026 frontier models) --
+  - id: es_bloat.esencial
+    kind: phrase
+    severity: 2
+    pattern: es esencial
+    message: '"es esencial" — intensificador predecible crónicamente sobre-generado por modelos frontier'
+    suggestion: omite el relleno y afirma directo
+
+  - id: es_bloat.desafio_significativo
+    kind: regex
+    severity: 2
+    pattern: '\b(?:un\s+)?desafío\s+significativo\b'
+    message: '"desafío significativo" — frase vaga y no comprometida usada por IA para describir dificultades generales'
+    suggestion: especifica la naturaleza exacta del obstáculo o problema
+
+  - id: es_bloat.tapiz_de
+    kind: phrase
+    severity: 3
+    pattern: tapiz de
+    message: '"tapiz de" — traducción directa del inglés "tapestry of"; altamente indicativo de origen máquina'
+    suggestion: '"tejido", "entramado" o "red"'
+
+  - id: es_bloat.es_evidente_que
+    kind: phrase
+    severity: 2
+    pattern: es evidente que
+    message: '"es evidente que" — relleno introductorio usado por IA para afirmar consenso sin prueba'
+    suggestion: elimina la frase y di la afirmación directamente
+
+  - id: es_bloat.consecuentemente
+    kind: phrase
+    severity: 2
+    pattern: consecuentemente
+    message: '"consecuentemente" — conector de consecuencia sobreusado; traducción directa de "consequently"'
+    suggestion: '"por consiguiente" o "en consecuencia"'
+
+  - id: es_bloat.notablemente
+    kind: phrase
+    severity: 2
+    pattern: notablemente
+    message: '"notablemente" — relleno de máquina de alta frecuencia para implicar importancia sin contexto'
+    suggestion: especifica el aspecto notable directamente
+
+  - id: es_bloat.modo_conclusion
+    kind: phrase
+    severity: 2
+    pattern: a modo de conclusión
+    message: '"a modo de conclusión" — inicio de párrafo rígido y formuláico típico de capítulos finales IA'
+    suggestion: lidera directo con la afirmación analítica sintetizada
+
+  # -- Bureaucratic connective tissue (LATAM academic/policy) --
+  - id: es_bureaucratic.marco
+    kind: regex
+    severity: 2
+    pattern: '\ben\s+el\s+marco\s+de\b'
+    message: '"en el marco de" — relleno burocrático típico de textos académicos y de política generados por IA'
+    suggestion: 'usa preposiciones más simples: "en", "durante" o "bajo"'
+
+  - id: es_assertion.sabemos
+    kind: regex
+    severity: 2
+    pattern: '\bComo\s+todos\s+sabemos\b'
+    message: '"como todos sabemos" — sesgo de afirmación colectiva típico de IA proyectando consenso artificial'
+    suggestion: evita el relleno de reclamo de consenso; presenta hechos directamente o cita fuentes específicas
+
+  - id: es_bloat.vale_la_pena_mencionar
+    kind: phrase
+    severity: 2
+    pattern: vale la pena mencionar
+    message: '"vale la pena mencionar" — transición introductoria verbosa sobreusada típica de texto generado por máquina'
+    suggestion: introduce el punto directamente sin hedging
