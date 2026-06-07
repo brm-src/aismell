@@ -19,6 +19,13 @@ const I18N = {
     biblio_note_inline: "Al activar esto, solo las citas (DOI / título / autor / arXiv ID) se consultan en CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books y OpenLibrary. El resto del texto no sale de tu navegador.",
     boot: "afinando el olfato…",
     booting: "preparando aismell…",
+    no_wasm: "Tu navegador no soporta WebAssembly. Necesitas Chrome, Firefox, Safari 15+ o Edge.",
+    boot_phases: [
+      "descargando motor python (~6 MB)…",
+      "cargando patrones de detección…",
+      "montando sistema de archivos…",
+      "preparando analizador…",
+    ],
     ready: "listo. pega tu texto y dale a analizar.",
     analyzing: "olfateando…",
     analyzing_steps: [
@@ -83,6 +90,7 @@ const I18N = {
       clean: "no se detectaron patrones IA fuertes",
     },
     error: "algo se rompió:",
+    bad_format: "formato no soportado. Usa .txt, .md, .docx o .pdf.",
     lang: "idioma",
     strict: "solo alta confianza",
     analyze: "analizar",
@@ -188,6 +196,13 @@ const I18N = {
     biblio_note_inline: "When this is on, only the citations (DOI / title / author / arXiv ID) are queried against CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books and OpenLibrary. The rest of your text stays in your browser.",
     boot: "warming up the nose…",
     booting: "warming up aismell…",
+    no_wasm: "Your browser doesn't support WebAssembly. You need Chrome, Firefox, Safari 15+, or Edge.",
+    boot_phases: [
+      "downloading python engine (~6 MB)…",
+      "loading detection patterns…",
+      "mounting filesystem…",
+      "preparing analyzer…",
+    ],
     ready: "ready. paste your text and hit analyze.",
     analyzing: "sniffing…",
     analyzing_steps: [
@@ -252,6 +267,7 @@ const I18N = {
       clean: "no strong AI patterns detected",
     },
     error: "something broke:",
+    bad_format: "unsupported format. Use .txt, .md, .docx, or .pdf.",
     lang: "language",
     strict: "high confidence only",
     analyze: "analyze",
@@ -512,10 +528,41 @@ function startScanning(steps, opts = {}) {
 }
 
 async function bootPyodide() {
+  // WASM check: Pyodide needs WebAssembly. Safari <15, very old browsers.
+  if (typeof WebAssembly === "undefined" || typeof WebAssembly.instantiate !== "function") {
+    setStatus(I18N[UILANG].no_wasm || "Tu navegador no soporta WebAssembly. Necesitas Chrome, Firefox, Safari 15+ o Edge.", true);
+    return;
+  }
+
+  // Phased boot with real progress bar so the user sees something instead of a
+  // spinning dot for 15+ seconds on slow connections.
+  const phases = I18N[UILANG].boot_phases || [
+    "descargando motor python (~6 MB)…",
+    "cargando patrones de detección…",
+    "montando sistema de archivos…",
+    "preparando analizador…",
+  ];
+  const barEl = document.createElement("div");
+  barEl.className = "track";
+  barEl.style.cssText = "max-width:320px;margin:6px 0 0;";
+  barEl.innerHTML = '<div class="fill" style="width:0%;transition:width 0.3s linear"></div>';
+  els.status.appendChild(barEl);
+  const fillEl = barEl.querySelector(".fill");
+
+  function setBootPhase(idx) {
+    if (idx >= phases.length) return;
+    els.status.innerHTML = '<span class="spin">●</span> ' + phases[idx];
+    els.status.appendChild(barEl);
+    fillEl.style.width = ([60, 78, 92, 100][idx] || 100) + "%";
+  }
+
+  setBootPhase(0);
+
   try {
     pyodide = await loadPyodide({
       indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.2/full/",
     });
+    setBootPhase(1);
     await pyodide.loadPackage("pyyaml");
 
     // Fetch the patterns + core source from the same site (or from the
@@ -523,6 +570,7 @@ async function bootPyodide() {
     // fetch fails so a copy-paste of index.html alone still works.
     const sources = await loadSources();
 
+    setBootPhase(2);
     pyodide.FS.mkdir("/aismell");
     pyodide.FS.mkdir("/aismell/patterns");
     pyodide.FS.writeFile("/aismell/__init__.py", "");
@@ -631,6 +679,7 @@ def extract_docx_text(input_bytes):
     annotateDocxFn = pyodide.globals.get("annotate_docx_bytes");
     extractRefsFn = pyodide.globals.get("extract_refs");
     extractDocxTextFn = pyodide.globals.get("extract_docx_text");
+    setBootPhase(3);
     setStatus(I18N[UILANG].ready);
     els.analyzeBtn.disabled = false;
     // Silently start downloading the embedding model in the background
@@ -2234,7 +2283,10 @@ async function handleFile(file) {
   const isText = ["text/plain", "text/markdown", ""].includes(file.type) ||
                  /\.(txt|md|markdown)$/i.test(file.name);
   if (!isText) {
-    setStatus(`${t.error} ${file.name}`, true);
+    const msg = t.bad_format
+      ? t.bad_format.replace("{name}", file.name)
+      : `${file.name}: formato no soportado. Usa .txt, .md, .docx o .pdf.`;
+    setStatus(msg, true);
     return;
   }
   const text = await file.text();
