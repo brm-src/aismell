@@ -131,6 +131,9 @@ const I18N = {
     docx_done: "Hallazgos listos en <strong>{name}</strong>. Lo amarillo marca frases o zonas que conviene revisar. Al presionar <strong>descargar Word comentado</strong>, baja un .docx con resaltados y comentarios al margen: cada comentario explica qué se detectó, por qué puede sonar a IA y qué cambiar en el contexto del documento.",
     pdf_browser_unsupported: "PDF en la web aún no se puede (la librería no carga en el navegador). Para PDF usa el CLI: aismell paper.pdf --out paper-marcado.pdf",
     pdf_extracting: "extrayendo texto del PDF…",
+    pdf_extracting_page: "extrayendo PDF: página {page}/{total}…",
+    pdf_long: "PDF largo: analicé las primeras {pages} páginas / {chars} caracteres para no colgar el navegador. Para el documento completo usa el CLI.",
+    pdf_too_big: "PDF demasiado pesado para el navegador ({mb} MB). Usa el CLI: aismell archivo.pdf --out archivo-marcado.pdf",
     pdf_no_text: "El PDF no tiene capa de texto (probablemente escaneado). Sin OCR no puedo leerlo. Para PDFs escaneados usa el CLI con OCR.",
     biblio: "verificar bibliografía",
     biblioTip: "Busca las referencias del texto (DOIs, papers, libros, citas) y verifica si existen en CrossRef, OpenAlex, Google Books y otras fuentes. La IA suele inventar bibliografía.",
@@ -308,6 +311,9 @@ const I18N = {
     docx_done: "Findings are ready in <strong>{name}</strong>. Yellow marks phrases or areas worth reviewing. Press <strong>download commented Word</strong> to get a .docx with highlights and margin comments: each comment explains what was found, why it may sound AI-written, and what to change in this document.",
     pdf_browser_unsupported: "PDF in the browser isn't supported yet (the library doesn't run in WASM). For PDF use the CLI: aismell paper.pdf --out paper-marked.pdf",
     pdf_extracting: "extracting text from PDF…",
+    pdf_extracting_page: "extracting PDF: page {page}/{total}…",
+    pdf_long: "Long PDF: analyzed the first {pages} pages / {chars} characters to avoid freezing the browser. For the full document, use the CLI.",
+    pdf_too_big: "PDF too heavy for the browser ({mb} MB). Use the CLI: aismell file.pdf --out file-marked.pdf",
     pdf_no_text: "This PDF has no text layer (probably scanned). Without OCR I can't read it. Use the CLI with OCR for scanned PDFs.",
     biblio: "verify bibliography",
     biblioTip: "Finds the references in the text (DOIs, papers, books, citations) and checks them against CrossRef, OpenAlex, Google Books and other sources. AI often invents bibliography.",
@@ -1050,35 +1056,43 @@ async function analyze() {
     // Augments findings; never sends text out. First run downloads ~120 MB model
     // and caches it in IndexedDB.
     try {
-      progress.advance(7);
-      const { analyzeEmbeddings, onModelProgress } = await import("./embedding-analysis.js");
-      const offProgress = onModelProgress((evt) => {
-        if (evt && evt.status === "progress" && typeof evt.progress === "number") {
-          progress.setModelProgress(evt.progress, evt.file || "");
-        }
-      });
-      try {
-        const semantic = await analyzeEmbeddings(text, obj.lang || "es");
-        if (semantic && semantic.findings && semantic.findings.length) {
-          obj.structural = (obj.structural || []).concat(
-            semantic.findings.map((f) => ({
-              line: 0,
-              kind: f.kind,
-              severity: f.severity,
-              message: f.message,
-              suggestion: f.suggestion,
-            })),
-          );
-          // Bump score if a strong semantic signal lands.
-          const strongSemantic = semantic.findings.some((f) => f.severity >= 3);
-          if (strongSemantic && obj.score < 0.55) {
-            obj.score = Math.max(obj.score, 0.55);
-            if (obj.score >= 0.6) obj.label = obj.lang === "es" ? "alto" : "high";
-            else if (obj.score >= 0.3) obj.label = obj.lang === "es" ? "moderado" : "moderate";
+      const EMBEDDING_CHAR_LIMIT = 25000;
+      // Long PDFs can easily hit 60k+ chars. The rule engine is fast enough,
+      // but the semantic model pass can pin the browser for too long. Keep it
+      // as a polish layer for short/medium text, not a reason to force-close.
+      if (text.length <= EMBEDDING_CHAR_LIMIT) {
+        progress.advance(7);
+        const { analyzeEmbeddings, onModelProgress } = await import("./embedding-analysis.js");
+        const offProgress = onModelProgress((evt) => {
+          if (evt && evt.status === "progress" && typeof evt.progress === "number") {
+            progress.setModelProgress(evt.progress, evt.file || "");
           }
+        });
+        try {
+          const semantic = await analyzeEmbeddings(text, obj.lang || "es");
+          if (semantic && semantic.findings && semantic.findings.length) {
+            obj.structural = (obj.structural || []).concat(
+              semantic.findings.map((f) => ({
+                line: 0,
+                kind: f.kind,
+                severity: f.severity,
+                message: f.message,
+                suggestion: f.suggestion,
+              })),
+            );
+            // Bump score if a strong semantic signal lands.
+            const strongSemantic = semantic.findings.some((f) => f.severity >= 3);
+            if (strongSemantic && obj.score < 0.55) {
+              obj.score = Math.max(obj.score, 0.55);
+              if (obj.score >= 0.6) obj.label = obj.lang === "es" ? "alto" : "high";
+              else if (obj.score >= 0.3) obj.label = obj.lang === "es" ? "moderado" : "moderate";
+            }
+          }
+        } finally {
+          offProgress();
         }
-      } finally {
-        offProgress();
+      } else {
+        console.info("embedding analysis skipped for long text", { chars: text.length });
       }
     } catch (err) {
       // Embedding layer is best-effort. Never block on it.
@@ -1525,15 +1539,25 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 async function verifyBibliography(text) {
   const t = I18N[UILANG];
   const refsPy = extractRefsFn(text);
-  const refs = refsPy.toJs({ dict_converter: Object.fromEntries });
+  let refs = refsPy.toJs({ dict_converter: Object.fromEntries });
   refsPy.destroy();
   if (!refs || refs.length === 0) {
     // No references in the text — silently skip. No need to show "biblio: none".
     return;
   }
 
+  const totalRefs = refs.length;
+  const MAX_AUTO_REFS = 30;
+  const refsWereCapped = totalRefs > MAX_AUTO_REFS;
+  if (refsWereCapped) {
+    refs = refs.slice(0, MAX_AUTO_REFS);
+  }
+
   // Header + privacy note (always shown when refs are detected)
   appendBiblio(`<div class="biblio-header"><span class="biblio-emoji">📚</span> ${t.biblio_summary_label} — ${t.biblio_sum_total.replace("{n}", refs.length)}</div>`);
+  if (refsWereCapped) {
+    appendBiblio(`<div class="biblio-note">${UILANG === "es" ? `Documento largo: verifico automáticamente las primeras ${MAX_AUTO_REFS} referencias de ${totalRefs} para no dejar pegado el navegador.` : `Long document: automatically checking the first ${MAX_AUTO_REFS} references out of ${totalRefs} to avoid freezing the browser.`}</div>`);
+  }
   appendBiblio(`<div class="biblio-note">${t.biblio_check_running}</div>`);
 
   // Animated progress strip with per-source dots
@@ -2306,45 +2330,96 @@ async function loadPdfJs() {
   return mod;
 }
 
-async function extractPdfText(file) {
+async function extractPdfText(file, opts = {}) {
   const pdfjs = await loadPdfJs();
-  const buf = await file.arrayBuffer();
-  const doc = await pdfjs.getDocument({ data: buf }).promise;
-  const out = [];
-  for (let i = 1; i <= doc.numPages; i++) {
-    const page = await doc.getPage(i);
-    const content = await page.getTextContent();
-    // Reconstruct lines: pdf.js gives us items with positions. Group by Y.
-    const lines = new Map();
-    for (const item of content.items) {
-      if (!item.str) continue;
-      const y = Math.round(item.transform[5]);
-      if (!lines.has(y)) lines.set(y, []);
-      lines.get(y).push(item);
-    }
-    const ys = [...lines.keys()].sort((a, b) => b - a);
-    for (const y of ys) {
-      const items = lines.get(y).sort((a, b) => a.transform[4] - b.transform[4]);
-      out.push(items.map((x) => x.str).join(" ").replace(/\s+/g, " ").trim());
-    }
-    out.push(""); // page break
+  const t = I18N[UILANG];
+  const MAX_PDF_BYTES = 25 * 1024 * 1024;
+  const MAX_PDF_PAGES = 40;
+  const MAX_PDF_CHARS = 60000;
+  if (file.size > MAX_PDF_BYTES) {
+    const mb = (file.size / (1024 * 1024)).toFixed(1);
+    throw new Error((t.pdf_too_big || "PDF too heavy for the browser ({mb} MB).").replace("{mb}", mb));
   }
-  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  const buf = await file.arrayBuffer();
+  const task = pdfjs.getDocument({ data: buf });
+  const doc = await task.promise;
+  const out = [];
+  let truncated = false;
+  let pagesRead = 0;
+  let charCount = 0;
+  const totalPages = doc.numPages || 0;
+  try {
+    const pagesToRead = Math.min(totalPages, MAX_PDF_PAGES);
+    for (let i = 1; i <= pagesToRead; i++) {
+      opts.onProgress?.(i, totalPages);
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      // Reconstruct lines: pdf.js gives us items with positions. Group by Y.
+      const lines = new Map();
+      for (const item of content.items) {
+        if (!item.str) continue;
+        const y = Math.round(item.transform[5]);
+        if (!lines.has(y)) lines.set(y, []);
+        lines.get(y).push(item);
+      }
+      const ys = [...lines.keys()].sort((a, b) => b - a);
+      for (const y of ys) {
+        const items = lines.get(y).sort((a, b) => a.transform[4] - b.transform[4]);
+        const line = items.map((x) => x.str).join(" ").replace(/\s+/g, " ").trim();
+        out.push(line);
+        charCount += line.length + 1;
+      }
+      out.push(""); // page break
+      charCount += 1;
+      pagesRead = i;
+      if (charCount >= MAX_PDF_CHARS) {
+        truncated = true;
+        break;
+      }
+      // Let the browser paint/cancel between pages. This is what prevents the
+      // "uploaded a long PDF and the tab froze" failure mode.
+      await new Promise((r) => setTimeout(r, 0));
+    }
+    if (totalPages > pagesRead) truncated = true;
+    const text = out.join("\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, MAX_PDF_CHARS);
+    return { text, pagesRead, totalPages, truncated, maxChars: MAX_PDF_CHARS };
+  } finally {
+    try { await doc.destroy?.(); } catch (_) { /* noop */ }
+  }
 }
 
 async function handlePdf(file) {
   const t = I18N[UILANG];
   setStatus(t.pdf_extracting || "extrayendo texto del PDF…");
   try {
-    const text = await extractPdfText(file);
+    const extracted = await extractPdfText(file, {
+      onProgress(page, total) {
+        const template = t.pdf_extracting_page || t.pdf_extracting || "extrayendo texto del PDF…";
+        setStatus(template.replace("{page}", page).replace("{total}", total));
+      },
+    });
+    const text = extracted.text;
     if (!text || text.length < 20) {
       setStatus(t.pdf_no_text || "El PDF no tiene capa de texto (probablemente escaneado). Sin OCR no puedo leerlo.", true);
       return;
     }
     els.input.value = text;
     document.body.classList.add("has-text");
-    setStatus(null);
+    if (extracted.truncated) {
+      const msg = (t.pdf_long || "PDF largo: analicé las primeras {pages} páginas / {chars} caracteres.")
+        .replace("{pages}", extracted.pagesRead)
+        .replace("{chars}", text.length.toLocaleString(UILANG === "es" ? "es-CL" : "en-US"));
+      setStatus(msg);
+    } else {
+      setStatus(null);
+    }
     await analyze();
+    if (extracted.truncated) {
+      const msg = (t.pdf_long || "PDF largo: analicé las primeras {pages} páginas / {chars} caracteres.")
+        .replace("{pages}", extracted.pagesRead)
+        .replace("{chars}", text.length.toLocaleString(UILANG === "es" ? "es-CL" : "en-US"));
+      setStatus(msg);
+    }
   } catch (err) {
     console.error("pdf extract failed", err);
     setStatus(`${t.error} PDF: ${err.message}`, true);

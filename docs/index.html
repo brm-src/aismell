@@ -968,21 +968,22 @@
   footer {
     max-width: 940px;
     width: 100%;
-    margin: auto 0 0;
-    padding: 14px 0 18px;
+    margin: auto auto 0;
+    padding: 18px 0 20px;
     border-top: 1px dashed var(--line);
     color: var(--dim);
     font-size: 12.5px;
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px 18px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12px 22px;
   }
   footer .links {
     display: flex;
-    gap: 16px;
+    gap: 18px;
     flex-wrap: wrap;
     align-items: center;
+    justify-self: start;
   }
   footer .links a, footer .links button {
     color: var(--dim);
@@ -1000,23 +1001,24 @@
   footer .links a:hover, footer .links button:hover { color: var(--fg); }
   footer .links .mit { text-decoration: none; }
   footer .right-side {
-    display: flex;
-    gap: 14px;
-    align-items: center;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    display: contents;
   }
   footer .kofi-link {
+    grid-column: 2;
+    justify-self: center;
     color: var(--hl);
     text-decoration: none;
     border: 1px solid var(--hl);
     padding: 6px 12px;
+    white-space: nowrap;
   }
   footer .kofi-link:hover { background: var(--hl); color: #1a1a1a; }
   footer .brand-intelecta {
-    flex-basis: 100%;
+    grid-column: 3;
+    justify-self: end;
     color: var(--dim);
     text-align: right;
+    white-space: nowrap;
   }
   footer .brand-intelecta a {
     color: var(--dim);
@@ -1166,6 +1168,7 @@
 
     /* Footer mobile — stack centered */
     footer {
+      display: flex;
       justify-content: center;
       text-align: center;
       gap: 8px;
@@ -1174,11 +1177,21 @@
       justify-content: center;
     }
     footer .right-side {
+      display: flex;
       justify-content: center;
       width: 100%;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    footer .kofi-link {
+      grid-column: auto;
     }
     footer .brand-intelecta {
+      grid-column: auto;
+      justify-self: center;
       text-align: center;
+      white-space: normal;
     }
   }
 </style>
