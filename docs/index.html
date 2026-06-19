@@ -689,9 +689,14 @@
   }
   .score-top {
     display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .pct-box {
+    display: flex;
     align-items: baseline;
-    gap: 16px;
-    flex-wrap: wrap;
+    gap: 12px;
   }
   .score .pct {
     font-size: 42px;
@@ -703,8 +708,29 @@
   .score .pct.s-mod  { color: var(--yel); }
   .score .pct.s-low  { color: var(--grn); }
   .score .pct.s-clean { color: var(--grn); }
-  .score .meta { color: var(--dim); font-size: 13px; }
-  .score .meta strong { color: var(--fg); font-weight: 600; }
+  .pct-label {
+    font-size: 13px;
+    color: var(--dim);
+    font-weight: 500;
+  }
+  .score-meta {
+    display: flex;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--dim);
+  }
+  .meta-sep { color: var(--line); }
+  .score .score-meta { color: var(--dim); font-size: 12px; }
+  .score-note { color: var(--dim); font-size: 12px; margin-top: 2px; }
+  .verdict-doc-type {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-left: 3px solid var(--hl);
+    background: rgba(245,197,24,0.05);
+    font-size: 13px;
+    color: var(--fg);
+    line-height: 1.5;
+  }
 
   .score-bars {
     margin-top: 14px;

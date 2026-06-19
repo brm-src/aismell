@@ -502,13 +502,15 @@ function startScanning(steps, opts = {}) {
     },
     setModelProgress(ratio, fileName) {
       if (cancelled || !labelEl || !fillEl) return;
-      const pct = Math.round(ratio * 100);
+      // transformers.js v3 progress_callback sends ratio as 0..100 (percentage),
+      // not 0..1. Use directly to avoid the 10000% bug.
+      const pct = Math.max(0, Math.min(100, Math.round(ratio)));
       const file = fileName ? ` (${fileName})` : "";
       labelEl.textContent = (UILANG === "es"
         ? `descargando modelo semántico${file}: ${pct}%`
         : `downloading semantic model${file}: ${pct}%`);
       // Visually wire model download to the bar between 70% and 92%.
-      const bar = 70 + Math.round(ratio * 22);
+      const bar = 70 + Math.round((pct / 100) * 22);
       fillEl.style.width = bar + "%";
       pctEl.textContent = bar + "%";
     },
@@ -1055,6 +1057,17 @@ function renderActionSummary(report) {
 function renderVerdict(report) {
   const t = I18N[UILANG];
   const v = computeVerdict(report);
+  const es = UILANG === "es";
+
+  // Document-type adaptation: detect if this reads like a technical report
+  // (sections, acronyms, numbered headers, table-like structure).
+  const hasSections = report.sentences >= 20 && report.structural &&
+    report.structural.some(s => s.kind === "nominalization_density");
+
+  const docLabel = hasSections && report.score >= 0.25
+    ? (es ? "Este texto tiene pinta de informe técnico o documento de trabajo. Eso ajusta cómo se leen las señales: " : "This reads like a technical report or working document. That shifts how signals are read: ")
+    : "";
+
   const reasonsHtml = v.reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join("");
   return `
     <div class="verdict ${v.klass}">
@@ -1063,6 +1076,7 @@ function renderVerdict(report) {
         <div class="verdict-value">${escapeHtml(v.label)}</div>
         <div class="verdict-conf">${t.verdict_confidence}: <strong>${escapeHtml(v.conf)}</strong></div>
       </div>
+      ${docLabel ? `<div class="verdict-doc-type">${escapeHtml(docLabel)}</div>` : ""}
       <div class="verdict-why">
         <div class="verdict-why-label">${t.verdict_summary_label}</div>
         <ul>${reasonsHtml}</ul>
@@ -1080,11 +1094,16 @@ function render(report) {
 
   let scoreHtml = renderVerdict(report) + `
     <div class="score-top">
-      <div class="pct ${sev}">${pct}%</div>
-      <div class="meta">
-        <strong>${severityLabel(report.score)}</strong> · ${report.sentences} ${t.sentences} ·
-        ${totalFindings} ${t.findings} · ${report.lang}<br><span class="score-note">${UILANG === "es" ? "índice de señales, no probabilidad" : "evidence index, not probability"}</span>
+      <div class="pct-box">
+        <div class="pct ${sev}">${pct}%</div>
+        <div class="pct-label">${severityLabel(report.score)}</div>
       </div>
+      <div class="score-meta">
+        <span>${report.sentences} ${t.sentences}</span> <span class="meta-sep">·</span>
+        <span>${totalFindings} ${t.findings}</span> <span class="meta-sep">·</span>
+        <span>${report.lang}</span>
+      </div>
+      <div class="score-note">${UILANG === "es" ? "índice de señales, no probabilidad" : "evidence index, not probability"}</div>
     </div>`;
 
   scoreHtml += renderActionSummary(report);
