@@ -79,6 +79,20 @@ const I18N = {
     verdict_conf_high: "bastante",
     verdict_conf_med: "más o menos",
     verdict_conf_low: "poco",
+    verdict_subtitle: {
+      es: {
+        ai: "El detector encontró muchas señales juntas. Es raro ver tantas en un texto escrito sin ayuda.",
+        mixed: "Encontró algunas señales, pero no tantas como para afirmar nada. Puede ser un texto editado sobre un borrador de IA, o simplemente formal.",
+        human: "Casi no aparecen las muletillas ni los patrones que usa la IA. Lo más probable es que sea tuyo.",
+        clean: "No encontró nada. Texto limpio.",
+      },
+      en: {
+        ai: "The detector found many signals together. It is rare to see this many in a text written without assistance.",
+        mixed: "Found some signals, but not enough to be sure. Could be an edited AI draft, or just formal writing.",
+        human: "Hardly any of the patterns AI overuses. Most likely your own writing.",
+        clean: "Nothing found. Clean text.",
+      },
+    },
     verdict_summary_label: "por qué lo digo",
     verdict_reasons: {
       density: "{pct}% de las oraciones tienen alguna marca",
@@ -1068,6 +1082,9 @@ function renderVerdict(report) {
     ? (es ? "Este texto tiene pinta de informe técnico o documento de trabajo. Eso ajusta cómo se leen las señales: " : "This reads like a technical report or working document. That shifts how signals are read: ")
     : "";
 
+  const subKey = v.klass === "v-high" ? "ai" : v.klass === "v-mid" ? "mixed" : v.klass === "v-clean" ? "clean" : "human";
+  const subtitle = (t.verdict_subtitle || {})[UILANG]?.[subKey] || "";
+
   const reasonsHtml = v.reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join("");
   return `
     <div class="verdict ${v.klass}">
@@ -1076,6 +1093,7 @@ function renderVerdict(report) {
         <div class="verdict-value">${escapeHtml(v.label)}</div>
         <div class="verdict-conf">${t.verdict_confidence}: <strong>${escapeHtml(v.conf)}</strong></div>
       </div>
+      ${subtitle ? `<div class="verdict-subtitle">${escapeHtml(subtitle)}</div>` : ""}
       ${docLabel ? `<div class="verdict-doc-type">${escapeHtml(docLabel)}</div>` : ""}
       <div class="verdict-why">
         <div class="verdict-why-label">${t.verdict_summary_label}</div>
