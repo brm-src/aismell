@@ -71,59 +71,59 @@ const I18N = {
     biblio_rep_reason_clean: "Todas las referencias detectadas se confirmaron en CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books u OpenLibrary.",
     biblio_disclaimer: "\"sin coincidencia\" significa que no se encontró en ninguna fuente (CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books, OpenLibrary). Igual pueden ser fuentes legítimas no indexadas (tesis, capítulos, ediciones locales). Revisa a mano antes de concluir nada. \"sin DOI/ID\" no es problema: muchas citas válidas no tienen identificador.",
     verdict_label: "veredicto",
-    verdict_ai: "probable IA",
-    verdict_mixed: "mixto / asistido",
-    verdict_human: "huele a humano",
+    verdict_ai: "suena a IA",
+    verdict_mixed: "puede ser",
+    verdict_human: "suena humano",
     verdict_clean: "limpio",
-    verdict_confidence: "confianza",
-    verdict_conf_high: "alta",
-    verdict_conf_med: "media",
-    verdict_conf_low: "baja",
-    verdict_summary_label: "por qué",
+    verdict_confidence: "qué tan seguro",
+    verdict_conf_high: "bastante",
+    verdict_conf_med: "más o menos",
+    verdict_conf_low: "poco",
+    verdict_summary_label: "por qué lo digo",
     verdict_reasons: {
-      density: "densidad de marcas IA: {pct}% de las oraciones",
-      repeats: "patrón \"{id}\" repetido {n} veces",
-      structural: "{n} señales de forma y ritmo del texto",
-      severe: "{n} marcas de alta severidad",
-      uniform_rhythm: "ritmo demasiado uniforme entre oraciones",
-      length: "texto muy corto · veredicto incierto",
-      clean: "no se detectaron patrones IA fuertes",
+      density: "{pct}% de las oraciones tienen alguna marca",
+      repeats: "'{id}' aparece {n} veces — es un tic",
+      structural: "{n} señales en cómo está armado el texto",
+      severe: "{n} señales fuertes",
+      uniform_rhythm: "las oraciones tienen todas el mismo largo",
+      length: "texto muy corto — no hay suficiente para opinar",
+      clean: "ninguna señal clara de IA",
     },
     error: "algo se rompió:",
     bad_format: "formato no soportado. Usa .txt, .md, .docx o .pdf.",
     lang: "idioma",
-    strict: "solo alta confianza",
+    strict: "solo lo obvio",
     analyze: "analizar",
     clear: "limpiar",
     why: "qué hace",
-    whyText: "aismell lee tu texto y marca línea por línea tres tipos de pista: muletillas y conectores forzados, estructura editorial (encabezados, listas simétricas, fragmentos dramáticos) y ritmo plano de oraciones. Las tres juntas dan un índice de señales de 0 a 100 y un veredicto: limpio, mixto o probable IA. No es una probabilidad matemática. Si detecta bibliografía, las citas se cruzan con fuentes públicas para confirmar si existen.",
+    whyText: "aismell lee tu texto y te señala qué frases suenan a plantilla de IA: muletillas, conectores raros, párrafos que no cambian de ángulo, ritmo demasiado parejo. Te dice qué revisar, no qué pensar. Si hay bibliografía, revisa si las citas existen de verdad.",
     not: "qué NO hace",
     not1: "<strong>No reescribe tu texto.</strong> Tú decides qué cambiar.",
     not2: "<strong>No promete burlar detectores.</strong> Ese juego es una estafa.",
-    not3: "<strong>No es forense.</strong> Falsos positivos pasan; humanos también usan estas frases.",
-    cli: "también CLI",
-    cliText: "¿Trabajas con PDFs? Hay una versión CLI que anota Word y PDF con resaltados y comentarios al margen. <a href=\"https://github.com/brm-src/aismell#cli\" target=\"_blank\" rel=\"noopener\">Ver en GitHub</a>.",
+    not3: "<strong>No acusa.</strong> Humanos también usan estas frases. Úsalo para revisar, no para juzgar.",
+    cli: "también por terminal",
+    cliText: "¿Trabajas con PDFs? Hay una versión CLI que anota Word y PDF con comentarios al margen. <a href=\"https://github.com/brm-src/aismell#cli\" target=\"_blank\" rel=\"noopener\">Ver en GitHub</a>.",
     donate: "☕ donar",
     donateNote: "Si te sirvió, considera donarme. Lo mantengo solo, sin rastreo, cobros ni APIs.",
-    placeholder: "Pega tu texto, o suelta un archivo (.txt / .md / .docx / .pdf).",
+    placeholder: "Pega tu texto aquí, o suelta un archivo (.txt / .md / .docx / .pdf).",
     sentences: "oraciones",
     smell: "índice",
-    findings: "hallazgos",
-    sev_high: "severidad alta",
-    sev_mod: "media",
-    sev_low: "baja",
+    findings: "cosas a revisar",
+    sev_high: "señal fuerte",
+    sev_mod: "a revisar",
+    sev_low: "leve",
     density: "densidad",
-    density_text: "{n} de {total} oraciones con marca ({pct}%)",
-    top_patterns: "más repetidos:",
+    density_text: "{n} de {total} oraciones tienen alguna marca ({pct}%)",
+    top_patterns: "lo que más aparece:",
     label_high: "alto",
     label_mod: "moderado",
-    label_low: "bajo",
+    label_low: "leve",
     label_clean: "limpio",
-    clean: "limpio · nada que delatar",
+    clean: "limpio · nada que señalar",
     line: "L",
-    empty: "pega texto y dale analizar",
-    structural: "hallazgos estructurales",
-    inline: "hallazgos línea por línea",
+    empty: "pega un texto y dale analizar",
+    structural: "cómo está armado el texto",
+    inline: "frase por frase",
     global: "(global)",
     drop_hint: "suelta el archivo para analizarlo",
     upload: "subir archivo",
@@ -821,35 +821,35 @@ function plainStructuralMessage(s) {
   const metric = (raw.match(/\(([^)]*)\)/) || [""])[0];
   const map = {
     "nominalization_density": es
-      ? `Hay demasiados sustantivos abstractos terminados en -ción/-miento/-dad${metric ? " " + metric : ""}. Eso vuelve el texto burocrático.`
-      : `Too many abstract nouns ending in -tion/-ment/-ness${metric ? " " + metric : ""}. It makes the text bureaucratic.`,
+      ? `Hay muchos sustantivos abstractos terminados en -ción/-miento/-dad${metric ? " " + metric : ""}. El texto suena a informe, no a persona.`
+      : `Too many abstract nouns ending in -tion/-ment/-ness${metric ? " " + metric : ""}. It reads like a report, not a person.`,
     "semantic-cohesion-mid": es
-      ? `Los párrafos se parecen mucho entre sí${metric ? " " + metric : ""}. El texto avanza, pero no cambia de ángulo.`
-      : `The paragraphs are very similar${metric ? " " + metric : ""}. The text moves, but does not shift angle.`,
+      ? `Los párrafos se parecen demasiado entre sí${metric ? " " + metric : ""}. El texto avanza, pero nunca gira.`
+      : `The paragraphs are too similar${metric ? " " + metric : ""}. The text moves forward but never turns.`,
     "semantic-cohesion-high": es
-      ? `Los párrafos son demasiado parecidos${metric ? " " + metric : ""}. Parece una explicación continua sin respiración.`
-      : `The paragraphs are too similar${metric ? " " + metric : ""}. It reads like one continuous explanation without breathing room.`,
+      ? `Párrafo tras párrafo dicen lo mismo desde el mismo ángulo${metric ? " " + metric : ""}. Le falta un giro, una pregunta, algo que rompa.`
+      : `Paragraph after paragraph says the same thing from the same angle${metric ? " " + metric : ""}. It needs a turn, a question, something that breaks the rhythm.`,
     "semantic-uniformity": es
-      ? `El texto se mantiene demasiado pegado al mismo tema${metric ? " " + metric : ""}. Falta una escena, contraejemplo o cambio de foco.`
-      : `The text stays too tightly on one theme${metric ? " " + metric : ""}. It needs a scene, counterexample, or shift in focus.`,
+      ? `El texto orbita un solo tema sin apartarse${metric ? " " + metric : ""}. Eso es más raro en humanos que en IA.`
+      : `The text stays on one topic without drifting${metric ? " " + metric : ""}. That is more common in AI than in humans.`,
     "semantic-loop-closed": es
-      ? `El cierre vuelve demasiado al punto inicial${metric ? " " + metric : ""}. Se siente circular.`
-      : `The ending returns too closely to the opening${metric ? " " + metric : ""}. It feels circular.`,
+      ? `El final suena demasiado al inicio${metric ? " " + metric : ""}. Da la sensación de que el texto se cerró solo.`
+      : `The ending sounds too much like the opening${metric ? " " + metric : ""}. It feels like the text closed itself.`,
     "negative-parallelism": es
-      ? "Hay demasiadas frases del tipo ‘no solo X, sino Y’. Ese contraste repetido suena armado."
-      : "Too many ‘not just X, but Y’ contrasts. Repeating that structure reads manufactured.",
+      ? "Aparecen muchas frases del tipo 'no solo X, sino Y'. Es un patrón que la IA repite hasta el cansancio."
+      : "Too many 'not just X, but Y' contrasts. AI repeats that pattern relentlessly.",
     "challenges-template": es
-      ? "Aparece el molde ‘a pesar de los desafíos, sigue avanzando’. Es una conclusión automática muy típica."
-      : "The ‘despite these challenges, it continues...’ template appears. That is a typical automatic close.",
+      ? "El texto usa el molde 'a pesar de las dificultades, sigue adelante'. Es una conclusión automática, de manual."
+      : "The text uses the 'despite the challenges, it continues' template. That is a stock, automatic close.",
     "media-notability": es
-      ? "El texto intenta probar importancia nombrando cobertura o redes sociales. Mejor usar hechos concretos."
-      : "The text tries to prove importance by naming coverage or social presence. Use concrete facts instead.",
+      ? "El texto intenta demostrar que algo importa diciendo que fue cubierto en medios. Mejor citar el hecho concreto."
+      : "The text tries to prove importance by listing media coverage. Better to cite the concrete fact.",
     "ai-artifact-markup": es
-      ? "Hay marcas pegadas desde un chatbot o buscador IA. Esto sí es una señal fuerte: hay que borrar y reemplazar por citas reales."
-      : "There are pasted chatbot/search artifacts. This is a strong signal: remove them and use real citations.",
+      ? "Hay restos de una respuesta de chatbot o buscador IA pegados en el texto. Esto sí es una señal clara: borrar y reemplazar por citas reales."
+      : "There are leftover chatbot or AI search artifacts pasted in the text. This is a clear signal: remove them and use real citations.",
     "rule-of-three": es
-      ? "Se repite la lista de tres elementos. Úsala una vez; después rompe el ritmo."
-      : "Three-item lists repeat. Use the pattern once; then break the rhythm.",
+      ? "La lista de tres elementos se repite demasiadas veces. La IA lo hace sin querer; los humanos lo usan una o dos veces como máximo."
+      : "Three-item lists repeat too often. AI does this habitually; humans use the pattern once or twice at most.",
   };
   return map[kind] || raw;
 }
@@ -859,20 +859,20 @@ function plainSuggestion(s) {
   const es = UILANG === "es";
   const map = {
     "nominalization_density": es
-      ? "Cambia sustantivos por verbos: ‘realizar la evaluación’ → ‘evaluar’; ‘la implementación’ → ‘implementar’."
-      : "Turn nouns into verbs: ‘conduct the evaluation’ → ‘evaluate’; ‘implementation’ → ‘implement’.",
+      ? "Cambia un sustantivo por un verbo en cada párrafo: 'hacer una evaluación' → 'evaluar'; 'la implementación de' → 'implementar'."
+      : "Swap a noun for a verb in each paragraph: 'conduct an evaluation' → 'evaluate'; 'the implementation of' → 'implement'.",
     "semantic-cohesion-mid": es
-      ? "Haz que un párrafo cumpla otra función: ejemplo concreto, objeción, dato, consecuencia o comparación."
-      : "Make one paragraph do a different job: concrete example, objection, data point, consequence, or comparison.",
+      ? "Dale a uno de los párrafos un trabajo distinto: cuenta un caso concreto, plantea una objeción, da una cifra, o compara con algo."
+      : "Give one paragraph a different job: tell a specific case, raise an objection, drop a number, or compare to something.",
     "semantic-cohesion-high": es
-      ? "Introduce un quiebre claro: una escena, una cifra, una voz directa o un contraejemplo."
-      : "Add a clear break: scene, number, direct voice, or counterexample.",
+      ? "Escribe un párrafo que empiece desde otro punto: una escena, una voz directa, un dato que sorprenda."
+      : "Write one paragraph that starts from a different point: a scene, a direct quote, a surprising number.",
     "semantic-uniformity": es
-      ? "Agrega una desviación útil: qué podría salir mal, qué caso no calza, o qué detalle específico cambia la lectura."
-      : "Add a useful deviation: what could fail, what case does not fit, or what concrete detail changes the reading.",
+      ? "Agrega una desviación útil: qué podría salir mal, qué caso no entra en la regla, o un detalle pequeño que cambie cómo se lee todo."
+      : "Add a useful deviation: what could go wrong, what case doesn't fit the rule, or a small detail that changes how everything reads.",
     "semantic-loop-closed": es
-      ? "Cierra con una consecuencia nueva, no con una repetición del inicio."
-      : "End with a new consequence, not a repeat of the opening.",
+      ? "El último párrafo debería ir a donde el texto no fue todavía. No al punto de partida."
+      : "The last paragraph should go somewhere the text hasn't been yet. Not back to the start.",
   };
   return map[kind] || s.suggestion || "";
 }
@@ -1020,18 +1020,18 @@ function renderActionSummary(report) {
   const has = (kind) => structural.some((s) => s.kind === kind);
   if (has("ai-artifact-markup")) {
     priority.push(es
-      ? "Borra artefactos pegados desde chatbots y reemplázalos por citas reales."
-      : "Remove pasted chatbot artifacts and replace them with real citations.");
+      ? "Hay restos de chatbot en el texto. Bórralos y ponles citas reales."
+      : "There are chatbot leftovers in the text. Remove them and add real citations.");
   }
   if (has("semantic-uniformity") || has("semantic-cohesion-high") || has("semantic-cohesion-mid")) {
     priority.push(es
-      ? "Rompe la monotonía: agrega un ejemplo concreto, una objeción o un dato que cambie el ángulo."
-      : "Break monotony: add a concrete example, objection, or data point that shifts the angle.");
+      ? "Los párrafos suenan demasiado parecidos. Agrega algo concreto que cambie el tono: un número, una escena, una objeción."
+      : "The paragraphs sound too similar. Add something concrete that shifts the tone: a number, a scene, an objection.");
   }
   if (has("nominalization_density")) {
     priority.push(es
-      ? "Baja el tono burocrático: cambia sustantivos abstractos por verbos activos."
-      : "Lower the bureaucratic tone: turn abstract nouns into active verbs.");
+      ? "El texto suena a informe. Cambia algún sustantivo abstracto por un verbo: 'la implementación' → 'implementar'."
+      : "The text reads like a report. Turn an abstract noun into a verb: 'the implementation' → 'implement'.");
   }
   const firstHit = hits.find((h) => h.severity >= 2) || hits[0];
   if (firstHit) {
@@ -1043,11 +1043,11 @@ function renderActionSummary(report) {
   if (!priority.length) return "";
   return `
     <div class="plain-summary">
-      <div class="plain-title">${es ? "Qué significa" : "What this means"}</div>
+      <div class="plain-title">${es ? "qué quiere decir este número" : "what this number means"}</div>
       <p>${es
-        ? `El ${Math.round(report.score * 100)}% no dice “esto lo escribió una IA”. Dice: “hay señales editoriales que suelen aparecer en textos generados o muy asistidos por IA”.`
-        : `The ${Math.round(report.score * 100)}% does not mean “AI wrote this”. It means: “there are editorial signals often seen in generated or heavily AI-assisted text”.`}</p>
-      <div class="plain-title">${es ? "Qué hacer primero" : "What to fix first"}</div>
+        ? `El ${Math.round(report.score * 100)}% no es un porcentaje de autoría. Es cuántas señales editoriales típicas de IA encontró el detector. Un texto humano puede tener algunas. Un texto generado tiene muchas juntas.`
+        : `The ${Math.round(report.score * 100)}% is not an authorship percentage. It measures how many editorial signals typical of AI the detector found. Human text can have some. AI-generated text tends to have many at once.`}</p>
+      <div class="plain-title">${es ? "por dónde empezar" : "where to start"}</div>
       <ol>${priority.slice(0, 3).map((p) => `<li>${escapeHtml(p)}</li>`).join("")}</ol>
     </div>`;
 }
