@@ -776,6 +776,160 @@ def _check_essay_scaffolding(text: str, lang: str) -> list[StructuralFinding]:
     )]
 
 
+def _check_negative_parallelism_density(sentences: list[str], lang: str) -> list[StructuralFinding]:
+    """Wikipedia: LLMs overuse 'Not X, but Y' negative parallelisms."""
+    if lang == "es":
+        rx = re.compile(
+            r"(?i)(\bno (solo|sólo|únicamente|meramente|simplemente)\b.{1,100}\bsino\b"
+            r"|\ba pesar de (estos|los|sus|estas) (desafíos|retos|dificultades|obstáculos)\b"
+            r"|\bno (es|son)\b.{1,80}\bsino\b)",
+        )
+        msg = "densidad alta de paralelismos negativos — patrón IA (Wikipedia)"
+        suggestion = "afirma la idea positiva directa sin la negación previa"
+    else:
+        rx = re.compile(
+            r"(?i)(\bnot (only|just|merely|simply|solely)\b.{1,100}\bbut (also|rather|instead)?\b"
+            r"|\bdespite (these|its|the|this) (challenges|difficulties|obstacles|limitations)\b"
+            r"|\bnot (just|merely|simply) .{1,80}\bit'?s\b)",
+        )
+        msg = "high density of negative parallelisms — Wikipedia-confirmed AI pattern"
+        suggestion = "assert the positive idea directly without the negation preamble"
+    hits = sum(1 for s in sentences if rx.search(s))
+    if hits >= 2:
+        sev = 3 if hits >= 3 else 2
+        return [StructuralFinding(
+            line=0, kind="negative-parallelism", severity=sev,
+            message=f"{hits} casos: {msg}", suggestion=suggestion,
+        )]
+    return []
+
+
+def _check_challenges_template(text: str, lang: str) -> list[StructuralFinding]:
+    """Wikipedia: 'Despite X, Y faces challenges' formulaic AI essay structure."""
+    if lang == "es":
+        rx = re.compile(
+            r"(?i)(a pesar de|no obstante).{0,60}(desafíos|retos|dificultades)"
+            r".{0,120}(continúa|sigue|permanece|avanza|prospera)",
+            re.DOTALL,
+        )
+        header_rx = re.compile(
+            r"(?im)^(#{1,4}\s+)?(desafíos?\s+y\s+(perspectivas|futuro|oportunidades)"
+            r"|perspectivas?\s+futuras?|retos?\s+y\s+(oportunidades|futuro))",
+        )
+        msg = "fórmula 'a pesar de los desafíos' — plantilla IA (Wikipedia)"
+        suggestion = "di lo que funciona y lo que no sin la fórmula positiva al final"
+    else:
+        rx = re.compile(
+            r"(?i)(despite|however).{0,60}(challenges|difficulties|obstacles)"
+            r".{0,120}(continues?|remains?|thrives?|evolves?|advances?)",
+            re.DOTALL,
+        )
+        header_rx = re.compile(
+            r"(?im)^(#{1,4}\s+)?(challenges\s+and\s+(future|legacy|opportunities|prospects)"
+            r"|future\s+(directions?|outlook|prospects?))",
+        )
+        msg = "'Despite challenges' formula — Wikipedia AI essay template"
+        suggestion = "state what works and what doesn't without the optimistic formula"
+    signals = []
+    if rx.search(text):
+        signals.append("negativa→positiva" if lang == "es" else "negative→positive")
+    if header_rx.search(text):
+        signals.append("encabezado tipo ensayo" if lang == "es" else "essay-style section header")
+    if signals:
+        sev = 3 if len(signals) >= 2 else 2
+        return [StructuralFinding(
+            line=0, kind="challenges-template", severity=sev,
+            message=f"{msg}: {', '.join(signals)}", suggestion=suggestion,
+        )]
+    return []
+
+
+def _check_media_notability_padding(text: str, lang: str) -> list[StructuralFinding]:
+    """Wikipedia: LLMs assert notability via media coverage lists instead of content."""
+    if lang == "es":
+        rx = re.compile(
+            r"(?i)(ha sido (perfilad[oa]|cubierto|mencionad[oa]) en.{0,40}(medios|prensa)"
+            r"|presencia (activa|destacada|fuerte) en (redes sociales|línea|internet)"
+            r"|cobertura (nacional|internacional|mediática))",
+        )
+        msg = "relleno de notabilidad mediática — patrón IA (Wikipedia)"
+        suggestion = "cita la fuente directa; no anuncies que fue cubierto"
+    else:
+        rx = re.compile(
+            r"(?i)((has been|was) (profiled|featured|covered) in.{0,40}(media|outlets)"
+            r"|maintains? an active (social media|online|digital) presence"
+            r"|(national|international) (coverage|media|press))",
+        )
+        msg = "media notability padding — Wikipedia AI pattern"
+        suggestion = "cite the source directly; don't announce that coverage happened"
+    hits = len(rx.findall(text))
+    if hits >= 2:
+        sev = 3 if hits >= 3 else 2
+        return [StructuralFinding(
+            line=0, kind="media-notability", severity=sev,
+            message=f"{hits} {'patrones' if lang == 'es' else 'patterns'}: {msg}",
+            suggestion=suggestion,
+        )]
+    return []
+
+
+def _check_ai_artifact_markup(text: str, lang: str) -> list[StructuralFinding]:
+    """Wikipedia: Detect ChatGPT/Gemini/Grok/Perplexity citation artifacts in text."""
+    artifacts = [
+        (r":?contentReference\[oaicite:\d+\]", "contentReference[oaicite:N]"),
+        (r"oai_citation:\d+", "oai_citation:N"),
+        (r"【\d+†", "【N† (DeepSeek)"),
+        (r"turn0(?:search|image|news|file)\d+", "turn0searchN (ChatGPT)"),
+        (r"\[attached_file:\d+\]", "[attached_file:N]"),
+        (r"\[cite:\s*\d+[,\s\d]*\]", "[cite:N] (Gemini)"),
+        (r"<grok.?card", "<grok_card (Grok)"),
+        (r"grok_render_citation_card_json", "grok_render_citation_card_json"),
+        (r":::writing\{variant", ":::writing{variant"),
+        (r'\{"attribution":\{"attributableIndex"', '{"attribution"} (ChatGPT)'),
+    ]
+    found = [label for rx, label in artifacts if re.search(rx, text)]
+    if found:
+        return [StructuralFinding(
+            line=0, kind="ai-artifact-markup", severity=3,
+            message=(
+                f"artefacto de chatbot IA en texto: {', '.join(found)}"
+                if lang == "es" else
+                f"AI chatbot artifact in text: {', '.join(found)}"
+            ),
+            suggestion=(
+                "reemplaza con citas reales o elimina el artefacto"
+                if lang == "es" else
+                "replace with proper citations or delete the artifact"
+            ),
+        )]
+    return []
+
+
+def _check_rule_of_three_density(sentences: list[str], lang: str) -> list[StructuralFinding]:
+    """Wikipedia: LLMs overuse the rule of three — flag when it appears in many sentences."""
+    pattern = re.compile(
+        r"\b\w[\w'-]+,\s+\w[\w'-]+,\s+(?:and|or|y|e|o|ni)\s+\w[\w'-]+\b",
+        re.IGNORECASE,
+    )
+    triples = sum(1 for s in sentences if pattern.search(s))
+    if triples >= 4:
+        sev = 3 if triples >= 6 else 2
+        return [StructuralFinding(
+            line=0, kind="rule-of-three",  severity=sev,
+            message=(
+                f"{triples} oraciones con regla de tres — abuso IA (Wikipedia)"
+                if lang == "es" else
+                f"{triples} sentences with rule of three — Wikipedia AI overuse"
+            ),
+            suggestion=(
+                "rompe el patrón: usa dos items o cuatro, no siempre tres"
+                if lang == "es" else
+                "break the pattern: use two or four items, not always three"
+            ),
+        )]
+    return []
+
+
 def _sentence_score(sentence: str, lang: str, role: str) -> tuple[float, list[str]]:
     reasons: list[str] = []
     score = 0.0
@@ -979,6 +1133,12 @@ def analyze(
         report.structural.extend(_check_low_specificity(authorial_text, lang))
         report.structural.extend(_check_vague_sentence_stack(sentences, lang))
         report.structural.extend(_check_essay_scaffolding(authorial_text, lang))
+        # Wikipedia-sourced checks
+        report.structural.extend(_check_negative_parallelism_density(sentences, lang))
+        report.structural.extend(_check_challenges_template(authorial_text, lang))
+        report.structural.extend(_check_media_notability_padding(authorial_text, lang))
+        report.structural.extend(_check_ai_artifact_markup(authorial_text, lang))
+        report.structural.extend(_check_rule_of_three_density(sentences, lang))
     report.structural.extend(_check_rhythm(sentences, lang))
     if not strict:
         report.structural.extend(_check_semicolon_ratio(authorial_text, lang))
@@ -1000,7 +1160,7 @@ def analyze(
     distinct_ids = len({h.pattern.id for h in report.hits})
     lex_d = min(0.72, distinct_sev3_ids * 0.12 + distinct_ids * 0.025 + sev3_hits * 0.025 + sev2_hits * 0.012)
 
-    # Dimension 2: structural macro-signals (essay scaffold, low specificity, symmetry, etc.).
+    # Dimension 2: structural macro-signals (essay scaffold, low specificity, symmetry, etc.)
     macro_kinds = {
         "essay-scaffolding", "synthetic-academic", "low-specificity",
         "vague-sentence-stack", "paragraph-connectors", "paragraph-symmetry",
@@ -1029,8 +1189,24 @@ def analyze(
         elif ratio >= 0.5:
             anchor_d = 0.22
 
+    # Dimension 5: Wikipedia-sourced signals (negative parallelism, challenges template,
+    # media notability padding, chatbot artifact markup, rule-of-three overuse).
+    # These are strong independent signals: each alone is moderately suspicious,
+    # but two or more together are nearly definitive.
+    wiki_kinds = {
+        "negative-parallelism", "challenges-template",
+        "media-notability", "ai-artifact-markup", "rule-of-three",
+    }
+    wiki_present = wiki_kinds & structural_kinds
+    # ai-artifact-markup is a near-certain signal on its own
+    wiki_d = 0.0
+    if "ai-artifact-markup" in structural_kinds:
+        wiki_d = 0.80  # chatbot markup is near-certain AI
+    elif wiki_present:
+        wiki_d = min(0.55, 0.18 * len(wiki_present))
+
     # Combine: 1 - prod(1 - d_i). Reacts when independent dimensions agree.
-    dims = [lex_d, macro_d, rhythm_d, anchor_d]
+    dims = [lex_d, macro_d, rhythm_d, anchor_d, wiki_d]
     combined = 1.0
     for d in dims:
         combined *= (1.0 - d)
@@ -1049,6 +1225,13 @@ def analyze(
         combined = max(combined, 0.55)
     elif severe_structural >= 2:
         combined = max(combined, 0.30)
+    # Wikipedia-signal backstops
+    if "ai-artifact-markup" in structural_kinds:
+        combined = max(combined, 0.85)  # chatbot markup is near-certain
+    elif len(wiki_present) >= 3:
+        combined = max(combined, 0.60)
+    elif "challenges-template" in structural_kinds and "negative-parallelism" in structural_kinds:
+        combined = max(combined, 0.50)
 
     # Short demo-style AI answers can be dense without many paragraph-level
     # structures. If nearly every sentence is marked and there are several
@@ -1064,7 +1247,9 @@ def analyze(
         academic_expected = {"synthetic-academic", "low-specificity", "vague-sentence-stack",
                              "paragraph-symmetry", "essay-scaffolding", "paragraph-connectors"}
         non_academic_kinds = structural_kinds - academic_expected
-        if not non_academic_kinds or non_academic_kinds <= {"rhythm", "tricolon"}:
+        # Wikipedia-sourced signals and ai-artifact-markup are NOT academic — don't dampen if present
+        wiki_override = non_academic_kinds & (wiki_kinds | {"ai-artifact-markup"})
+        if not wiki_override and (not non_academic_kinds or non_academic_kinds <= {"rhythm", "tricolon"}):
             combined *= 0.55
 
     # Long-document density cap. Sparse findings in a thesis should read as
