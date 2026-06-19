@@ -371,6 +371,41 @@
   }
   .verdict-why li { margin: 2px 0; }
 
+  /* Plain-language summary box */
+  .plain-summary {
+    margin: 12px 0 0;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.03);
+  }
+  .plain-title {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dim);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .plain-summary p {
+    font-size: 13px;
+    color: var(--fg);
+    margin: 0 0 12px;
+    line-height: 1.55;
+  }
+  .plain-summary ol {
+    margin: 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .plain-summary ol li {
+    font-size: 13px;
+    color: var(--fg);
+    line-height: 1.5;
+  }
+
   /* Docx download bar (shown after annotateDocx finishes) */
   .docx-download {
     border: 1px solid var(--hl);

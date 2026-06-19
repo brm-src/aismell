@@ -83,7 +83,7 @@ const I18N = {
     verdict_reasons: {
       density: "densidad de marcas IA: {pct}% de las oraciones",
       repeats: "patrón \"{id}\" repetido {n} veces",
-      structural: "{n} señales estructurales (encabezados, listas, dramatización)",
+      structural: "{n} señales de forma y ritmo del texto",
       severe: "{n} marcas de alta severidad",
       uniform_rhythm: "ritmo demasiado uniforme entre oraciones",
       length: "texto muy corto · veredicto incierto",
@@ -263,7 +263,7 @@ const I18N = {
     verdict_reasons: {
       density: "AI-marker density: {pct}% of sentences flagged",
       repeats: "pattern \"{id}\" repeats {n} times",
-      structural: "{n} structural signals (headings, lists, dramatic fragments)",
+      structural: "{n} shape/rhythm signals in the text",
       severe: "{n} high-severity marks",
       uniform_rhythm: "sentence rhythm suspiciously uniform",
       length: "text too short — verdict uncertain",
@@ -795,6 +795,16 @@ const FINDING_LABELS = {
   "vague-sentence-stack": { es: "frases abstractas acumuladas", en: "stacked abstract sentences" },
   "essay-scaffolding": { es: "andamiaje de ensayo", en: "essay scaffold" },
   "rhythm": { es: "ritmo plano", en: "flat rhythm" },
+  "nominalization_density": { es: "sustantivos abstractos en exceso", en: "too many abstract nouns" },
+  "semantic-cohesion-high": { es: "párrafos demasiado parecidos", en: "paragraphs too similar" },
+  "semantic-cohesion-mid": { es: "párrafos parecidos entre sí", en: "similar paragraphs" },
+  "semantic-uniformity": { es: "tema demasiado uniforme", en: "too uniform thematically" },
+  "semantic-loop-closed": { es: "cierre demasiado circular", en: "overly circular closing" },
+  "negative-parallelism": { es: "contraste repetido", en: "repeated contrast" },
+  "challenges-template": { es: "molde de desafíos", en: "challenges template" },
+  "media-notability": { es: "notabilidad inflada", en: "media notability padding" },
+  "ai-artifact-markup": { es: "artefacto de chatbot", en: "chatbot artifact" },
+  "rule-of-three": { es: "regla de tres repetida", en: "repeated rule of three" },
 };
 
 function findingLabel(idOrKind) {
@@ -802,6 +812,69 @@ function findingLabel(idOrKind) {
   if (FINDING_LABELS[idOrKind]) return FINDING_LABELS[idOrKind][UILANG] || FINDING_LABELS[idOrKind].es;
   const tail = String(idOrKind).split(".").pop().replaceAll("_", " ").replaceAll("-", " ");
   return tail;
+}
+
+function plainStructuralMessage(s) {
+  const kind = s.kind || "";
+  const es = UILANG === "es";
+  const raw = String(s.message || "");
+  const metric = (raw.match(/\(([^)]*)\)/) || [""])[0];
+  const map = {
+    "nominalization_density": es
+      ? `Hay demasiados sustantivos abstractos terminados en -ción/-miento/-dad${metric ? " " + metric : ""}. Eso vuelve el texto burocrático.`
+      : `Too many abstract nouns ending in -tion/-ment/-ness${metric ? " " + metric : ""}. It makes the text bureaucratic.`,
+    "semantic-cohesion-mid": es
+      ? `Los párrafos se parecen mucho entre sí${metric ? " " + metric : ""}. El texto avanza, pero no cambia de ángulo.`
+      : `The paragraphs are very similar${metric ? " " + metric : ""}. The text moves, but does not shift angle.`,
+    "semantic-cohesion-high": es
+      ? `Los párrafos son demasiado parecidos${metric ? " " + metric : ""}. Parece una explicación continua sin respiración.`
+      : `The paragraphs are too similar${metric ? " " + metric : ""}. It reads like one continuous explanation without breathing room.`,
+    "semantic-uniformity": es
+      ? `El texto se mantiene demasiado pegado al mismo tema${metric ? " " + metric : ""}. Falta una escena, contraejemplo o cambio de foco.`
+      : `The text stays too tightly on one theme${metric ? " " + metric : ""}. It needs a scene, counterexample, or shift in focus.`,
+    "semantic-loop-closed": es
+      ? `El cierre vuelve demasiado al punto inicial${metric ? " " + metric : ""}. Se siente circular.`
+      : `The ending returns too closely to the opening${metric ? " " + metric : ""}. It feels circular.`,
+    "negative-parallelism": es
+      ? "Hay demasiadas frases del tipo ‘no solo X, sino Y’. Ese contraste repetido suena armado."
+      : "Too many ‘not just X, but Y’ contrasts. Repeating that structure reads manufactured.",
+    "challenges-template": es
+      ? "Aparece el molde ‘a pesar de los desafíos, sigue avanzando’. Es una conclusión automática muy típica."
+      : "The ‘despite these challenges, it continues...’ template appears. That is a typical automatic close.",
+    "media-notability": es
+      ? "El texto intenta probar importancia nombrando cobertura o redes sociales. Mejor usar hechos concretos."
+      : "The text tries to prove importance by naming coverage or social presence. Use concrete facts instead.",
+    "ai-artifact-markup": es
+      ? "Hay marcas pegadas desde un chatbot o buscador IA. Esto sí es una señal fuerte: hay que borrar y reemplazar por citas reales."
+      : "There are pasted chatbot/search artifacts. This is a strong signal: remove them and use real citations.",
+    "rule-of-three": es
+      ? "Se repite la lista de tres elementos. Úsala una vez; después rompe el ritmo."
+      : "Three-item lists repeat. Use the pattern once; then break the rhythm.",
+  };
+  return map[kind] || raw;
+}
+
+function plainSuggestion(s) {
+  const kind = s.kind || "";
+  const es = UILANG === "es";
+  const map = {
+    "nominalization_density": es
+      ? "Cambia sustantivos por verbos: ‘realizar la evaluación’ → ‘evaluar’; ‘la implementación’ → ‘implementar’."
+      : "Turn nouns into verbs: ‘conduct the evaluation’ → ‘evaluate’; ‘implementation’ → ‘implement’.",
+    "semantic-cohesion-mid": es
+      ? "Haz que un párrafo cumpla otra función: ejemplo concreto, objeción, dato, consecuencia o comparación."
+      : "Make one paragraph do a different job: concrete example, objection, data point, consequence, or comparison.",
+    "semantic-cohesion-high": es
+      ? "Introduce un quiebre claro: una escena, una cifra, una voz directa o un contraejemplo."
+      : "Add a clear break: scene, number, direct voice, or counterexample.",
+    "semantic-uniformity": es
+      ? "Agrega una desviación útil: qué podría salir mal, qué caso no calza, o qué detalle específico cambia la lectura."
+      : "Add a useful deviation: what could fail, what case does not fit, or what concrete detail changes the reading.",
+    "semantic-loop-closed": es
+      ? "Cierra con una consecuencia nueva, no con una repetición del inicio."
+      : "End with a new consequence, not a repeat of the opening.",
+  };
+  return map[kind] || s.suggestion || "";
 }
 
 function renderHit(hit, t) {
@@ -833,12 +906,15 @@ function renderStructural(s, t) {
   if (s.severity === 3) glyph = "X";
   else if (s.severity === 2) glyph = "!";
   const where = s.line ? `${t.line}${s.line}` : t.global;
+  const msg = plainStructuralMessage(s);
+  const sug = plainSuggestion(s);
   return `
     <div class="finding">
       <div class="glyph s-${s.severity}">${glyph}</div>
       <div class="body">
-        <div class="ctx" style="color: var(--fg);"><span class="finding-label">${escapeHtml(findingLabel(s.kind))}</span> · ${escapeHtml(s.message)}</div>
-        ${s.suggestion ? `<div class="sug">${escapeHtml(s.suggestion)}</div>` : ""}
+        <div class="ctx" style="color: var(--fg);"><span class="finding-label">${escapeHtml(findingLabel(s.kind))}</span></div>
+        <div class="meta">${escapeHtml(msg)}</div>
+        ${sug ? `<div class="sug">${escapeHtml(sug)}</div>` : ""}
       </div>
     </div>`;
 }
@@ -935,6 +1011,47 @@ function computeVerdict(report) {
   return { label, klass, conf, confKey, reasons: reasons.slice(0, 3), heur: h };
 }
 
+function renderActionSummary(report) {
+  const es = UILANG === "es";
+  const structural = report.structural || [];
+  const hits = report.hits || [];
+  const priority = [];
+
+  const has = (kind) => structural.some((s) => s.kind === kind);
+  if (has("ai-artifact-markup")) {
+    priority.push(es
+      ? "Borra artefactos pegados desde chatbots y reemplázalos por citas reales."
+      : "Remove pasted chatbot artifacts and replace them with real citations.");
+  }
+  if (has("semantic-uniformity") || has("semantic-cohesion-high") || has("semantic-cohesion-mid")) {
+    priority.push(es
+      ? "Rompe la monotonía: agrega un ejemplo concreto, una objeción o un dato que cambie el ángulo."
+      : "Break monotony: add a concrete example, objection, or data point that shifts the angle.");
+  }
+  if (has("nominalization_density")) {
+    priority.push(es
+      ? "Baja el tono burocrático: cambia sustantivos abstractos por verbos activos."
+      : "Lower the bureaucratic tone: turn abstract nouns into active verbs.");
+  }
+  const firstHit = hits.find((h) => h.severity >= 2) || hits[0];
+  if (firstHit) {
+    priority.push(es
+      ? `Revisa la frase marcada “${firstHit.matched}”: ${firstHit.suggestion || "elimínala o reformúlala"}.`
+      : `Review the marked phrase “${firstHit.matched}”: ${firstHit.suggestion || "delete or rephrase it"}.`);
+  }
+
+  if (!priority.length) return "";
+  return `
+    <div class="plain-summary">
+      <div class="plain-title">${es ? "Qué significa" : "What this means"}</div>
+      <p>${es
+        ? `El ${Math.round(report.score * 100)}% no dice “esto lo escribió una IA”. Dice: “hay señales editoriales que suelen aparecer en textos generados o muy asistidos por IA”.`
+        : `The ${Math.round(report.score * 100)}% does not mean “AI wrote this”. It means: “there are editorial signals often seen in generated or heavily AI-assisted text”.`}</p>
+      <div class="plain-title">${es ? "Qué hacer primero" : "What to fix first"}</div>
+      <ol>${priority.slice(0, 3).map((p) => `<li>${escapeHtml(p)}</li>`).join("")}</ol>
+    </div>`;
+}
+
 function renderVerdict(report) {
   const t = I18N[UILANG];
   const v = computeVerdict(report);
@@ -969,6 +1086,8 @@ function render(report) {
         ${totalFindings} ${t.findings} · ${report.lang}<br><span class="score-note">${UILANG === "es" ? "índice de señales, no probabilidad" : "evidence index, not probability"}</span>
       </div>
     </div>`;
+
+  scoreHtml += renderActionSummary(report);
 
   // Sections (apertura/cuerpo/cierre) intentionally removed —
   // their per-section scorer was inconsistent with the global one
