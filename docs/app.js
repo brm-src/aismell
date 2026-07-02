@@ -1728,18 +1728,13 @@ async function verifyBibliography(text) {
     return;
   }
 
+  // Do not cap bibliography verification. If the document has 80 references,
+  // verify 80. The loop below is async, low-concurrency, and yields between
+  // batches, so the browser stays responsive without silently skipping refs.
   const totalRefs = refs.length;
-  const MAX_AUTO_REFS = 30;
-  const refsWereCapped = totalRefs > MAX_AUTO_REFS;
-  if (refsWereCapped) {
-    refs = refs.slice(0, MAX_AUTO_REFS);
-  }
 
   // Header + privacy note (always shown when refs are detected)
-  appendBiblio(`<div class="biblio-header"><span class="biblio-emoji">📚</span> ${t.biblio_summary_label} — ${t.biblio_sum_total.replace("{n}", refs.length)}</div>`);
-  if (refsWereCapped) {
-    appendBiblio(`<div class="biblio-note">${UILANG === "es" ? `Documento largo: verifico automáticamente las primeras ${MAX_AUTO_REFS} referencias de ${totalRefs} para no dejar pegado el navegador.` : `Long document: automatically checking the first ${MAX_AUTO_REFS} references out of ${totalRefs} to avoid freezing the browser.`}</div>`);
-  }
+  appendBiblio(`<div class="biblio-header"><span class="biblio-emoji">📚</span> ${t.biblio_summary_label} — ${t.biblio_sum_total.replace("{n}", totalRefs)}</div>`);
   appendBiblio(`<div class="biblio-note">${t.biblio_check_running}</div>`);
 
   // Animated progress strip with per-source dots
