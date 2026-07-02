@@ -104,7 +104,7 @@ Three layers of detection.
 
 **2. Structure patterns.** Tells beyond word choice: split binary reframes, false agency, evasive passive voice, negative listing, copula avoidance, generic conclusions, sycophantic openers.
 
-**3. Rhythm and shape.** Sentence-length variance, em-dash density, list ratio, rule-of-three frequency, **paragraph-length symmetry** (LLMs produce paragraphs of suspiciously similar length), and **opening-connector density** (Pangram research shows multiple paragraphs starting with explicit connectors is the single strongest AI tell).
+**3. Rhythm, shape, and discourse.** Sentence-length variance, em-dash density, list ratio, rule-of-three frequency, **paragraph-length symmetry** (LLMs produce paragraphs of suspiciously similar length), **opening-connector density** (Pangram research shows multiple paragraphs starting with explicit connectors is the single strongest AI tell), and StoryScope-inspired cues such as over-explained themes and too-neat narrative closure.
 
 Scores are normalized to a 0–100 smell percentage. Above 60 is loud AI, 30–60 is mixed, below 30 is mostly clean.
 

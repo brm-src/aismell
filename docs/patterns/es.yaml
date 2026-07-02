@@ -1081,10 +1081,171 @@ patterns:
     message: '"punto de inflexión" — usado al cliché por IA'
     suggestion: '"momento de cambio", "giro"'
 
+  # ---- Wikipedia: calcos y patrones académicos faltantes ----
+  - id: es.se_denomina
+    kind: phrase
+    severity: 2
+    pattern: se denomina
+    message: '"se denomina" en vez de "se llama" — evita el verbo simple'
+    suggestion: '"se llama", "es"'
+
+  - id: es.sirve_como
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\bsirve como (un |una |) (testimonio|reflejo|ejemplo|símbolo)\\b'
+    message: '"sirve como" en vez de "es" — copulativa evitada'
+    suggestion: '"es", "muestra"'
+
+  - id: es.cuenta_con
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\bcuenta con (una |un |) (amplia|extensa|rica|variada) (gama|variedad|selección|colección)\\b'
+    message: '"cuenta con" en vez de "tiene" — evita verbo simple'
+    suggestion: '"tiene", "ofrece"'
+
+  - id: es.marca_un_hito
+    kind: regex
+    severity: 3
+    pattern: '(?i)\\b(marca|representa|constituye) un hito (en |para |dentro de)\\b'
+    message: '"marca un hito" — locución inflada de IA (Wikipedia)'
+    suggestion: di qué pasó exactamente
+
+  - id: es.pone_de_relieve
+    kind: regex
+    severity: 3
+    pattern: '(?i)\\bpone de relieve\\b'
+    message: '"pone de relieve" — locución académica IA'
+    suggestion: '"muestra", "señala"'
+
+  - id: es.a_pesar_desafios
+    kind: regex
+    severity: 3
+    pattern: '(?i)\\ba pesar de (estos|los|estas|sus) (desafíos|retos|dificultades|obstáculos|limitaciones)\\b'
+    message: '"A pesar de estos desafíos" — plantilla IA de ensayo (Wikipedia)'
+    suggestion: di lo que funciona y lo que no, sin la fórmula
+
+  - id: es.afronta_desafios
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\b(afronta|enfrenta|encara) (numerosos|varios|múltiples|importantes) desafíos\\b'
+    message: '"enfrenta varios desafíos" — fórmula IA (Wikipedia)'
+    suggestion: nombra los problemas concretos
+
+  - id: es.futuras_direcciones
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\b(direcciones|perspectivas|rumbos) futuras?\\b|\\bdesafíos y (futuro|oportunidades|perspectivas)\\b'
+    message: '"Desafíos y perspectivas futuras" — sección tipo ensayo IA'
+    suggestion: usa un título específico y concreto
+
+  - id: es.cobertura_medios
+    kind: regex
+    severity: 3
+    pattern: '(?i)\\b(ha sido|cubiert[oa]|perfilad[oa]) (en|por) (medios|publicaciones|outlets|prensa) (de |) (comunicación|nacionales|locales|regionales|internacionales)'
+    message: '"ha sido cubierto por medios" — énfasis IA en notabilidad (Wikipedia)'
+    suggestion: cita la fuente directo, sin el marco
+
+  - id: es.presencia_digital
+    kind: regex
+    severity: 3
+    pattern: '(?i)\\b(mantiene|tiene|cuenta con) una (fuerte|activa|importante|destacada) presencia (digital|en línea|online|en redes sociales)'
+    message: '"mantiene una activa presencia en redes" — relleno IA (Wikipedia)'
+    suggestion: di qué publica o borra la frase
+
+  # ---- Wikipedia: "concrete evidence" pattern ES ----
+  - id: es.evidencia_concreta
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\bevidencia(s)? (concreta|concretas|sólida|tangible)\\b|\\exigir ejemplos concretos\\b'
+    message: '"evidencia concreta" — patrón IA en comentarios (Wikipedia)'
+    suggestion: pide o proporciona la información específica
+
+  # ---- Wikipedia: "setting the stage"-type transitions ----
+  - id: es.sienta_las_bases
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\bsienta las bases (para|de|del)\\b'
+    message: '"sienta las bases" — transición formuláica IA (Wikipedia)'
+    suggestion: describe qué pasó después sin el preámbulo
+
+  - id: es.huella_indeleble
+    kind: regex
+    severity: 3
+    pattern: '(?i)\\b(dej[oa]|dejando|deja) (una |su )?huella (indeleble|imborrable|profunda|permanente)\\b'
+    message: '"huella indeleble" — hipérbole IA de importancia (Wikipedia)'
+    suggestion: di qué hizo concretamente
+
+  - id: es.arraigado_profundamente
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\b(profundamente|hondamente) (arraigad[oa]|enraizad[oa]|enquistad[oa]|incrustad[oa])\\b'
+    message: '"profundamente arraigado" — metáfora abstracta IA (Wikipedia)'
+    suggestion: di qué y por qué
+
+  # ---- Wikipedia: "sparked debate" equivalent ----
+  - id: es.suscitado_debate
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\b(ha |han)?(suscitado|generado|provocado|alentado|avivado) (debate|discusión|reflexión|controversia|polémica) (sobre|acerca de|en torno a)\\b'
+    message: '"ha suscitado debate sobre" — marco IA de impacto social (Wikipedia)'
+    suggestion: di quién discutió qué y qué resultó
+
+  # ---- Wikipedia: "broader context" equivalent ----
+  - id: es.contexto_mas_amplio
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\b(se inserta|se inscribe|se enmarca) en (un |el )?contexto (más |)amplio\\b'
+    message: '"se inserta en un contexto más amplio" — marco IA de importancia (Wikipedia)'
+    suggestion: nombra el contexto específico
+
+  # ---- Wikipedia: calcos extra detectados ----
+  - id: es.calco_darle_vida
+    kind: regex
+    severity: 3
+    pattern: '(?i)\\bdar(le|les)? vida a\\b'
+    message: '"dar vida a" — calco (en español: "crear", "desarrollar")'
+    suggestion: '"crear", "desarrollar"'
+
+  - id: es.calco_a_la_vez_que
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\ba la vez que\\b'
+    message: '"a la vez que" — abusado por IA como conector'
+    suggestion: '"mientras", "y"'
+
+  - id: es.calco_desde_entonces
+    kind: phrase
+    severity: 1
+    pattern: desde entonces
+    message: '"desde entonces" — usado en exceso por IA'
+    suggestion: '"después", o ser específico'
+
+  # ---- Wikipedia: estructuras de sección ----
+  - id: es.en_el_ambito
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\ben el ámbito (de |)la\\b'
+    message: '"en el ámbito de" — escenario genérico de IA'
+    suggestion: di el campo concreto
+
+  - id: es.es_relevante
+    kind: regex
+    severity: 3
+    pattern: '(?i)\\bes (especialmente|particularmente|sumamente|muy) relevante\\b'
+    message: '"es especialmente relevante" — muletilla IA (Wikipedia)'
+    suggestion: muestra por qué importa, no lo anuncies
+
+  - id: es.no_es_casualidad
+    kind: regex
+    severity: 3
+    pattern: '(?i)\\bno es (casualidad|azar|coincidencia) que\\b'
+    message: '"no es casualidad que" — giro IA (Wikipedia)'
+    suggestion: di la relación causal directa
+
   - id: es.calco_donde_la_magia
     kind: regex
     severity: 3
-    pattern: '(?i)\b(es )?(aquí |allí )?donde (sucede|ocurre|pasa) la magia\b|\bdonde la magia (sucede|ocurre|pasa)\b'
+    pattern: '(?i)\\b(es )?(aquí |allí )?donde (sucede|ocurre|pasa) la magia\\b|\\bdonde la magia (sucede|ocurre|pasa)\\b'
     message: '"donde sucede la magia" — calco directo'
     suggestion: borra el cliché, describe lo concreto
 

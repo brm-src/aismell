@@ -104,7 +104,7 @@ Tres capas.
 
 **2. Patrones de estructura.** Pistas más allá de las palabras: reencuadres binarios partidos, falsa agencia, voz pasiva evasiva, listados negativos, verbos inflados, cierres genéricos, aperturas serviles.
 
-**3. Ritmo y forma.** Varianza de largo de oración, densidad de em-dashes, ratio de bullets, frecuencia de regla de tres, **simetría de largo de párrafos** (los LLMs producen párrafos de longitud sospechosamente parecida), y **densidad de conectores de apertura** (la investigación de Pangram muestra que varios párrafos arrancando con conectores explícitos es la señal más fuerte de IA).
+**3. Ritmo, forma y discurso.** Varianza de largo de oración, densidad de em-dashes, ratio de bullets, frecuencia de regla de tres, **simetría de largo de párrafos** (los LLMs producen párrafos de longitud sospechosamente parecida), **densidad de conectores de apertura** (la investigación de Pangram muestra que varios párrafos arrancando con conectores explícitos es la señal más fuerte de IA), y pistas inspiradas en StoryScope: temas sobreexplicados y cierres narrativos demasiado prolijos.
 
 Los scores se normalizan a 0–100. Sobre 60 es IA fuerte, 30–60 es mezcla, bajo 30 está mayormente limpio.
 

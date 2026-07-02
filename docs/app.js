@@ -14,7 +14,7 @@ const I18N = {
     how_title: "cómo funciona",
     how_layer1: "<strong>Patrones de frase.</strong> Muletillas, conectores forzados, calcos del inglés.<small>Regex auditable, sin caja negra.</small>",
     how_layer2: "<strong>Estructura.</strong> Encabezados decorativos, listas simétricas, fragmentos dramáticos.<small>Lo que delata un texto editorialmente \"armado\" por IA.</small>",
-    how_layer3: "<strong>Ritmo y forma.</strong> Largo de oraciones demasiado uniforme, cadencia plana.<small>Los humanos varían más; los modelos tienden al promedio.</small>",
+    how_layer3: "<strong>Ritmo, forma y discurso.</strong> Cadencia plana, párrafos que no giran, temas sobreexplicados y cierres demasiado prolijos.<small>Integra señales de Pangram y StoryScope sin caja negra.</small>",
     how_score: "Tres capas combinadas dan un <strong>índice de señales de 0 a 100</strong> y un veredicto: limpio, mixto, o probable IA. No es una probabilidad matemática.",
     biblio_note_inline: "Al activar esto, solo las citas (DOI / título / autor / arXiv ID) se consultan en CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books y OpenLibrary. El resto del texto no sale de tu navegador.",
     boot: "afinando el olfato…",
@@ -110,7 +110,7 @@ const I18N = {
     analyze: "analizar",
     clear: "limpiar",
     why: "qué hace",
-    whyText: "aismell lee tu texto y te señala qué frases suenan a plantilla de IA: muletillas, conectores raros, párrafos que no cambian de ángulo, ritmo demasiado parejo. Te dice qué revisar, no qué pensar. Si hay bibliografía, revisa si las citas existen de verdad.",
+    whyText: "aismell lee tu texto y te señala qué frases y decisiones de discurso suenan a plantilla de IA: muletillas, conectores raros, párrafos que no cambian de ángulo, temas sobreexplicados, cierres demasiado prolijos y ritmo parejo. Te explica qué detectó, por qué importa y por dónde editar. Si hay bibliografía, revisa si las citas existen de verdad.",
     not: "qué NO hace",
     not1: "<strong>No reescribe tu texto.</strong> Tú decides qué cambiar.",
     not2: "<strong>No promete burlar detectores.</strong> Ese juego es una estafa.",
@@ -208,7 +208,7 @@ const I18N = {
     how_title: "how it works",
     how_layer1: "<strong>Phrase patterns.</strong> Filler phrases, forced connectors, English calques.<small>Auditable regex, no black box.</small>",
     how_layer2: "<strong>Structure.</strong> Decorative headings, symmetric lists, dramatic fragments.<small>What gives away an editorially AI-built text.</small>",
-    how_layer3: "<strong>Rhythm & shape.</strong> Sentence length too uniform, flat cadence.<small>Humans vary more; models pull toward the mean.</small>",
+    how_layer3: "<strong>Rhythm, shape & discourse.</strong> Flat cadence, paragraphs that never turn, over-explained themes, and endings that are too neat.<small>Pangram and StoryScope signals without a black box.</small>",
     how_score: "The three layers combined produce a <strong>0–100 evidence index</strong> and a verdict: clean, mixed, or likely AI. It is not a mathematical probability.",
     biblio_note_inline: "When this is on, only the citations (DOI / title / author / arXiv ID) are queried against CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books and OpenLibrary. The rest of your text stays in your browser.",
     boot: "warming up the nose…",
@@ -290,7 +290,7 @@ const I18N = {
     analyze: "analyze",
     clear: "clear",
     why: "what it does",
-    whyText: "aismell reads your text and flags three kinds of cues line by line: filler phrases and forced connectors, editorial structure (decorative headings, symmetric lists, dramatic fragments) and flat sentence rhythm. Together they yield a 0-to-100 evidence index and a verdict: clean, mixed or likely AI. It is not a mathematical probability. If a bibliography is detected, citations are cross-checked against public sources to confirm they exist.",
+    whyText: "aismell reads your text and flags phrase-level and discourse-level cues: filler phrases, forced connectors, paragraphs that never change angle, over-explained themes, overly tidy endings, and flat rhythm. It explains what it found, why it matters, and where to edit. If a bibliography is detected, citations are cross-checked against public sources to confirm they exist.",
     not: "what it does NOT do",
     not1: "<strong>Does not rewrite your text.</strong> You decide what to change.",
     not2: "<strong>Does not promise to bypass detectors.</strong> That game is a scam.",
@@ -816,6 +816,8 @@ const FINDING_LABELS = {
   "semantic-cohesion-mid": { es: "párrafos parecidos entre sí", en: "similar paragraphs" },
   "semantic-uniformity": { es: "tema demasiado uniforme", en: "too uniform thematically" },
   "semantic-loop-closed": { es: "cierre demasiado circular", en: "overly circular closing" },
+  "discourse-overexplained-theme": { es: "tema sobreexplicado", en: "overexplained theme" },
+  "discourse-tidy-resolution": { es: "cierre demasiado prolijo", en: "overly tidy ending" },
   "negative-parallelism": { es: "contraste repetido", en: "repeated contrast" },
   "challenges-template": { es: "molde de desafíos", en: "challenges template" },
   "media-notability": { es: "notabilidad inflada", en: "media notability padding" },
@@ -851,6 +853,12 @@ function plainStructuralMessage(s) {
     "semantic-loop-closed": es
       ? `El final suena demasiado al inicio${metric ? " " + metric : ""}. Da la sensación de que el texto se cerró solo.`
       : `The ending sounds too much like the opening${metric ? " " + metric : ""}. It feels like the text closed itself.`,
+    "discourse-overexplained-theme": es
+      ? "El texto explica su tema en vez de dejar que el lector lo deduzca. StoryScope encontró que la IA tiende a moralizar y cerrar el sentido demasiado pronto."
+      : "The text explains its theme instead of letting the reader infer it. StoryScope found that AI tends to moralize and close meaning too early.",
+    "discourse-tidy-resolution": es
+      ? "El cierre ordena demasiado el conflicto: lección clara, arco cerrado, poca ambigüedad. Esa prolijidad narrativa es una huella frecuente de IA."
+      : "The ending over-tidies the conflict: clear lesson, closed arc, little ambiguity. That narrative neatness is a frequent AI trace.",
     "negative-parallelism": es
       ? "Aparecen muchas frases del tipo 'no solo X, sino Y'. Es un patrón que la IA repite hasta el cansancio."
       : "Too many 'not just X, but Y' contrasts. AI repeats that pattern relentlessly.",
@@ -889,8 +897,22 @@ function plainSuggestion(s) {
     "semantic-loop-closed": es
       ? "El último párrafo debería ir a donde el texto no fue todavía. No al punto de partida."
       : "The last paragraph should go somewhere the text hasn't been yet. Not back to the start.",
+    "discourse-overexplained-theme": es
+      ? "Deja una sola frase temática fuerte. Convierte las otras en escena, gesto, dato, contradicción o consecuencia concreta."
+      : "Keep one strong thematic sentence. Turn the others into a scene, gesture, data point, contradiction, or concrete consequence.",
+    "discourse-tidy-resolution": es
+      ? "Corta la frase que explica la moraleja. Termina con una acción, una imagen o una consecuencia que deje respirar el cierre."
+      : "Cut the sentence that explains the lesson. End with an action, image, or consequence that lets the ending breathe.",
   };
   return map[kind] || s.suggestion || "";
+}
+
+function actionLabel() {
+  return UILANG === "es" ? "Qué hacer:" : "What to do:";
+}
+
+function detectionLabel() {
+  return UILANG === "es" ? "Qué detecté:" : "What I found:";
 }
 
 function renderHit(hit, t) {
@@ -911,8 +933,8 @@ function renderHit(hit, t) {
       <div class="glyph s-${hit.severity}">${glyph}</div>
       <div class="body">
         <div class="ctx">${lead}${before}<span class="match">${matched}</span>${after}${tail}</div>
-        <div class="meta"><span class="finding-label">${escapeHtml(findingLabel(hit.id))}</span> · ${escapeHtml(hit.message)}</div>
-        ${hit.suggestion ? `<div class="sug">${escapeHtml(hit.suggestion)}</div>` : ""}
+        <div class="meta"><strong>${detectionLabel()}</strong> <span class="finding-label">${escapeHtml(findingLabel(hit.id))}</span> · ${escapeHtml(hit.message)}</div>
+        ${hit.suggestion ? `<div class="sug"><strong>${actionLabel()}</strong> ${escapeHtml(hit.suggestion)}</div>` : ""}
       </div>
     </div>`;
 }
@@ -929,8 +951,8 @@ function renderStructural(s, t) {
       <div class="glyph s-${s.severity}">${glyph}</div>
       <div class="body">
         <div class="ctx" style="color: var(--fg);"><span class="finding-label">${escapeHtml(findingLabel(s.kind))}</span></div>
-        <div class="meta">${escapeHtml(msg)}</div>
-        ${sug ? `<div class="sug">${escapeHtml(sug)}</div>` : ""}
+        <div class="meta"><strong>${detectionLabel()}</strong> ${escapeHtml(msg)}</div>
+        ${sug ? `<div class="sug"><strong>${actionLabel()}</strong> ${escapeHtml(sug)}</div>` : ""}
       </div>
     </div>`;
 }
@@ -1044,6 +1066,11 @@ function renderActionSummary(report) {
       ? "Los párrafos suenan demasiado parecidos. Agrega algo concreto que cambie el tono: un número, una escena, una objeción."
       : "The paragraphs sound too similar. Add something concrete that shifts the tone: a number, a scene, an objection.");
   }
+  if (has("discourse-overexplained-theme") || has("discourse-tidy-resolution")) {
+    priority.push(es
+      ? "El problema no es solo la frase: es la manera de cerrar el sentido. Deja que una escena o una consecuencia hagan el trabajo pedagógico."
+      : "The issue is not just phrasing: it is how the text closes meaning. Let a scene or consequence do the teaching.");
+  }
   if (has("nominalization_density")) {
     priority.push(es
       ? "El texto suena a informe. Cambia algún sustantivo abstracto por un verbo: 'la implementación' → 'implementar'."
@@ -1130,9 +1157,8 @@ function render(report) {
   // their per-section scorer was inconsistent with the global one
   // (could read 0% per section while the global verdict was 100%).
 
-  if (report.score >= 0.6) {
-    scoreHtml += renderIntelectaNudge("smell");
-  }
+  // Intelecta nudge disabled — keep only footer button
+  // if (report.score >= 0.6) scoreHtml += renderIntelectaNudge("smell");
 
   els.score.innerHTML = scoreHtml;
 
@@ -1888,11 +1914,7 @@ async function verifyBibliography(text) {
       <a class="btn ghost" href="${reportUrl}" download="aismell-bibliografia.html">⬇ ${t.biblio_download_btn}</a>
     </div>`);
 
-  // Only nudge Intelecta when there's enough signal: 2+ "no match" AND ratio > 25%
-  const ratio = counts.not_found / refs.length;
-  if (counts.not_found >= 2 && ratio >= 0.25) {
-    appendBiblio(renderIntelectaNudge("biblio"));
-  }
+  // Intelecta nudge disabled — keep only footer button
 }
 
 function buildBiblioReportHtml(results, t) {
@@ -2768,34 +2790,7 @@ function bumpRunCount() {
 }
 
 function maybeShowNudge() {
-  let state, count;
-  try {
-    state = localStorage.getItem(NUDGE_KEY);
-    count = parseInt(localStorage.getItem(COUNT_KEY) || "0", 10);
-  } catch (_) { return; }
-  if (state) return;                 // already shown or dismissed
-  if (count < NUDGE_THRESHOLD) return;
-  if (document.getElementById("nudge")) return;
-
-  const t = I18N[UILANG];
-  const div = document.createElement("div");
-  div.className = "nudge";
-  div.id = "nudge";
-  div.innerHTML = `
-    <span class="heart">♥</span>
-    <span>${t.nudge_text}</span>
-    <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener">${t.nudge_btn}</a>
-    <button type="button" class="dismiss" aria-label="dismiss">${t.nudge_dismiss}</button>
-  `;
-  document.querySelector("main").appendChild(div);
-  div.querySelector(".dismiss").addEventListener("click", () => {
-    try { localStorage.setItem(NUDGE_KEY, "dismissed"); } catch (_) {}
-    div.remove();
-  });
-  div.querySelector("a").addEventListener("click", () => {
-    try { localStorage.setItem(NUDGE_KEY, "donated"); } catch (_) {}
-  });
-  try { localStorage.setItem(NUDGE_KEY, "shown"); } catch (_) {}
+  // Donation nudge disabled per user request — keep only footer button.
 }
 
 bootPyodide();

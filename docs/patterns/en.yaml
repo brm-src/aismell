@@ -449,6 +449,164 @@ patterns:
     suggestion: just start with the point
 
   # ---- Extra AI-isms (Reddit + Pangram + Novelcrafter + Wikipedia) ----
+  # ---- Wikipedia: avoidance of basic copulatives ----
+  - id: en.refers_to
+    kind: phrase
+    severity: 2
+    pattern: refers to
+    message: '"refers to" instead of "is" — AI avoids basic copulative'
+    suggestion: '"is", or define the subject directly'
+
+  - id: en.stands_as
+    kind: phrase
+    severity: 2
+    pattern: stands as a
+    message: '"stands as a" instead of "is" — AI avoids simple verb'
+    suggestion: '"is" or delete'
+
+  - id: en.boasts_a
+    kind: regex
+    severity: 3
+    pattern: '(?i)\\bboasts\\s+(a|an|one of|some of)'
+    message: '"boasts" as synonym for "has" — promo AI verb (Wikipedia)'
+    suggestion: '"has", "includes"'
+
+  - id: en.features_verb
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\b(features|offers|provides)\\s+(a|an|the)\\b.{0,50}\\b(including|such as|like|ranging)'
+    message: '"features/offers" as marketing verb — Wikipedia AI pattern'
+    suggestion: '"has", "includes"'
+
+  # ---- Wikipedia: negative parallelisms (Wikipedia confirmed) ----
+  - id: en.not_but_direct
+    kind: regex
+    severity: 3
+    pattern: '(?i)\\b(is |are |was |were )?(not |never )\\b.{1,60}\\b(but |rather |instead )\\b.{1,60}\\b(it|they|this)\\b'
+    message: '"not X but Y" — Wikipedia-confirmed AI contrast device'
+    suggestion: state Y directly without denying X first
+
+  - id: en.not_merely
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\bnot (merely|simply|solely|only)\\b.{1,80}\\b(it|they|this|that)\\s+(is|was|are|were|represents|serves|acts)'
+    message: '"not merely X, it is Y" — Wikipedia AI contrast device'
+    suggestion: assert Y directly
+
+  - id: en.more_than_just
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\bis more than (just |merely |simply )?(a |an |the )?\\b.{1,60}\\b(it|this|that)\\b'
+    message: '"is more than X, it is Y" — Wikipedia AI inflation'
+    suggestion: just say what it is
+
+  # ---- Wikipedia: media notability emphasis ----
+  - id: en.independent_coverage
+    kind: regex
+    severity: 3
+    pattern: '(?i)(has been|was|received) (profiled in|featured in|covered by|noted in)\\b.{1,40}\\b(media|outlets|publications|news|press)'
+    message: '"profiled in media outlets" — Wikipedia AI notability padding'
+    suggestion: cite the source directly, skip the framing
+
+  - id: en.active_social_presence
+    kind: regex
+    severity: 3
+    pattern: '(?i)maintains? an active (social media|online|digital) presence'
+    message: '"maintains an active social media presence" — Wikipedia AI filler'
+    suggestion: say what they actually post or delete
+
+  # ---- Wikipedia: "despite... challenges" template ----
+  - id: en.despite_challenges
+    kind: regex
+    severity: 3
+    pattern: '(?i)despite (these|its|the|this) (challenges|difficulties|obstacles|limitations|setbacks|issues)'
+    message: '"Despite these challenges" — Wikipedia AI essay template'
+    suggestion: state what is working and what is not, without the formula
+
+  - id: en.faces_challenges
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\bfaces (several|numerous|various|many) challenges\\b'
+    message: '"faces several challenges" — Wikipedia AI formulaic structure'
+    suggestion: name the specific problems plainly
+
+  # ---- Wikipedia: GPT-5 era words ----
+  - id: en.showcasing
+    kind: phrase
+    severity: 2
+    pattern: showcasing
+    message: '"showcasing" — GPT-5 era AI verb (Wikipedia)'
+    suggestion: '"showing", "displaying"'
+
+  - id: en.interplay
+    kind: phrase
+    severity: 2
+    pattern: interplay
+    message: '"interplay" — Wikipedia AI abstract noun'
+    suggestion: '"relation", "interaction", "connection"'
+
+  # ---- Wikipedia: "setting the stage" / "indelible mark" ----
+  - id: en.setting_the_stage
+    kind: phrase
+    severity: 2
+    pattern: setting the stage for
+    message: '"setting the stage for" — Wikipedia AI transitional cliché'
+    suggestion: just describe what happened next
+
+  - id: en.indelible_mark
+    kind: regex
+    severity: 3
+    pattern: '(?i)\\b(le(ft|ave|aving)|made) an indelible (mark|impact|impression)\\b'
+    message: '"indelible mark" — Wikipedia AI significance hyperbole'
+    suggestion: say what they actually did
+
+  - id: en.deeply_rooted
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\bdeeply (entrenched|rooted|ingrained|embedded)\\b'
+    message: '"deeply rooted" — Wikipedia AI abstract metaphor'
+    suggestion: say what and why
+
+  # ---- Wikipedia: "shaped discussions" ----
+  - id: en.shaped_discussions
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\b(shaped|influenced|fueled|sparked|prompted) (discussions|debate|reflection|conversation|controversy) about\\b'
+    message: '"sparked debate about" — Wikipedia AI social-impact framing'
+    suggestion: say who discussed what and what came of it
+
+  # ---- Wikipedia: "broader context" / "broader trend" ----
+  - id: en.broader_context
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\bbroader (context|trend|movement|landscape|implications|significance)\\b'
+    message: '"broader context" — Wikipedia AI significance framing'
+    suggestion: name the specific context or skip it
+
+  # ---- Wikipedia: "key takeaways" ----
+  - id: en.key_takeaways
+    kind: regex
+    severity: 2
+    pattern: '(?i)\\b(key|main|important) takeaways?\\b'
+    message: '"key takeaways" — Wikipedia AI conclusion section header'
+    suggestion: summarize without the label
+
+  # ---- Wikipedia: chatbot markup artifacts ----
+  - id: en.turn0search
+    kind: regex
+    severity: 3
+    pattern: '(:?contentReference\\[oaicite:\\d+\\]|oai_citation:\\d+|\\{\\"attribution\\":\\{\\"attributableIndex\\"|【\\d+†|turn0(search|image|news|file)\\d+|\\[attached_file:\\d+\\]|\\[cite:\\s*\\d+[,\\s\\d+]*\\]|<grok_card|grok_render_citation_card_json|:::writing\\{variant)'
+    message: 'AI chatbot citation artifact in text — ChatGPT/Perplexity/Grok/Gemini marker'
+    suggestion: replace with proper citations or delete
+
+  # ---- Wikipedia: placeholder dates ----
+  - id: en.placeholder_date
+    kind: regex
+    severity: 3
+    pattern: '(?i)20\\d{2}-(XX|xx)-(XX|xx)|INSERT_.*|PASTE_.*|<!-- Add (if|with).*-->'
+    message: 'placeholder date/template — Wikipedia unfilled AI generation'
+    suggestion: fill in the real information or delete
+
   - id: en.dive_in
     kind: regex
     severity: 3

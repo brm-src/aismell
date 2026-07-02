@@ -1031,6 +1031,96 @@ def _check_impersonal_se_stacking(text: str, lang: str) -> list[StructuralFindin
     return []
 
 
+def _check_storyscope_discourse(text: str, lang: str) -> list[StructuralFinding]:
+    """StoryScope-inspired discourse signals.
+
+    This is not a narrative classifier. It adds small, auditable proxies for
+    StoryScope's product lesson: AI prose often over-explains its theme and
+    resolves conflicts too neatly. These are editorial cues, not forensic proof.
+    """
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if _word_count(p) >= 15]
+    if len(paragraphs) < 4:
+        return []
+
+    if lang == "es":
+        theme_rx = re.compile(
+            r"\b(tema|temas|moral|moraleja|lecci[oó]n|enseñanza|significado|"
+            r"sentido profundo|reflexi[oó]n|comprendi[oó]|comprender|aprendi[oó]|"
+            r"aprendizaje|verdad profunda|prop[oó]sito|humanidad|esperanza|redenci[oó]n)\b",
+            re.I,
+        )
+        narrator_moral_rx = re.compile(
+            r"\b(la historia (?:nos )?(?:enseña|recuerda|muestra)|"
+            r"esto (?:nos )?(?:enseña|recuerda|muestra)|"
+            r"al final,? (?:comprendi[oó]|aprendi[oó])|en (?:el )?fondo|m[aá]s all[aá] de)\b",
+            re.I,
+        )
+        tidy_close_rx = re.compile(
+            r"\b(al final|finalmente|en [uú]ltima instancia|en definitiva|desde ese momento|"
+            r"para siempre|comprendi[oó] que|aprendi[oó] que|lo que realmente importaba|"
+            r"un nuevo comienzo)\b",
+            re.I,
+        )
+    else:
+        theme_rx = re.compile(
+            r"\b(theme|themes|moral|lesson|meaning|deeper meaning|reflection|realized|"
+            r"understood|learned|truth|purpose|humanity|hope|redemption)\b",
+            re.I,
+        )
+        narrator_moral_rx = re.compile(
+            r"\b(the story (?:teaches|reminds|shows)|this (?:teaches|reminds|shows) us|"
+            r"in the end,? (?:he|she|they|i) (?:realized|understood|learned)|deep down|beyond the)\b",
+            re.I,
+        )
+        tidy_close_rx = re.compile(
+            r"\b(in the end|ultimately|finally|from that day forward|forever changed|"
+            r"realized that|learned that|what truly mattered|new beginning)\b",
+            re.I,
+        )
+
+    findings: list[StructuralFinding] = []
+    words = max(1, _word_count(text))
+    theme_hits = len(theme_rx.findall(text)) + len(narrator_moral_rx.findall(text)) * 2
+    theme_density = theme_hits / (words / 1000)
+    if theme_hits >= 5 and theme_density >= 8:
+        findings.append(StructuralFinding(
+            line=0,
+            kind="discourse-overexplained-theme",
+            severity=3 if theme_hits >= 9 else 2,
+            message=(
+                f"el texto explica su tema demasiadas veces ({theme_hits} marcas) — "
+                "StoryScope: la IA suele moralizar y cerrar el sentido"
+                if lang == "es" else
+                f"the text explains its theme too often ({theme_hits} marks) — "
+                "StoryScope: AI tends to moralize and close meaning down"
+            ),
+            suggestion=(
+                "borra una explicación del tema y reemplázala por una escena, un gesto, una contradicción o un detalle que deje inferir la idea"
+                if lang == "es" else
+                "delete one explanation of the theme and replace it with a scene, gesture, contradiction, or detail that lets the idea be inferred"
+            ),
+        ))
+
+    tidy_close_hits = len(tidy_close_rx.findall(paragraphs[-1]))
+    if tidy_close_hits >= 2:
+        findings.append(StructuralFinding(
+            line=0,
+            kind="discourse-tidy-resolution",
+            severity=2,
+            message=(
+                f"cierre demasiado ordenado ({tidy_close_hits} marcas) — resolución de IA muy prolija"
+                if lang == "es" else
+                f"overly tidy ending ({tidy_close_hits} marks) — AI-style neat resolution"
+            ),
+            suggestion=(
+                "quita la frase que explica la lección y termina con una consecuencia concreta o una duda que no quede totalmente resuelta"
+                if lang == "es" else
+                "remove the sentence explaining the lesson and end with a concrete consequence or a question that stays partly unresolved"
+            ),
+        ))
+    return findings
+
+
 def _score_sections(sentences: list[str], lang: str) -> list[SectionScore]:
     if not sentences:
         return []
@@ -1144,6 +1234,7 @@ def analyze(
         report.structural.extend(_check_semicolon_ratio(authorial_text, lang))
         report.structural.extend(_check_nominalization_density(authorial_text, lang))
         report.structural.extend(_check_impersonal_se_stacking(authorial_text, lang))
+        report.structural.extend(_check_storyscope_discourse(authorial_text, lang))
     report.sections = _score_sections(sentences, lang)
 
     # score — evidence-aware combiner.
@@ -1165,7 +1256,8 @@ def analyze(
         "essay-scaffolding", "synthetic-academic", "low-specificity",
         "vague-sentence-stack", "paragraph-connectors", "paragraph-symmetry",
         "rhetorical-qa", "binary-reframe", "negative-listing", "false-agency",
-        "passive-voice", "wh-starters",
+        "passive-voice", "wh-starters", "discourse-overexplained-theme",
+        "discourse-tidy-resolution",
     }
     macro_present = macro_kinds & structural_kinds
     macro_d = min(0.70, 0.18 * len(macro_present) + 0.08 * severe_structural)

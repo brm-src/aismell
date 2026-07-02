@@ -57,6 +57,31 @@ _CITATION_RE = re.compile(
     r"([^.]{10,200})\.",                                              # title
 )
 
+# ISO 690 / Polít. Crim.: APELLIDO, Nombre (año): "Título" o Título
+_ISO690_RE = re.compile(
+    r"([A-ZÁÉÍÓÚÑ]{2,}(?:\s+[A-ZÁÉÍÓÚÑ]+)*),\s+"  # APELLIDO — 2+ mayúsculas
+    r"([\w\s\.\-]+?)\s+"                              # Nombre
+    r"\(\s*(\d{4})\s*\)[\.:]?\s*"                    # (año)
+    r"[\"«]?([^\"«»\n,]{10,200})[\"»]?",             # título
+    re.MULTILINE
+)
+
+# Chicago Author-Date: Apellido, Nombre. Año. "Título."
+_CHICAGO_RE = re.compile(
+    r"([A-ZÁÉÍÓÚÑ][a-záéíóúñü]+(?:[-\s][A-ZÁÉÍÓÚÑ][a-záéíóúñü]+)*),\s+"  # Surname,
+    r"((?:[A-ZÁÉÍÓÚÑ][a-záéíóúñü]*\.?\s*)+)\.\s+"  # Nombre.
+    r"(\d{4})\.\s+"                                   # Año.
+    r"[\"«]?([^.]{10,200})[\"»]?\.",                 # Título.
+)
+
+# General catch-all: any line with (YYYY) followed by 10+ chars of title
+_GENERAL_CIT_RE = re.compile(
+    r"(?:^|\n)\s*([^,\n]{3,50})"                      # author
+    r"[,\s]+\(?\s*(\d{4})\s*\)?[\.:]?\s*"            # (año) o año
+    r"[\"«]?([^\"«»\n]{10,200})[\"»]?",              # título
+    re.MULTILINE
+)
+
 
 # -------- data --------
 
@@ -183,6 +208,84 @@ def find_references(text: str) -> list[Reference]:
             title=title,
             author=author,
             year=year,
+        ))
+
+    # --- ISO 690 / Polít. Crim.: APELLIDO, Nombre (año): "Título" ---
+    for m in _ISO690_RE.finditer(text):
+        line_no = text.count("\n", 0, m.start()) + 1
+        line_start = text.rfind("\n", 0, m.start()) + 1
+        col = m.start() - line_start
+        end = m.end() - line_start
+        author = (m.group(1) + ", " + m.group(2)).strip()
+        year = m.group(3).strip()
+        title = m.group(4).strip()
+        key = ("cit", f"{author}|{year}|{title[:60].lower()}")
+        if key in seen:
+            continue
+        seen.add(key)
+        overlap = any(
+            r.line == line_no and not (r.end <= col or r.col >= end)
+            for r in refs
+        )
+        if overlap:
+            continue
+        refs.append(Reference(
+            kind="citation",
+            raw=lines[line_no - 1].strip() if 0 <= line_no - 1 < len(lines) else m.group(0),
+            line=line_no, col=col, end=end,
+            title=title, author=author, year=year,
+        ))
+
+    # --- Chicago Author-Date: Apellido, Nombre. Año. "Título." ---
+    for m in _CHICAGO_RE.finditer(text):
+        line_no = text.count("\n", 0, m.start()) + 1
+        line_start = text.rfind("\n", 0, m.start()) + 1
+        col = m.start() - line_start
+        end = m.end() - line_start
+        author = m.group(1).strip()
+        year = m.group(3).strip()
+        title = m.group(4).strip()
+        key = ("cit", f"{author}|{year}|{title[:60].lower()}")
+        if key in seen:
+            continue
+        seen.add(key)
+        overlap = any(
+            r.line == line_no and not (r.end <= col or r.col >= end)
+            for r in refs
+        )
+        if overlap:
+            continue
+        refs.append(Reference(
+            kind="citation",
+            raw=lines[line_no - 1].strip() if 0 <= line_no - 1 < len(lines) else m.group(0),
+            line=line_no, col=col, end=end,
+            title=title, author=author, year=year,
+        ))
+
+    # --- General catch-all: (YYYY) + 10+ char title ---
+    for m in _GENERAL_CIT_RE.finditer(text):
+        line_no = text.count("\n", 0, m.start()) + 1
+        line_start = text.rfind("\n", 0, m.start()) + 1
+        col = m.start() - line_start
+        end = m.end() - line_start
+        author = m.group(1).strip()
+        year = m.group(2).strip()
+        title = m.group(3).strip()
+        key = ("cit", f"{author}|{year}|{title[:60].lower()}")
+        if key in seen:
+            continue
+        seen.add(key)
+        overlap = any(
+            r.line == line_no and not (r.end <= col or r.col >= end)
+            for r in refs
+        )
+        if overlap:
+            continue
+        refs.append(Reference(
+            kind="citation",
+            raw=lines[line_no - 1].strip() if 0 <= line_no - 1 < len(lines) else m.group(0),
+            line=line_no, col=col, end=end,
+            title=title, author=author, year=year,
         ))
 
     return refs

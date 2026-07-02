@@ -70,6 +70,64 @@ function stdev(xs) {
   return Math.sqrt(v);
 }
 
+function countMatches(text, rx) {
+  return (text.match(rx) || []).length;
+}
+
+function wordCount(text) {
+  return (text.match(/[\p{L}\p{N}_'-]+/gu) || []).length;
+}
+
+function storyScopeSurfaceSignals(text, lang, paragraphs, metrics) {
+  // StoryScope's useful product lesson: don't stop at style. Look for discourse
+  // choices that LLM fiction tends to make — explicit moralizing, tidy single-
+  // track arcs, and closures that explain the point instead of earning it.
+  // These are lightweight, interpretable proxies; not a classifier.
+  const findings = [];
+  const words = Math.max(1, wordCount(text));
+  const es = lang === "es";
+  const themeRx = es
+    ? /\b(tema|temas|moral|moraleja|lecci[oó]n|enseñanza|significado|sentido profundo|reflexi[oó]n|comprendi[oó]|comprender|aprendi[oó]|aprendizaje|verdad profunda|prop[oó]sito|humanidad|esperanza|redenci[oó]n)\b/gi
+    : /\b(theme|themes|moral|lesson|meaning|deeper meaning|reflection|realized|understood|learned|truth|purpose|humanity|hope|redemption)\b/gi;
+  const narratorMoralRx = es
+    ? /\b(la historia (?:nos )?(?:enseña|recuerda|muestra)|esto (?:nos )?(?:enseña|recuerda|muestra)|al final,? (?:comprendi[oó]|aprendi[oó])|en (?:el )?fondo|m[aá]s all[aá] de)\b/gi
+    : /\b(the story (?:teaches|reminds|shows)|this (?:teaches|reminds|shows) us|in the end,? (?:he|she|they|i) (?:realized|understood|learned)|deep down|beyond the)\b/gi;
+  const themeHits = countMatches(text, themeRx) + countMatches(text, narratorMoralRx) * 2;
+  const themeDensity = themeHits / (words / 1000);
+  if (paragraphs.length >= 4 && themeHits >= 5 && themeDensity >= 8) {
+    findings.push({
+      kind: "discourse-overexplained-theme",
+      severity: themeHits >= 9 ? 3 : 2,
+      message: es
+        ? `el texto explica su tema demasiadas veces (${themeHits} marcas) — StoryScope: la IA suele moralizar y cerrar el sentido`
+        : `the text explains its theme too often (${themeHits} marks) — StoryScope: AI tends to moralize and close meaning down`,
+      suggestion: es
+        ? "borra una explicación del tema y reemplázala por una escena, un gesto, una contradicción o un detalle que deje inferir la idea"
+        : "delete one explanation of the theme and replace it with a scene, gesture, contradiction, or detail that lets the idea be inferred",
+    });
+  }
+
+  const closing = paragraphs[paragraphs.length - 1] || "";
+  const tidyCloseRx = es
+    ? /\b(al final|finalmente|en [uú]ltima instancia|en definitiva|desde ese momento|para siempre|comprendi[oó] que|aprendi[oó] que|lo que realmente importaba|un nuevo comienzo)\b/gi
+    : /\b(in the end|ultimately|finally|from that day forward|forever changed|realized that|learned that|what truly mattered|new beginning)\b/gi;
+  const tidyCloseHits = countMatches(closing, tidyCloseRx);
+  if (paragraphs.length >= 4 && tidyCloseHits >= 2 && metrics.openClose >= 0.84) {
+    findings.push({
+      kind: "discourse-tidy-resolution",
+      severity: 2,
+      message: es
+        ? `cierre demasiado ordenado (${tidyCloseHits} marcas y similitud apertura/cierre ${metrics.openClose.toFixed(2)}) — resolución de IA muy prolija`
+        : `overly tidy ending (${tidyCloseHits} marks and opening/closing similarity ${metrics.openClose.toFixed(2)}) — AI-style neat resolution`,
+      suggestion: es
+        ? "quita la frase que explica la lección y termina con una consecuencia concreta o una duda que no quede totalmente resuelta"
+        : "remove the sentence explaining the lesson and end with a concrete consequence or a question that stays partly unresolved",
+    });
+  }
+
+  return findings;
+}
+
 // Split into paragraphs of meaningful length (>=15 words).
 function splitParagraphs(text) {
   return text
@@ -192,6 +250,8 @@ export async function analyzeEmbeddings(text, lang = "es") {
           : "let the closing drift — human texts rarely return to the exact start",
     });
   }
+
+  findings.push(...storyScopeSurfaceSignals(text, lang, paragraphs, metrics));
 
   return { findings, metrics, skipped: null };
 }

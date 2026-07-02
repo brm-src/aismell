@@ -12,6 +12,8 @@ Two pieces of research changed the landscape:
 
 **EditLens (2025).** A regression head trained to estimate *how much* of a document was AI-edited, not just whether. F1 of 0.947 on binary classification, 0.904 on ternary (human / AI / hybrid). On the BEEMO corpus (AI text intensively edited by humans), 88.9% of documents showed a detection score that *correlated with the amount of human intervention*, proving that algorithmic editing leaves a measurable statistical residue. On ArgRewrite V.2 (human edited by humans), the score was 0.012 — i.e., the model does not confuse human editing with AI editing.
 
+**StoryScope (2026).** Instead of looking only at word choice, StoryScope converts stories into structured narrative fields and compares discourse-level choices: character agency, causal-chain continuity, revelation, temporal discontinuity, focalization, setting, and style. Its useful product lesson for `aismell`: narrative features alone separate human vs. AI fiction at high macro-F1, because LLM stories cluster around tidy single-track plots, explicit moralizing, thematic over-unity, and neat closure, while human stories show more temporal complexity, ambiguity, intertextual texture, and narrative rarity.
+
 ## Why this matters for `aismell`
 
 The PDF that seeded this project framed all of the above as a *humanization arms race*: how to write prompts that evade Pangram. We deliberately chose the opposite framing.
@@ -25,6 +27,7 @@ We use the same research, but in reverse:
 | LLMs use formal connectors        | Structural check warns when 2+ paragraphs open with a connector  |
 | Burstiness is too low in AI       | Sentence-length CV is reported, not artificially raised          |
 | RLHF causes "semantic bloat"      | The bloat list is encoded as patterns the user can read & remove |
+| AI fiction over-explains themes   | Discourse checks warn about moralizing and too-neat closure      |
 
 We do not ship a `--humanize` mode and we will not. The honest framing is editorial: make the user see what reads as AI so they can decide whether it sounds like them.
 
@@ -60,6 +63,17 @@ In rough priority order:
 - [ ] **Em-dash + clause structure** — current check counts em-dashes; doesn't yet check whether they bracket parallel clauses (a stronger AI tell than density alone).
 - [ ] **Topic openings** — flag introductions that begin by stating what the document will do (*"This essay will explore…"*) instead of doing it.
 
+## StoryScope-derived discourse cues
+
+`aismell` does **not** try to reproduce StoryScope's LLM-judge + SHAP pipeline. That would require model calls and a benchmark corpus, which violates the offline/auditable design. What we integrate is the safe part: interpretable editorial proxies.
+
+Current StoryScope-inspired checks:
+
+- **Over-explained theme.** Flags texts that repeatedly name the theme, moral, lesson, meaning, purpose, humanity, hope, redemption, or equivalent Spanish terms. The feedback tells the writer to keep one thematic sentence and turn the rest into scenes, gestures, contradictions, or concrete consequences.
+- **Too-neat resolution.** Flags endings packed with closure markers such as *al final*, *desde ese momento*, *lo que realmente importaba*, *in the end*, *forever changed*, *what truly mattered*. The feedback asks for a concrete consequence or unresolved pressure instead of a declared moral.
+
+These checks are intentionally conservative and pedagogical: they explain *what pattern was detected*, *why it can sound AI-written*, and *what kind of human edit would fix it*. They are not accusations of authorship.
+
 ## Sources
 
 The detection-side research:
@@ -67,6 +81,7 @@ The detection-side research:
 - Pangram Labs (2024). *Technical Report on the Pangram AI-Generated Text Classifier.* arXiv:2402.14873. https://arxiv.org/abs/2402.14873
 - Pangram Labs (2025). *DAMAGE: Detecting Adversarially Modified AI Generated Text.* arXiv:2501.03437. https://arxiv.org/html/2501.03437v1
 - Krishna et al. (2025). *EditLens: Quantifying the Extent of AI Editing in Text.* arXiv:2510.03154. https://arxiv.org/abs/2510.03154
+- Russell et al. (2026). *StoryScope: Investigating idiosyncrasies in AI fiction.* arXiv:2604.03136. https://arxiv.org/abs/2604.03136
 
 The lexical taxonomy:
 

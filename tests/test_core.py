@@ -188,6 +188,23 @@ def test_report_includes_section_scores():
     assert any("cierre" in s.reasons[0] or s.name == "cierre" for s in report.sections)
 
 
+def test_storyscope_discourse_signals_catch_overexplained_theme():
+    text = (
+        "La puerta quedó abierta toda la noche y nadie quiso decir quién había salido primero. "
+        "La escena mostraba una tensión pequeña, casi doméstica, entre el miedo y la costumbre.\n\n"
+        "El tema de la historia era la esperanza, pero también la lección de aprender a confiar. "
+        "En el fondo, esto nos recuerda que la humanidad necesita un propósito compartido.\n\n"
+        "Cada personaje comprendió una verdad profunda sobre el significado de sus actos. "
+        "La moraleja apareció cuando dejaron de buscar redención fuera de sí mismos.\n\n"
+        "Al final, aprendió que lo que realmente importaba era la esperanza. "
+        "Desde ese momento comenzó un nuevo comienzo para todos."
+    )
+    report, _ = analyze(text, lang="es")
+    kinds = {f.kind for f in report.structural}
+    assert "discourse-overexplained-theme" in kinds
+    assert "discourse-tidy-resolution" in kinds
+
+
 def test_canary_dataset_loaded_and_thresholds_hold():
     samples = load_canary_samples()
     assert samples, "canary dataset should not be empty"

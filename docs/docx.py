@@ -52,6 +52,8 @@ KIND_LABELS_ES = {
     "vague-sentence-stack": "frases abstractas acumuladas",
     "essay-scaffolding": "andamiaje de ensayo",
     "rhythm": "ritmo plano",
+    "discourse-overexplained-theme": "tema sobreexplicado",
+    "discourse-tidy-resolution": "cierre demasiado prolijo",
 }
 KIND_LABELS_EN = {
     "em-dash": "repeated em dashes",
@@ -73,6 +75,8 @@ KIND_LABELS_EN = {
     "vague-sentence-stack": "stacked abstract sentences",
     "essay-scaffolding": "essay scaffold",
     "rhythm": "flat rhythm",
+    "discourse-overexplained-theme": "overexplained theme",
+    "discourse-tidy-resolution": "overly tidy ending",
 }
 
 
