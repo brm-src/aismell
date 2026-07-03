@@ -75,16 +75,16 @@ const I18N = {
     verdict_mixed: "puede ser",
     verdict_human: "suena humano",
     verdict_clean: "limpio",
-    verdict_confidence: "qué tan seguro",
-    verdict_conf_high: "bastante",
-    verdict_conf_med: "más o menos",
-    verdict_conf_low: "poco",
+    verdict_confidence: "seguridad del detector",
+    verdict_conf_high: "alta",
+    verdict_conf_med: "media",
+    verdict_conf_low: "baja",
     verdict_subtitle: {
       es: {
-        ai: "El detector encontró muchas señales juntas. Es raro ver tantas en un texto escrito sin ayuda.",
-        mixed: "Encontró algunas señales, pero no tantas como para afirmar nada. Puede ser un texto editado sobre un borrador de IA, o simplemente formal.",
-        human: "Casi no aparecen las muletillas ni los patrones que usa la IA. Lo más probable es que sea tuyo.",
-        clean: "No encontró nada. Texto limpio.",
+        ai: "Aparecen muchas señales juntas. No prueba autoría, pero sí pide una revisión cuidadosa.",
+        mixed: "Hay señales, aunque no bastan para sacar una conclusión fuerte. Puede ser un texto formal, editado o escrito sobre un borrador de IA.",
+        human: "Aparecen pocas señales típicas de IA. Si el texto es tuyo, no hay mucho que corregir.",
+        clean: "No encontró señales claras. Texto limpio.",
       },
       en: {
         ai: "The detector found many signals together. It is rare to see this many in a text written without assistance.",
@@ -142,7 +142,10 @@ const I18N = {
     drop_hint: "suelta el archivo para analizarlo",
     upload: "subir archivo",
     annotating: "marcando word…",
-    docx_done: "Hallazgos listos en <strong>{name}</strong>. Lo amarillo marca frases o zonas que conviene revisar. Al presionar <strong>descargar Word comentado</strong>, baja un .docx con resaltados y comentarios al margen: cada comentario explica qué se detectó, por qué puede sonar a IA y qué cambiar en el contexto del documento.",
+    docx_done_title: "Word comentado listo",
+    docx_done_file: "Archivo generado",
+    docx_done_lead: "Las zonas amarillas marcan frases o zonas que conviene revisar.",
+    docx_done_body: "El Word descargado incluye resaltados y comentarios al margen. Cada comentario explica qué se detectó, por qué puede sonar a IA y qué cambiar según el contexto del documento.",
     pdf_browser_unsupported: "PDF en la web aún no se puede (la librería no carga en el navegador). Para PDF usa el CLI: aismell paper.pdf --out paper-marcado.pdf",
     pdf_extracting: "extrayendo texto del PDF…",
     pdf_extracting_page: "extrayendo PDF: página {page}/{total}…",
@@ -273,6 +276,14 @@ const I18N = {
     verdict_conf_high: "high",
     verdict_conf_med: "medium",
     verdict_conf_low: "low",
+    verdict_subtitle: {
+      en: {
+        ai: "Many signals appear together. It does not prove authorship, but it does call for careful review.",
+        mixed: "There are signals, but not enough for a strong conclusion. It may be formal writing, edited writing, or text based on an AI draft.",
+        human: "Only a few common AI signals appear. If this is your text, there is not much to fix.",
+        clean: "No clear signals found. Clean text.",
+      },
+    },
     verdict_summary_label: "why",
     verdict_reasons: {
       density: "AI-marker density: {pct}% of sentences flagged",
@@ -322,7 +333,10 @@ const I18N = {
     drop_hint: "drop the file to analyze",
     upload: "upload file",
     annotating: "annotating word…",
-    docx_done: "Findings are ready in <strong>{name}</strong>. Yellow marks phrases or areas worth reviewing. Press <strong>download commented Word</strong> to get a .docx with highlights and margin comments: each comment explains what was found, why it may sound AI-written, and what to change in this document.",
+    docx_done_title: "Commented Word ready",
+    docx_done_file: "Generated file",
+    docx_done_lead: "Yellow marks phrases or areas worth reviewing.",
+    docx_done_body: "The downloaded Word includes highlights and margin comments. Each comment explains what was found, why it may sound AI-written, and what to change in this document.",
     pdf_browser_unsupported: "PDF in the browser isn't supported yet (the library doesn't run in WASM). For PDF use the CLI: aismell paper.pdf --out paper-marked.pdf",
     pdf_extracting: "extracting text from PDF…",
     pdf_extracting_page: "extracting PDF: page {page}/{total}…",
@@ -1073,7 +1087,7 @@ function renderActionSummary(report) {
   }
   if (has("nominalization_density")) {
     priority.push(es
-      ? "El texto suena a informe. Cambia algún sustantivo abstracto por un verbo: 'la implementación' → 'implementar'."
+      ? "Hay muchos sustantivos abstractos. Convierte algunos en verbos: 'la implementación' → 'implementar'."
       : "The text reads like a report. Turn an abstract noun into a verb: 'the implementation' → 'implement'.");
   }
   const firstHit = hits.find((h) => h.severity >= 2) || hits[0];
@@ -1086,12 +1100,16 @@ function renderActionSummary(report) {
   if (!priority.length) return "";
   return `
     <div class="plain-summary">
-      <div class="plain-title">${es ? "qué quiere decir este número" : "what this number means"}</div>
-      <p>${es
-        ? `El ${Math.round(report.score * 100)}% no es un porcentaje de autoría. Es cuántas señales editoriales típicas de IA encontró el detector. Un texto humano puede tener algunas. Un texto generado tiene muchas juntas.`
-        : `The ${Math.round(report.score * 100)}% is not an authorship percentage. It measures how many editorial signals typical of AI the detector found. Human text can have some. AI-generated text tends to have many at once.`}</p>
-      <div class="plain-title">${es ? "por dónde empezar" : "where to start"}</div>
-      <ol>${priority.slice(0, 3).map((p) => `<li>${escapeHtml(p)}</li>`).join("")}</ol>
+      <section class="plain-block plain-number">
+        <div class="plain-title">${es ? "qué quiere decir este número" : "what this number means"}</div>
+        <p>${es
+          ? `El ${Math.round(report.score * 100)}% no dice quién escribió el texto. Es un índice de señales editoriales: mientras más señales aparecen juntas, más conviene revisar.`
+          : `The ${Math.round(report.score * 100)}% does not say who wrote the text. It is an editorial-signal index: the more signals appear together, the more the text needs review.`}</p>
+      </section>
+      <section class="plain-block plain-next">
+        <div class="plain-title">${es ? "por dónde empezar" : "where to start"}</div>
+        <ol>${priority.slice(0, 3).map((p) => `<li>${escapeHtml(p)}</li>`).join("")}</ol>
+      </section>
     </div>`;
 }
 
@@ -1115,12 +1133,17 @@ function renderVerdict(report) {
   const reasonsHtml = v.reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join("");
   return `
     <div class="verdict ${v.klass}">
-      <div class="verdict-head">
-        <div class="verdict-label">${t.verdict_label}</div>
-        <div class="verdict-value">${escapeHtml(v.label)}</div>
-        <div class="verdict-conf">${t.verdict_confidence}: <strong>${escapeHtml(v.conf)}</strong></div>
+      <div class="verdict-label">${t.verdict_label}</div>
+      <div class="verdict-main">
+        <div class="verdict-copy">
+          <div class="verdict-value">${escapeHtml(v.label)}</div>
+          ${subtitle ? `<div class="verdict-subtitle">${escapeHtml(subtitle)}</div>` : ""}
+        </div>
+        <div class="verdict-conf-card">
+          <span>${t.verdict_confidence}</span>
+          <strong>${escapeHtml(v.conf)}</strong>
+        </div>
       </div>
-      ${subtitle ? `<div class="verdict-subtitle">${escapeHtml(subtitle)}</div>` : ""}
       ${docLabel ? `<div class="verdict-doc-type">${escapeHtml(docLabel)}</div>` : ""}
       <div class="verdict-why">
         <div class="verdict-why-label">${t.verdict_summary_label}</div>
@@ -1139,16 +1162,19 @@ function render(report) {
 
   let scoreHtml = renderVerdict(report) + `
     <div class="score-top">
-      <div class="pct-box">
-        <div class="pct ${sev}">${pct}%</div>
-        <div class="pct-label">${severityLabel(report.score)}</div>
+      <div class="score-card score-index">
+        <div class="score-card-label">${UILANG === "es" ? "índice de señales" : "signal index"}</div>
+        <div class="pct-row">
+          <div class="pct ${sev}">${pct}%</div>
+          <div class="pct-label">${severityLabel(report.score)}</div>
+        </div>
+        <div class="score-note">${UILANG === "es" ? "no es probabilidad de autoría" : "not an authorship probability"}</div>
       </div>
-      <div class="score-meta">
-        <span>${report.sentences} ${t.sentences}</span> <span class="meta-sep">·</span>
-        <span>${totalFindings} ${t.findings}</span> <span class="meta-sep">·</span>
-        <span>${report.lang}</span>
+      <div class="score-card score-stats" aria-label="${UILANG === "es" ? "resumen del análisis" : "analysis summary"}">
+        <div class="score-stat"><strong>${report.sentences}</strong><span>${t.sentences}</span></div>
+        <div class="score-stat"><strong>${totalFindings}</strong><span>${t.findings}</span></div>
+        <div class="score-stat"><strong>${report.lang}</strong><span>${t.lang}</span></div>
       </div>
-      <div class="score-note">${UILANG === "es" ? "índice de señales, no probabilidad" : "evidence index, not probability"}</div>
     </div>`;
 
   scoreHtml += renderActionSummary(report);
@@ -2694,7 +2720,10 @@ async function annotateDocx(file) {
       <div class="docx-download${isHighSmell ? " docx-download-fused" : ""}">
         <div class="docx-download-row">
           <div class="docx-download-text">
-            ${t.docx_done.replace("{name}", `<strong>${escapeHtml(outName)}</strong>`)}
+            <div class="docx-download-title">${escapeHtml(t.docx_done_title || "Word listo")}</div>
+            <div class="docx-download-file"><span>${escapeHtml(t.docx_done_file || "archivo")}</span><strong>${escapeHtml(outName)}</strong></div>
+            <p class="docx-download-lead">${escapeHtml(t.docx_done_lead || "Las zonas amarillas marcan frases para revisar.")}</p>
+            <p>${escapeHtml(t.docx_done_body || "El documento incluye resaltados y comentarios al margen.")}</p>
           </div>
           <a class="btn" id="docxDownloadBtn" href="${url}" download="${escapeHtml(outName)}">⬇ ${escapeHtml(t.download_docx_btn || outName)}</a>
         </div>
