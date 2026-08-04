@@ -75,6 +75,9 @@ class Report:
     sections: list[SectionScore] = field(default_factory=list)
     score: float = 0.0  # 0..1
     severity_label: str = ""
+    era: str = "unknown"       # 'pre-llm' | 'post-llm' | 'unknown'
+    era_max_year: int = 0      # largest year found in the text
+    notes: list[str] = field(default_factory=list)
 
     @property
     def total_findings(self) -> int:
@@ -82,6 +85,44 @@ class Report:
 
 
 # ---------- loading ----------
+
+# Era detection: public LLMs (ChatGPT) launched Nov 2022. A text whose
+# largest mentioned year is <= 2020 cannot be LLM-generated. Formal
+# academic connectors in such a text are genre markers, not AI signals.
+_ERA_LLM_BOUNDARY = 2020
+_YEAR_RE = re.compile(r"\b(?:19|20)\d{2}\b")
+
+
+def detect_era(text: str) -> tuple[str, int]:
+    """Return ('pre-llm'|'post-llm'|'unknown', max_year)."""
+    years = [int(m) for m in _YEAR_RE.findall(text)]
+    if not years:
+        return "unknown", 0
+    max_year = max(years)
+    if max_year <= _ERA_LLM_BOUNDARY:
+        return "pre-llm", max_year
+    return "post-llm", max_year
+
+
+# Discourse-connector / filler pattern families. In academic prose these are
+# genre markers, not AI tells. When they dominate the hits AND the text is
+# clearly academic (citations present), the score must not rise from them.
+_CONNECTOR_FAMILIES = {
+    "primer_lugar", "segundo_lugar", "tercer_lugar",
+    "este_sentido", "no_obstante", "por_lo_tanto", "en_sintesis",
+    "en_resumen", "en_definitiva", "en_otras_palabras", "ademas",
+    "consecuentemente", "en_el_marco", "se_argumenta", "se_sostiene",
+    "cabe_", "es_importante", "es_fundamental", "hay_que", "conviene",
+    "vale_la_pena", "resulta_", "filler", "calco", "conector",
+    "in_this_sense", "first_and_foremost", "furthermore", "moreover",
+    "nevertheless", "in_conclusion", "in_summary", "in_other_words",
+    "it_is_important", "it_should_be", "consequently", "additionally",
+    "notably", "namely", "hence", "therefore", "thus",
+}
+_CITATION_RE_ACADEMIC = re.compile(
+    r"\([^()]{0,60}(?:19|20)\d{2}[^()]{0,60}\)"
+)
+
 
 def load_patterns(lang: str) -> list[Pattern]:
     path = PATTERNS_DIR / f"{lang}.yaml"
@@ -1393,8 +1434,12 @@ def analyze(
     text: str,
     lang: str | None = None,
     strict: bool = False,
+    era: str = "auto",
 ) -> tuple[Report, str]:
-    """Analyze text. Returns (report, lang_used)."""
+    """Analyze text. Returns (report, lang_used).
+
+    era: "auto" (detect from years in text) | "pre-llm" | "post-llm" | "unknown"
+    """
     lang = lang or detect_lang(text)
     patterns = load_patterns(lang)
 
@@ -1625,6 +1670,41 @@ def analyze(
     # "suena a IA" with confidence.
     short_cap = min(1.0, 0.40 + 0.045 * report.sentences)
     combined = min(combined, short_cap)
+
+    # Era detection: a text whose largest mentioned year is <= 2020 predates
+    # public LLMs. Its formal register is not an AI signal — cap hard and say so.
+    if era == "auto":
+        era_used, era_year = detect_era(text)
+    else:
+        era_used, era_year = era, (0 if era != "pre-llm" else _ERA_LLM_BOUNDARY)
+    report.era = era_used
+    report.era_max_year = era_year
+    if era_used == "pre-llm":
+        combined = min(combined, 0.30)
+        report.notes.append(
+            f"El texto menciona años hasta {era_year}, antes del lanzamiento público de "
+            "los LLM (2022). El registro formal no puede ser generado por IA."
+        )
+
+    # Academic-register dampener: formal academic prose is full of connectors
+    # and impersonal voice. If the text has real citations and most hits are
+    # connector-class, cap the score — the connector tics are genre markers.
+    citation_hits = _CITATION_RE_ACADEMIC.findall(text)
+    if len(citation_hits) >= 2 and report.hits:
+        connector_hits = [
+            h for h in report.hits
+            if any(f in h.pattern.id for f in _CONNECTOR_FAMILIES)
+        ]
+        non_connector_sev3 = [
+            h for h in report.hits
+            if h.pattern.severity >= 3 and h not in connector_hits
+        ]
+        if connector_hits and len(connector_hits) / len(report.hits) >= 0.5 and len(non_connector_sev3) < 2:
+            combined = min(combined, 0.45)
+            report.notes.append(
+                "Registro académico con citas: los conectores formales ('en este sentido', "
+                "'no obstante', 'en primer lugar') son del género, no de la IA."
+            )
 
     report.score = min(1.0, combined)
 

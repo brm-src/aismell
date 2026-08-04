@@ -402,6 +402,17 @@
     line-height: 1.6;
   }
   .verdict-why li { margin: 2px 0; }
+  .verdict-notes {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border: 1px solid color-mix(in srgb, var(--grn) 45%, var(--line));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--grn) 7%, transparent);
+    color: var(--fg);
+    font-size: 13.4px;
+    line-height: 1.55;
+  }
+  .verdict-notes div + div { margin-top: 6px; }
 
   /* Plain-language summary box */
   .plain-summary {
@@ -955,22 +966,27 @@
   }
   .clean::after { content: " ✓"; }
 
-  /* Bibliography */
+  /* Bibliography — prominent card, right under the verdict/score */
   .biblio {
-    border-top: 2px dashed var(--line);
-    padding: 4px 0 8px;
+    margin: 14px 0 4px;
+    border: 1.5px solid var(--hl);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--hl) 5%, transparent);
+    padding: 2px 0 8px;
+    overflow: hidden;
   }
   .biblio-header {
     padding: 14px 18px 6px;
     color: var(--hl);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
   }
   .biblio-note {
     padding: 0 18px 8px;
     color: var(--dim);
-    font-size: 11.5px;
+    font-size: 12px;
     font-style: italic;
   }
   .biblio-row {
@@ -1399,6 +1415,14 @@
           <option value="auto">auto</option>
           <option value="es">español</option>
           <option value="en">english</option>
+        </select>
+      </label>
+      <label>
+        <span data-i18n="era_label">¿cuándo?</span>:
+        <select id="eraSel" title="Si sabes que el texto es anterior a 2021, dímelo: el lenguaje formal de esa época no es señal de IA.">
+          <option value="auto">no sé</option>
+          <option value="post-llm">reciente</option>
+          <option value="pre-llm">antes de 2021</option>
         </select>
       </label>
       <label>

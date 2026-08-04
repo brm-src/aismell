@@ -974,6 +974,63 @@ def test_long_text_still_can_reach_high():
     assert report.score >= 0.60, f"long dense text should still hit high, got {report.score:.2f}"
 
 
+# ===================== era detection + academic register (2026-08) =====================
+
+
+def test_pre_llm_text_capped_and_noted():
+    """A formal academic text from 2016 (pre-LLM) must not reach 'alto' — and
+    the report must explain why the register isn't an AI signal."""
+    text = (
+        "En este sentido, se trata de transitar desde un currículum de verdadera raíz democrática (Asimeng-Boahene, 2007). "
+        "Se sostiene que las controversias capturan el interés de los estudiantes (Carr, 2011). "
+        "En primer lugar, los sujetos críticos se forman en el diálogo. En segundo lugar, la pedagogía crítica "
+        "reniega del adoctrinamiento (Sánchez y Torres, 2009). "
+        "No obstante, hay docentes que resisten. Por lo tanto, la formación docente exige un debate abierto. "
+        "En síntesis, la propuesta se orienta a un currículum controversial (Magendzo, 2006)."
+    )
+    report, _ = analyze(text, lang="es")
+    assert report.era == "pre-llm", f"expected pre-llm era, got {report.era}"
+    assert report.era_max_year == 2011
+    assert report.score <= 0.30, f"pre-LLM text scored {report.score:.2f}"
+    assert report.severity_label != "alto"
+    assert any("antes del lanzamiento" in n for n in report.notes), "expected era note"
+
+
+def test_pre_llm_connector_heavy_academic_capped():
+    """Connector-heavy academic prose from 2016 with citations must be dampened
+    by BOTH era and academic-register logic."""
+    text = (
+        "En este sentido, la reforma educativa enfrenta resistencias (Carr, 2011). "
+        "No obstante, los docentes se forman en el diálogo (Moss, 2000). "
+        "En primer lugar, se trata de un proceso complejo. En segundo lugar, exige tiempo. "
+        "Por lo tanto, la política debe acompañar el cambio. En síntesis, la evidencia lo respalda (Magendzo, 2006)."
+    )
+    report, _ = analyze(text, lang="es")
+    assert report.score <= 0.30, f"pre-LLM academic text scored {report.score:.2f}"
+    assert report.era == "pre-llm"
+
+
+def test_era_auto_detects_post_llm():
+    """A text mentioning recent years is not era-capped."""
+    text = (
+        "En 2024, los modelos de lenguaje transformaron la educación (García, 2023). "
+        "Los expertos afirman que el cambio es urgente. La verdadera pregunta es si los equipos pueden adaptarse. "
+        "La cosa es que la atención es la moneda del liderazgo. "
+        "Se cree que las apuestas son altas. Vamos a explorar lo que realmente importa."
+    )
+    report, _ = analyze(text, lang="es")
+    assert report.era == "post-llm", f"expected post-llm, got {report.era}"
+    assert report.score >= 0.45, f"post-LLM text should not be era-capped, got {report.score:.2f}"
+
+
+def test_era_param_override():
+    """User override: forcing pre-llm caps even when no years are in the text."""
+    text = "Los expertos afirman que el cambio es urgente. La cosa es que la atención es la moneda del liderazgo."
+    report, _ = analyze(text, lang="es", era="pre-llm")
+    assert report.era == "pre-llm"
+    assert report.score <= 0.30
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in list(globals().items()):

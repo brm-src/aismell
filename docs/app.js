@@ -75,6 +75,7 @@ const I18N = {
     verdict_mixed: "puede ser",
     verdict_human: "suena humano",
     verdict_clean: "limpio",
+    verdict_pre_llm: "anterior a la IA",
     verdict_confidence: "seguridad del detector",
     verdict_conf_high: "alta",
     verdict_conf_med: "media",
@@ -102,10 +103,12 @@ const I18N = {
       uniform_rhythm: "las oraciones tienen todas el mismo largo",
       length: "texto muy corto — no hay suficiente para opinar",
       clean: "ninguna señal clara de IA",
+      pre_llm: "el texto menciona años hasta {year}: antes de los LLM públicos (2022) este registro formal no es señal de IA",
     },
     error: "algo se rompió:",
     bad_format: "formato no soportado. Usa .txt, .md, .docx o .pdf.",
     lang: "idioma",
+    era_label: "¿cuándo?",
     strict: "solo lo obvio",
     analyze: "analizar",
     clear: "limpiar",
@@ -272,6 +275,7 @@ const I18N = {
     verdict_mixed: "mixed / assisted",
     verdict_human: "smells human",
     verdict_clean: "clean",
+    verdict_pre_llm: "pre-AI",
     verdict_confidence: "confidence",
     verdict_conf_high: "high",
     verdict_conf_med: "medium",
@@ -293,10 +297,12 @@ const I18N = {
       uniform_rhythm: "sentence rhythm suspiciously uniform",
       length: "text too short — verdict uncertain",
       clean: "no strong AI patterns detected",
+      pre_llm: "the text mentions years up to {year}: before public LLMs (2022) this formal register is not an AI signal",
     },
     error: "something broke:",
     bad_format: "unsupported format. Use .txt, .md, .docx, or .pdf.",
     lang: "language",
+    era_label: "when?",
     strict: "high confidence only",
     analyze: "analyze",
     clear: "clear",
@@ -396,6 +402,7 @@ const els = {
   status: document.getElementById("status"),
   input: document.getElementById("input"),
   langSel: document.getElementById("langSel"),
+  eraSel: document.getElementById("eraSel"),
   strictSel: document.getElementById("strictSel"),
   biblioSel: null,
   biblioInlineNote: null,
@@ -624,14 +631,18 @@ from aismell.docx import annotate_docx
 from aismell.biblio import find_references, score_apa_reference
 from pathlib import Path
 
-def run(text, lang_code, strict):
+def run(text, lang_code, strict, era_code):
     lang = None if lang_code == "auto" else lang_code
-    report, used = analyze(text, lang=lang, strict=strict)
+    era = "auto" if era_code in ("auto", "") else era_code
+    report, used = analyze(text, lang=lang, strict=strict, era=era)
     out = {
         "score": report.score,
         "label": report.severity_label,
         "sentences": report.sentences,
         "lang": used,
+        "era": report.era,
+        "era_max_year": report.era_max_year,
+        "notes": report.notes,
         "hits": [],
         "structural": [],
         "sections": [],
@@ -693,6 +704,7 @@ def extract_refs(text):
             "title": r.title,
             "year": r.year,
             "author": r.author,
+            "verifiable": r.verifiable,
             "apa_score": apa.score if apa else None,
             "apa_status": apa.status if apa else "",
             "apa_issues": apa.issues if apa else [],
@@ -1068,7 +1080,17 @@ function computeVerdict(report) {
 
   // Verdict label + confidence
   let label, klass, conf, confKey;
-  if (sentences < 3) {
+  // Pre-LLM text: the verdict is about the ERA, not authorship. A text whose
+  // largest year is <= 2020 predates public LLMs — its formal register is not
+  // an AI signal. This overrides any "puede ser" from connector patterns.
+  if (report.era === "pre-llm") {
+    label = t.verdict_pre_llm;
+    klass = "v-clean";
+    conf = t.verdict_conf_high;
+    confKey = "high";
+    reasons.length = 0;
+    reasons.push(t.verdict_reasons.pre_llm.replace("{year}", report.era_max_year || 2020));
+  } else if (sentences < 3) {
     label = t.verdict_human;
     klass = "v-low";
     conf = t.verdict_conf_low;
@@ -1172,6 +1194,9 @@ function renderVerdict(report) {
   const subtitle = (t.verdict_subtitle || {})[UILANG]?.[subKey] || "";
 
   const reasonsHtml = v.reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join("");
+  const notesHtml = (report.notes && report.notes.length)
+    ? `<div class="verdict-notes">${report.notes.map((n) => `<div>${escapeHtml(n)}</div>`).join("")}</div>`
+    : "";
   return `
     <div class="verdict ${v.klass}">
       <div class="verdict-label">${t.verdict_label}</div>
@@ -1186,6 +1211,7 @@ function renderVerdict(report) {
         </div>
       </div>
       ${docLabel ? `<div class="verdict-doc-type">${escapeHtml(docLabel)}</div>` : ""}
+      ${notesHtml}
       <div class="verdict-why">
         <div class="verdict-why-label">${t.verdict_summary_label}</div>
         <ul>${reasonsHtml}</ul>
@@ -1296,7 +1322,7 @@ async function analyze() {
   const startedAt = performance.now();
 
   try {
-    const res = analyzeFn(text, els.langSel.value, els.strictSel.checked);
+    const res = analyzeFn(text, els.langSel.value, els.strictSel.checked, els.eraSel ? els.eraSel.value : "auto");
     const obj = res.toJs({ dict_converter: Object.fromEntries });
     res.destroy();
 
@@ -1694,7 +1720,9 @@ function appendBiblio(html) {
     panel = document.createElement("div");
     panel.id = "biblioPanel";
     panel.className = "biblio";
-    els.resultPanel.appendChild(panel);
+    // Insert ABOVE the findings so the citation check is prominent,
+    // right under the verdict/score cards.
+    els.resultPanel.insertBefore(panel, els.findings);
   }
   panel.insertAdjacentHTML("beforeend", html);
 }
@@ -1709,6 +1737,7 @@ function buildSearchUrl(title, author, kind) {
   const q = [title, author].filter(Boolean).join(" ");
   const enc = encodeURIComponent(q);
   if (kind === "scholar") return `https://scholar.google.com/scholar?q=${enc}`;
+  if (kind === "scielo") return `https://search.scielo.org/?q=${enc}&lang=es&output=site`;
   if (kind === "crossref") return `https://api.crossref.org/works?rows=5&query.bibliographic=${enc}`;
   if (kind === "openalex") return `https://api.openalex.org/works?search=${enc}`;
   // generic web search
@@ -1734,21 +1763,27 @@ function renderBiblioRow(ref, res) {
   let actions = "";
   if (res.status === "not_found") {
     const advice = (UILANG === "es")
-      ? "No se encontró en ninguna fuente. Puede ser una cita inventada por IA, o una fuente legítima no indexada (tesis, capítulo, edición regional)."
-      : "Not found in any source. Could be AI-invented, or a legitimate non-indexed source (thesis, chapter, regional edition).";
+      ? "No aparece en las fuentes consultadas. No es prueba de falsedad: muchas revistas latinoamericanas (SciELO, Redalyc, Latindex) y tesis no están indexadas ahí. Revisa a mano antes de concluir."
+      : "Not found in the sources checked. This is not proof of fakery: many Latin American journals (SciELO, Redalyc, Latindex) and theses aren't indexed there. Check manually before concluding.";
     actions = `
       <div class="biblio-advice">${advice}</div>
       <div class="biblio-actions">
         <a class="biblio-action" href="${buildSearchUrl(title, author, "scholar")}" target="_blank" rel="noopener">🔍 Google Scholar</a>
+        <a class="biblio-action" href="${buildSearchUrl(title, author, "scielo")}" target="_blank" rel="noopener">🧪 SciELO</a>
         <a class="biblio-action" href="${buildSearchUrl(title, author, "crossref")}" target="_blank" rel="noopener">📖 CrossRef</a>
         <a class="biblio-action" href="${buildSearchUrl(title, author, "openalex")}" target="_blank" rel="noopener">📚 OpenAlex</a>
         <a class="biblio-action" href="${buildSearchUrl(title, author, "web")}" target="_blank" rel="noopener">🌐 web</a>
       </div>`;
   } else if (res.status === "unverifiable") {
-    const advice = (UILANG === "es")
-      ? "Sin DOI ni identificador parseable. Muchas citas válidas (libros, tesis, informes) no tienen DOI. No es señal de falsedad."
-      : "No DOI or parseable ID. Many valid citations (books, theses, reports) don't have DOIs. Not a sign of fakery.";
-    const searchQ = title || ident;
+    const isCite = ref.kind === "cite";
+    const advice = isCite
+      ? (UILANG === "es"
+        ? "Cita en el texto: sin el título completo no se puede buscar en las fuentes. Aparece mencionada así en revistas reales con frecuencia; no es señal de falsedad."
+        : "In-text citation: without the full title it can't be looked up. Real journals cite this way all the time; not a sign of fakery.")
+      : (UILANG === "es"
+        ? "Sin DOI ni identificador parseable. Muchas citas válidas (libros, tesis, informes) no tienen DOI. No es señal de falsedad."
+        : "No DOI or parseable ID. Many valid citations (books, theses, reports) don't have DOIs. Not a sign of fakery.");
+    const searchQ = title || (ref.author ? `${ref.author} ${ref.year || ""}` : ident);
     const encoded = encodeURIComponent(searchQ);
     actions = `
       <div class="biblio-advice">${advice}</div>
@@ -1829,6 +1864,11 @@ async function verifyBibliography(text) {
   const results = [];
   const verifyOne = async (r) => {
     try {
+      // In-text citations (kind "cite") have no title to look up — they are
+      // counted but never sent to the APIs. No alarm, no "sin match".
+      if (r.kind === "cite" || r.verifiable === false) {
+        return { ref: r, res: { status: "unverifiable", detail: "cita en el texto (sin título completo para buscarla)" } };
+      }
       if (r.kind === "doi")        return { ref: r, res: await verifyDoiJs(r.identifier) };
       if (r.kind === "arxiv")      return { ref: r, res: await verifyArxivJs(r.identifier) };
       if (r.kind === "isbn")       return { ref: r, res: await verifyIsbnJs(r.identifier) };
@@ -1838,7 +1878,7 @@ async function verifyBibliography(text) {
       return { ref: r, res: { status: "error", detail: e.message } };
     }
   };
-  const CONCURRENCY = 4;   // 4 parallel → faster, still gentle on rate-limited APIs
+  const CONCURRENCY = 2;   // 2 parallel → gentle on APIs, fewer rate-limit errors
   for (let i = 0; i < refs.length; i += CONCURRENCY) {
     const batch = refs.slice(i, i + CONCURRENCY);
     // Show the title of the first ref of the current batch as preview
@@ -1847,7 +1887,7 @@ async function verifyBibliography(text) {
     const done = await Promise.all(batch.map(verifyOne));
     results.push(...done);
     updateProgress(Math.min(i + batch.length, refs.length), preview ? t.biblio_progress_checking.replace("{title}", preview) : "");
-    await sleep(150);  // 150ms between batches → less pressure on rate-limited APIs
+    await sleep(300);  // 300ms between batches → less pressure on rate-limited APIs
   }
   updateProgress(refs.length, t.biblio_progress_done);
   // Brief pause so the user sees the bar fill, then collapse
@@ -2270,6 +2310,11 @@ async function fetchWithTimeout(url, opts = {}, ms = 15000, retries = 1) {
     try {
       const r = await fetch(url, { ...opts, signal: ctrl.signal });
       clearTimeout(t);
+      // 429 = rate-limited. Back off harder and retry (up to retries).
+      if (r.status === 429 && attempt < retries) {
+        await new Promise((res) => setTimeout(res, 2000 * (attempt + 1)));
+        continue;
+      }
       return r; // success — don't retry
     } catch (e) {
       clearTimeout(t);
@@ -2710,7 +2755,7 @@ async function annotateDocx(file) {
     // 2) Run analysis on the extracted text (drives the verdict + summary)
     let report = null;
     if (extractedText.trim()) {
-      const res = analyzeFn(extractedText, els.langSel.value, els.strictSel.checked);
+      const res = analyzeFn(extractedText, els.langSel.value, els.strictSel.checked, els.eraSel ? els.eraSel.value : "auto");
       report = res.toJs({ dict_converter: Object.fromEntries });
       res.destroy();
       const totalHits = (report.hits ? report.hits.length : 0) + (report.structural ? report.structural.length : 0);

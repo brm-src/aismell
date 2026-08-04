@@ -86,12 +86,26 @@ _CHICAGO_RE = re.compile(
     r"[\"«]?([^.]{10,200})[\"»]?\.",                 # Título.
 )
 
-# General catch-all: any line with (YYYY) followed by 10+ chars of title
+# General catch-all: bibliography entry at line start, capitalized surname,
+# year, then a real title (15+ chars). Line-bound — never crosses lines,
+# never matches lowercase body text or "(Author, YEAR)" fragments.
 _GENERAL_CIT_RE = re.compile(
-    r"(?:^|\n)\s*([^,\n]{3,50})"                      # author
-    r"[,\s]+\(?\s*(\d{4})\s*\)?[\.:]?\s*"            # (año) o año
-    r"[\"«]?([^\"«»\n]{10,200})[\"»]?",              # título
-    re.MULTILINE
+    r"(?m)^\s*([A-ZÁÉÍÓÚÑ][a-záéíóúñü]+(?:[-\s][A-ZÁÉÍÓÚÑ][a-záéíóúñü]+)?)\s*,\s+"
+    r"(?:[A-ZÁÉÍÓÚÑ]\.\s*)*"
+    r"\(?((?:19|20)\d{2})\)?[.:]?\s*"
+    r"(\S[^\n]{14,200})"
+)
+
+# In-text citation: (Surname, YEAR) or (Surname y Surname, YEAR) — a citation
+# mentioned inside the text, NOT a bibliography entry. No title to verify.
+_IN_TEXT_CITE_RE = re.compile(
+    r"\(([A-ZÁÉÍÓÚÑ][a-záéíóúñü]+(?:\s+(?:y|and|&)\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñü]+)*"
+    r"(?:\s+et\s+al\.?)?),\s*((?:19|20)\d{2})(?::\s*\d+)?\)"
+)
+
+# In-text citation with author outside the parens: Author (YEAR: page)
+_IN_TEXT_CITE_RE2 = re.compile(
+    r"([A-ZÁÉÍÓÚÑ][a-záéíóúñü]+(?:\s+(?:y|and|&)\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñü]+)*)\s*\(\s*((?:19|20)\d{2})(?::\s*\d+)?\)"
 )
 
 
@@ -99,7 +113,7 @@ _GENERAL_CIT_RE = re.compile(
 
 @dataclass
 class Reference:
-    kind: str                 # 'doi' | 'arxiv' | 'isbn' | 'citation'
+    kind: str                 # 'doi' | 'arxiv' | 'isbn' | 'citation' | 'cite'
     raw: str                  # what we matched
     line: int                 # 1-indexed
     col: int                  # start column
@@ -108,6 +122,7 @@ class Reference:
     title: str = ""           # for plain citations
     year: str = ""            # for plain citations
     author: str = ""          # for plain citations
+    verifiable: bool = True   # False for in-text cites (no title to look up)
 
 
 @dataclass
@@ -291,7 +306,7 @@ def find_references(text: str) -> list[Reference]:
             title=title, author=author, year=year,
         ))
 
-    # --- General catch-all: (YYYY) + 10+ char title ---
+    # --- General catch-all: strict bibliography entry, line-bound ---
     for m in _GENERAL_CIT_RE.finditer(text):
         line_no = text.count("\n", 0, m.start()) + 1
         line_start = text.rfind("\n", 0, m.start()) + 1
@@ -300,6 +315,10 @@ def find_references(text: str) -> list[Reference]:
         author = m.group(1).strip()
         year = m.group(2).strip()
         title = m.group(3).strip()
+        # Require a plausible title: 3+ content words, not a URL fragment.
+        title_words = [w for w in re.split(r"\s+", title) if re.search(r"[A-Za-zÁÉÍÓÚÑáéíóúñü0-9]", w)]
+        if len(title_words) < 3:
+            continue
         key = ("cit", f"{author}|{year}|{title[:60].lower()}")
         if key in seen:
             continue
@@ -315,6 +334,60 @@ def find_references(text: str) -> list[Reference]:
             raw=lines[line_no - 1].strip() if 0 <= line_no - 1 < len(lines) else m.group(0),
             line=line_no, col=col, end=end,
             title=title, author=author, year=year,
+        ))
+
+    # --- In-text citations: (Surname, YEAR) or Surname (YEAR: page) ---
+    # These are citations mentioned in the body, not bibliography entries.
+    # They have no title to verify against APIs, so they are counted but
+    # marked as not verifiable.
+    for m in _IN_TEXT_CITE_RE.finditer(text):
+        line_no = text.count("\n", 0, m.start()) + 1
+        line_start = text.rfind("\n", 0, m.start()) + 1
+        col = m.start() - line_start
+        end = m.end() - line_start
+        author = m.group(1).strip()
+        year = m.group(2).strip()
+        key = ("cite", f"{author.lower()}|{year}")
+        if key in seen:
+            continue
+        seen.add(key)
+        overlap = any(
+            r.line == line_no and not (r.end <= col or r.col >= end)
+            for r in refs
+        )
+        if overlap:
+            continue
+        refs.append(Reference(
+            kind="cite",
+            raw=m.group(0),
+            line=line_no, col=col, end=end,
+            title="", author=author, year=year,
+            verifiable=False,
+        ))
+
+    for m in _IN_TEXT_CITE_RE2.finditer(text):
+        line_no = text.count("\n", 0, m.start()) + 1
+        line_start = text.rfind("\n", 0, m.start()) + 1
+        col = m.start() - line_start
+        end = m.end() - line_start
+        author = m.group(1).strip()
+        year = m.group(2).strip()
+        key = ("cite", f"{author.lower()}|{year}")
+        if key in seen:
+            continue
+        seen.add(key)
+        overlap = any(
+            r.line == line_no and not (r.end <= col or r.col >= end)
+            for r in refs
+        )
+        if overlap:
+            continue
+        refs.append(Reference(
+            kind="cite",
+            raw=m.group(0),
+            line=line_no, col=col, end=end,
+            title="", author=author, year=year,
+            verifiable=False,
         ))
 
     return refs
