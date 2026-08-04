@@ -721,8 +721,10 @@ def test_stop_slop_business_jargon_en():
     ids = {h.pattern.id for h in report.hits}
     assert "en.jargon_lean_into" in ids
     assert "en.jargon_double_down" in ids
-    assert "en.jargon_deep_dive" in ids
     assert "en.jargon_circle_back" in ids
+    # "deep dive" may surface as en.dive_in or en.jargon_deep_dive depending
+    # on which pattern fires first — both mean the same jargon tic.
+    assert "en.dive_in" in ids or "en.jargon_deep_dive" in ids
 
 
 def test_humanizer_ai_vocab_extra_en():
@@ -917,6 +919,59 @@ def test_humanizer_new_families_raise_score_es():
     )
     report, _ = analyze(text, lang="es")
     assert report.score >= 0.45
+
+
+# ===================== scoring: overlapping hits + short-text calibration (2026-08) =====================
+
+
+def test_overlapping_patterns_count_once():
+    """One phrase matching 3 pattern families must produce 1 finding, not 3."""
+    text = "This is not just a tool but also a mirror of the culture."
+    report, _ = analyze(text, lang="en")
+    overlapping = [h for h in report.hits if "not just" in h.matched.lower() or "not only" in h.matched.lower()]
+    assert len(overlapping) == 1, f"expected 1 deduped hit, got {len(overlapping)}: {[h.pattern.id for h in overlapping]}"
+
+
+def test_overlapping_patterns_count_once_es():
+    text = "Esto no es solo una herramienta, sino también un espejo de la cultura."
+    report, _ = analyze(text, lang="es")
+    overlapping = [h for h in report.hits if "no es solo" in h.matched.lower() or "no solo" in h.matched.lower()]
+    assert len(overlapping) == 1, f"expected 1 deduped hit, got {len(overlapping)}: {[h.pattern.id for h in overlapping]}"
+
+
+def test_short_text_score_capped_below_high():
+    """A 3-sentence text with a few hits must NOT reach 'suena a IA'."""
+    text = (
+        "Vale la pena destacar que esto se erige como un testimonio. "
+        "En última instancia, el futuro se ve brillante. "
+        "Tiempos emocionantes nos esperan."
+    )
+    report, _ = analyze(text, lang="es")
+    assert report.score <= 0.60, f"short text score {report.score:.2f} is too high"
+    assert report.severity_label != "alto", "3-sentence text must not be labeled high"
+
+
+def test_very_short_text_never_high():
+    """2 sentences with 2 strong hits cannot produce a confident high verdict."""
+    text = "En el mundo actual, el futuro se ve brillante y el panorama es dinámico."
+    report, _ = analyze(text, lang="es")
+    assert report.score <= 0.60
+
+
+def test_long_text_still_can_reach_high():
+    """Long dense AI text must still be able to reach high — the cap only hurts short texts."""
+    block = (
+        "En el mundo actual, la inteligencia artificial se ha convertido en una herramienta fundamental "
+        "para abordar los desafíos del siglo XXI. Desde la salud hasta la educación, sus aplicaciones "
+        "son prácticamente ilimitadas y prometen transformar profundamente la forma en que vivimos y trabajamos. "
+        "Es fundamental comprender que la IA no es solo una tecnología, sino un cambio de paradigma que requiere "
+        "una reflexión ética profunda. Diversos expertos coinciden en que su desarrollo debe guiarse por principios "
+        "sólidos de transparencia, equidad y responsabilidad. En conclusión, el futuro de la inteligencia artificial "
+        "dependerá de nuestra capacidad colectiva para equilibrar innovación y regulación. "
+    )
+    report, _ = analyze(block * 3, lang="es")
+    assert report.sentences >= 12
+    assert report.score >= 0.60, f"long dense text should still hit high, got {report.score:.2f}"
 
 
 if __name__ == "__main__":

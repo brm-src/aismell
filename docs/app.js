@@ -718,12 +718,9 @@ def extract_docx_text(input_bytes):
     setBootPhase(3);
     setStatus(I18N[UILANG].ready);
     els.analyzeBtn.disabled = false;
-    // Silently start downloading the embedding model in the background
-    // so the first analysis doesn't block waiting for ~120 MB.
-    // No UI side-effects: errors are swallowed; analyze() will retry.
-    import("./embedding-analysis.js")
-      .then((m) => m.preloadEmbeddings())
-      .catch(() => {});
+    // Embedding model is now lazy: only loaded when the user runs an analysis
+    // on a short/medium text, not on boot. Saves ~120 MB download for users
+    // who just want a quick check.
   } catch (err) {
     setStatus(`${I18N[UILANG].error} ${err.message}`, true);
     console.error(err);
@@ -747,7 +744,8 @@ async function loadSources() {
     en:   "https://raw.githubusercontent.com/brm-src/aismell/main/aismell/patterns/en.yaml",
   };
   const out = {};
-  for (const k of Object.keys(local)) {
+  const keys = Object.keys(local);
+  await Promise.all(keys.map(async (k) => {
     let body = null;
     try {
       const r = await fetch(local[k]);
@@ -759,7 +757,7 @@ async function loadSources() {
       body = await r.text();
     }
     out[k] = body;
-  }
+  }));
   return out;
 }
 
@@ -837,6 +835,13 @@ const FINDING_LABELS = {
   "media-notability": { es: "notabilidad inflada", en: "media notability padding" },
   "ai-artifact-markup": { es: "artefacto de chatbot", en: "chatbot artifact" },
   "rule-of-three": { es: "regla de tres repetida", en: "repeated rule of three" },
+  "staccato-runs": { es: "oraciones cortas ametralladas", en: "staccato short sentences" },
+  "hyphenated-pairs": { es: "pares con guion repetidos", en: "repeated hyphenated pairs" },
+  "adverb-density": { es: "densidad de adverbios", en: "adverb density" },
+  "fragmented-headers": { es: "encabezados fragmentados", en: "fragmented headers" },
+  "emoji-headers": { es: "emojis en encabezados", en: "emoji in headers" },
+  "tailing-negation": { es: "negaciones colgadas al final", en: "trailing negation phrases" },
+  "storyscope": { es: "análisis discursivo", en: "discourse analysis" },
 };
 
 function findingLabel(idOrKind) {
@@ -888,6 +893,24 @@ function plainStructuralMessage(s) {
     "rule-of-three": es
       ? "La lista de tres elementos se repite demasiadas veces. La IA lo hace sin querer; los humanos lo usan una o dos veces como máximo."
       : "Three-item lists repeat too often. AI does this habitually; humans use the pattern once or twice at most.",
+    "staccato-runs": es
+      ? "Hay ráfagas de oraciones muy cortas seguidas. La IA usa ese ritmo para dar impacto, pero el efecto es robótico."
+      : "Bursts of very short sentences in a row. AI uses this rhythm for impact, but the effect is robotic.",
+    "hyphenated-pairs": es
+      ? "Hay muchos pares unidos con guion ('cámara-eje', 'texto-mundo'). La IA los usa para comprimir ideas; los humanos los dosifican."
+      : "Too many hyphenated compound pairs ('camera-axis', 'text-world'). AI uses them to compress ideas; humans ration them.",
+    "adverb-density": es
+      ? "Muchos adverbios terminados en -mente en poco espacio. La IA los acumula para enfatizar; un humano varia el ritmo."
+      : "High density of -ly adverbs in a short span. AI stacks them for emphasis; a human varies the rhythm.",
+    "fragmented-headers": es
+      ? "Los encabezados no siguen un orden claro: cambian de nivel o de estilo sin ton ni son. La IA estructura mal cuando imita formatos."
+      : "Headers don't follow a clear order: they shift level or style haphazardly. AI structures poorly when imitating formats.",
+    "emoji-headers": es
+      ? "Hay emojis en los encabezados. Es un patrón común en respuestas de IA generada para dar estructura visual artificial."
+      : "Emojis appear in headers. This is a common pattern in AI-generated responses to create artificial visual structure.",
+    "tailing-negation": es
+      ? "Hay negaciones colgadas al final de frases ('...no es el caso'). Es una muletilla rítmica típica de IA."
+      : "Trailing negation phrases at the end of sentences ('...not the case'). This is a rhythmic AI tic.",
   };
   return map[kind] || raw;
 }
@@ -917,6 +940,24 @@ function plainSuggestion(s) {
     "discourse-tidy-resolution": es
       ? "Corta la frase que explica la moraleja. Termina con una acción, una imagen o una consecuencia que deje respirar el cierre."
       : "Cut the sentence that explains the lesson. End with an action, image, or consequence that lets the ending breathe.",
+    "staccato-runs": es
+      ? "Junta dos oraciones cortas en una más larga, o intercala una oración media para variar el ritmo."
+      : "Merge two short sentences into a longer one, or interleave a medium sentence to vary the rhythm.",
+    "hyphenated-pairs": es
+      ? "Reemplaza un par con guion por una frase explicativa: 'cámara-eje' → 'la cámara como eje'."
+      : "Replace a hyphenated pair with an explanatory phrase: 'camera-axis' → 'the camera as axis'.",
+    "adverb-density": es
+      ? "Corta adverbios -mente y reemplázalos por verbos precisos: 'decididamente importante' → 'crucial'."
+      : "Cut -ly adverbs and replace them with precise verbs: 'decidedly important' → 'crucial'.",
+    "fragmented-headers": es
+      ? "Unifica los encabezados en un solo nivel jerárquico. Si hay subsecciones, usa un nivel inferior consistente."
+      : "Unify headers to a single hierarchical level. If there are subsections, use a consistent lower level.",
+    "emoji-headers": es
+      ? "Quita los emojis de los encabezados. Si necesitas íconos, usa bullet points normales."
+      : "Remove emojis from headers. If you need icons, use normal bullet points.",
+    "tailing-negation": es
+      ? "Convierte el fragmento colgado en una cláusula real: '...no es el caso' → corta o reformula."
+      : "Turn the trailing fragment into a real clause: '...not the case' → cut or rephrase.",
   };
   return map[kind] || s.suggestion || "";
 }
@@ -1173,7 +1214,6 @@ function render(report) {
       <div class="score-card score-stats" aria-label="${UILANG === "es" ? "resumen del análisis" : "analysis summary"}">
         <div class="score-stat"><strong>${report.sentences}</strong><span>${t.sentences}</span></div>
         <div class="score-stat"><strong>${totalFindings}</strong><span>${t.findings}</span></div>
-        <div class="score-stat"><strong>${report.lang}</strong><span>${t.lang}</span></div>
       </div>
     </div>`;
 
@@ -1227,8 +1267,7 @@ function render(report) {
         <span class="more-hide">${detailHide}</span>
       </summary>
       ${sorted.map((h) => renderHit(h, t)).join("")}
-      ${report.structural.length ? `<div class="finding" style="border-bottom: 1px dashed var(--line); color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-top: 14px;"><div></div><div>${t.structural}</div></div>` : ""}
-      ${report.structural.map((s) => renderStructural(s, t)).join("")}
+      ${report.structural.length ? report.structural.map((s) => renderStructural(s, t)).join("") : ""}
     </details>`;
 
   els.findings.innerHTML = html;
@@ -1244,10 +1283,11 @@ async function analyze() {
   }
   els.analyzeBtn.disabled = true;
 
-  // Big in-panel scanner — visible budget ~9s, even on short text
+  // Big in-panel scanner — visible budget scales with text length.
+  // Short text: ~3s. Long text: up to 8s for the multi-step UX.
   const steps = I18N[UILANG].analyzing_steps || [I18N[UILANG].analyzing];
-  const minMs = 4500;
-  const targetMs = 9000;
+  const minMs = text.length > 5000 ? 4000 : 1500;
+  const targetMs = Math.min(8000, 2500 + text.length / 8);
   const progress = startScanning(steps, { expectedMs: targetMs });
   setStatus(null);
 
@@ -1798,7 +1838,7 @@ async function verifyBibliography(text) {
       return { ref: r, res: { status: "error", detail: e.message } };
     }
   };
-  const CONCURRENCY = 2;   // 2 parallel → gentler on APIs, fewer rate-limit errors
+  const CONCURRENCY = 4;   // 4 parallel → faster, still gentle on rate-limited APIs
   for (let i = 0; i < refs.length; i += CONCURRENCY) {
     const batch = refs.slice(i, i + CONCURRENCY);
     // Show the title of the first ref of the current batch as preview
@@ -1807,7 +1847,7 @@ async function verifyBibliography(text) {
     const done = await Promise.all(batch.map(verifyOne));
     results.push(...done);
     updateProgress(Math.min(i + batch.length, refs.length), preview ? t.biblio_progress_checking.replace("{title}", preview) : "");
-    await sleep(300);  // 300ms between batches → less pressure on rate-limited APIs
+    await sleep(150);  // 150ms between batches → less pressure on rate-limited APIs
   }
   updateProgress(refs.length, t.biblio_progress_done);
   // Brief pause so the user sees the bar fill, then collapse
@@ -2316,7 +2356,7 @@ async function verifyArxivSearchJs(ref) {
 async function verifyCitationJs(ref) {
   if (!ref.title) return { status: "unverifiable", detail: "" };
 
-  // Run all 6 sources sequentially. Stop at first "exists".
+  // Run all 6 sources in parallel. Stop at first "exists".
   // Track errors separately so we can distinguish "all sources errored" (network down)
   // from "every source said no match" (probably fake).
   const sources = [
@@ -2328,23 +2368,33 @@ async function verifyCitationJs(ref) {
     { fn: verifyArxivSearchJs,       name: "arXiv" },
   ];
 
-  let errors = 0;
-  let notFound = 0;
   const errorDetails = [];
   const failedSources = [];
+  let errors = 0;
+  let notFound = 0;
+  let existsResult = null;
 
-  for (const src of sources) {
-    let res;
-    try {
-      res = await src.fn(ref);
-    } catch (e) {
-      // Defensive — every src already has try/catch, but belt + suspenders
-      res = { status: "error", detail: `${src.name}: ${e.message}` };
-    }
-    if (res.status === "exists") return res;
-    if (res.status === "error") { errors++; if (res.detail) errorDetails.push(res.detail); failedSources.push(src.name); }
-    else if (res.status === "not_found") notFound++;
+  // Race all sources in parallel — first "exists" wins.
+  const results = await Promise.allSettled(
+    sources.map(async (src) => {
+      try {
+        const res = await src.fn(ref);
+        if (res.status === "exists" && !existsResult) existsResult = res;
+        return res;
+      } catch (e) {
+        return { status: "error", detail: `${src.name}: ${e.message}` };
+      }
+    })
+  );
+
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i].status === "fulfilled" ? results[i].value : { status: "error", detail: sources[i].name };
+    if (r.status === "exists" && !existsResult) existsResult = r;
+    if (r.status === "error") { errors++; if (r.detail) errorDetails.push(r.detail); failedSources.push(sources[i].name); }
+    else if (r.status === "not_found") notFound++;
   }
+
+  if (existsResult) return existsResult;
 
   const apa = ref.apa_status === "suspicious" && ref.apa_issues && ref.apa_issues.length
     ? ` · APA débil: ${ref.apa_issues.slice(0, 2).join(", ")}` : "";

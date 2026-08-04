@@ -47,6 +47,18 @@ _ISBN_RE = re.compile(
     re.IGNORECASE,
 )
 
+# DOI URL form: https://doi.org/10.xxxx/yyyy or dx.doi.org/...
+_DOI_URL_RE = re.compile(
+    r"https?://(?:dx\.)?doi\.org/(10\.\d{4,9}/[-._;()/:A-Z0-9]+)",
+    re.IGNORECASE,
+)
+
+# Scholar profile / academic profile URLs (not verified, just flagged)
+_SCHOLAR_URL_RE = re.compile(
+    r"https?://scholar\.google\.com/citations\?user=[A-Za-z0-9-]+",
+    re.IGNORECASE,
+)
+
 # Plain citation heuristic: "Surname, Initial. (YEAR). Title."
 # (not perfect — flags candidates for fuzzy CrossRef lookup)
 _CITATION_RE = re.compile(
@@ -128,7 +140,24 @@ def find_references(text: str) -> list[Reference]:
 
     lines = text.splitlines()
     for i, line in enumerate(lines, start=1):
-        # DOIs
+        # DOI URL form (https://doi.org/10.xxxx/yyyy) — check first to avoid
+        # also matching the bare DOI inside the URL as a separate ref.
+        for m in _DOI_URL_RE.finditer(line):
+            ident = m.group(1).rstrip(".,;:)")
+            key = ("doi", ident.lower())
+            if key in seen:
+                continue
+            seen.add(key)
+            refs.append(Reference(
+                kind="doi",
+                raw=m.group(0),
+                line=i,
+                col=m.start(),
+                end=m.end(),
+                identifier=ident,
+            ))
+
+        # DOIs (bare form)
         for m in _DOI_RE.finditer(line):
             ident = m.group(1).rstrip(".,;:)")
             key = ("doi", ident.lower())

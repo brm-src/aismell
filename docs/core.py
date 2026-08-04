@@ -1423,6 +1423,23 @@ def analyze(
                     pattern=p,
                 ))
 
+    # Deduplicate overlapping hits per line: several pattern families fire on
+    # the same span ("not just X but also Y" trips en.not_just, en.not_but_direct
+    # and en.not_x_but_y_direct). One phrase = one finding. Keep the highest
+    # severity; on ties, the first match wins.
+    report.hits.sort(key=lambda h: (h.line, h.col, -(h.end - h.col), -h.pattern.severity))
+    deduped: list[Hit] = []
+    for h in report.hits:
+        if deduped and deduped[-1].line == h.line and h.col < deduped[-1].end and h.end > deduped[-1].col:
+            prev = deduped[-1]
+            prev_len = prev.end - prev.col
+            cur_len = h.end - h.col
+            if (h.pattern.severity, cur_len) > (prev.pattern.severity, prev_len):
+                deduped[-1] = h
+            continue
+        deduped.append(h)
+    report.hits = deduped
+
     # structural checks
     if not strict:
         report.structural.extend(_check_em_dashes(authorial_text, [line for _, line in authorial]))
@@ -1552,6 +1569,15 @@ def analyze(
     elif "challenges-template" in structural_kinds and "negative-parallelism" in structural_kinds:
         combined = max(combined, 0.50)
 
+    # Short-text density backstop: if a short text (4-12 sentences) has
+    # many distinct high-severity hits, the dimensional combine can underweight
+    # them because each dimension is individually mild. But 5+ distinct
+    # signals with at least 3 moderate-or-higher in 6 sentences is suspicious.
+    if 4 <= report.sentences <= 12:
+        distinct_mod_plus = len({h.pattern.id for h in report.hits if h.pattern.severity >= 2})
+        if distinct_mod_plus >= 3 and len(report.hits) >= 5:
+            combined = max(combined, 0.60)
+
     # Short demo-style AI answers can be dense without many paragraph-level
     # structures. If nearly every sentence is marked and there are several
     # high-severity lexical cues, do not leave the visible example in the
@@ -1592,6 +1618,13 @@ def analyze(
             combined = min(combined, 0.42)
     elif report.sentences >= 30 and evidence_density < 0.08:
         combined = min(combined, 0.50)
+
+    # Length-aware credibility cap: a handful of hits in a 3-sentence text
+    # cannot justify 80%. Short texts need proportionally more evidence to
+    # score high — the verdict on 3 sentences is "puede ser" at most, never
+    # "suena a IA" with confidence.
+    short_cap = min(1.0, 0.40 + 0.045 * report.sentences)
+    combined = min(combined, short_cap)
 
     report.score = min(1.0, combined)
 
