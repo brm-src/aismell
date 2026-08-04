@@ -199,13 +199,13 @@ def _match_is_quoted_example(line: str, start: int, end: int) -> bool:
 def _check_em_dashes(text: str, lines: list[str]) -> list[StructuralFinding]:
     out: list[StructuralFinding] = []
     for i, line in enumerate(lines, start=1):
-        count = line.count("—")
+        count = line.count("—") + line.count("–") + line.count("--")
         if count >= 2:
             out.append(StructuralFinding(
                 line=i,
                 kind="em-dash",
                 severity=2,
-                message=f"{count} em-dashes en una línea — la IA los abusa",
+                message=f"{count} rayas (—/–/--) en una línea — la IA las abusa",
                 suggestion="reemplaza por comas, paréntesis o puntos",
             ))
     return out
@@ -646,6 +646,32 @@ _CONCRETE_ANCHORS = re.compile(
 
 def _word_count(text: str) -> int:
     return len(re.findall(r"\b[\wáéíóúüñÁÉÍÓÚÜÑ]+\b", text))
+
+
+# ---- humanizer v2.9.1 + stop-slop gaps (2026-08) ----
+# Curated lists, deliberately shorter than stop-slop's absolutist ban:
+# the tell is density, not a single occurrence.
+
+_AI_ADVERBS_EN = [
+    "literally", "genuinely", "honestly", "simply", "actually", "truly",
+    "fundamentally", "inherently", "inevitably", "interestingly",
+    "importantly", "crucially",
+]
+_AI_ADVERBS_ES = [
+    "verdaderamente", "fundamentalmente", "genuinamente", "inherentemente",
+    "inevitablemente", "crucialmente", "interesantemente",
+]
+_CORPORATE_HYPHENATED = [
+    "third-party", "cross-functional", "client-facing", "data-driven",
+    "decision-making", "well-known", "high-quality", "real-time",
+    "long-term", "end-to-end", "cutting-edge", "state-of-the-art",
+]
+_TAILING_NEGATIONS = [
+    "no guessing", "no wasted motion", "no questions asked",
+    "no exceptions", "no regrets", "no fuss", "no drama",
+    "no second-guessing", "no excuses",
+]
+_EMOJI_RX = re.compile(r"[\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F]")
 
 
 def _check_synthetic_academic_texture(text: str, lang: str) -> list[StructuralFinding]:
@@ -1121,6 +1147,200 @@ def _check_storyscope_discourse(text: str, lang: str) -> list[StructuralFinding]
     return findings
 
 
+# ---- humanizer v2.9.1 §26/§29/§31/§33 + stop-slop adverb/drama gaps (2026-08) ----
+
+
+def _check_staccato_runs(sentences: list[str], lang: str) -> list[StructuralFinding]:
+    """humanizer §31 / stop-slop dramatic fragmentation.
+
+    3+ consecutive very short sentences (≤5 words) read as manufactured
+    punchlines. One clipped sentence is human; a run is engineered.
+    """
+    if len(sentences) < 4:
+        return []
+    run = 0
+    max_run = 0
+    for s in sentences:
+        if len(s.split()) <= 5:
+            run += 1
+            max_run = max(max_run, run)
+        else:
+            run = 0
+    if max_run < 3:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="staccato-runs",
+        severity=2,
+        message=(
+            f"{max_run} oraciones cortas seguidas (≤5 palabras) — drama staccato fabricado"
+            if lang == "es" else
+            f"{max_run} consecutive very short sentences (≤5 words) — manufactured staccato drama"
+        ),
+        suggestion=(
+            "funde los fragmentos en una sola oración o varía la longitud; una frase enfática basta"
+            if lang == "es" else
+            "merge the fragments into one sentence or vary the length; one emphatic sentence is enough"
+        ),
+    )]
+
+
+def _check_hyphenated_pairs(text: str, lang: str) -> list[StructuralFinding]:
+    """humanizer §26: uniform corporate hyphenation (EN only).
+
+    Humans hyphenate inconsistently; AI hyphenates a fixed set with perfect
+    consistency. The tell is density in one text, not any single compound.
+    """
+    if lang != "en":
+        return []
+    words = _word_count(text)
+    if words < 20:
+        return []
+    rx = re.compile(r"\b(" + "|".join(_CORPORATE_HYPHENATED) + r")\b", re.I)
+    hits = len(rx.findall(text))
+    if hits < 5:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="hyphenated-pairs",
+        severity=2,
+        message=f"{hits} compuestos corporativos con guion — hipenación uniforme típica de IA",
+        suggestion="suelta los guiones en posición predicativa o escribe el concepto directo",
+    )]
+
+
+def _check_adverb_density(text: str, lang: str) -> list[StructuralFinding]:
+    """stop-slop adverbs: curated AI-favored adverbs, density-gated (EN/ES).
+
+    stop-slop bans all adverbs; aismell only flags a curated list when it
+    stacks — a single 'actually' is ordinary English, five are a texture.
+    """
+    words = _word_count(text)
+    if words < 12:
+        return []
+    if lang == "es":
+        rx = re.compile(r"\b(" + "|".join(_AI_ADVERBS_ES) + r")\b", re.I)
+        threshold = 4
+    else:
+        rx = re.compile(r"\b(" + "|".join(_AI_ADVERBS_EN) + r")\b", re.I)
+        threshold = 5
+    hits = len(rx.findall(text))
+    if hits < threshold:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="adverb-density",
+        severity=2,
+        message=(
+            f"{hits} adverbios de relleno apilados — textura típica de IA"
+            if lang == "es" else
+            f"{hits} stacked filler adverbs — typical AI texture"
+        ),
+        suggestion=(
+            "borra la mayoría; deja el adverbio solo cuando cambia el significado"
+            if lang == "es" else
+            "cut most of them; keep an adverb only when it changes the meaning"
+        ),
+    )]
+
+
+def _check_fragmented_headers(text: str, lang: str) -> list[StructuralFinding]:
+    """humanizer §29: heading followed by a one-line restatement.
+
+    A generic warm-up sentence after a heading ('Speed matters.' after
+    '## Performance') pads the prose without adding information.
+    """
+    lines = [ln.strip() for ln in text.splitlines()]
+    out: list[StructuralFinding] = []
+    n = len(lines)
+    for i in range(n - 2):
+        if not re.match(r"^#{1,4}\s+\S", lines[i]):
+            continue
+        # next non-empty line after the heading
+        j = i + 1
+        while j < n and not lines[j]:
+            j += 1
+        if j >= n:
+            continue
+        nxt = lines[j]
+        nxt_words = len(nxt.split())
+        if 2 <= nxt_words <= 8:
+            k = j + 1
+            while k < n and not lines[k]:
+                k += 1
+            following = lines[k] if k < n else ""
+            if len(following.split()) > nxt_words + 4:
+                out.append(StructuralFinding(
+                    line=i + 1,
+                    kind="fragmented-headers",
+                    severity=1,
+                    message=(
+                        f"título seguido de una línea de relleno ({nxt_words} palabras) que repite el rótulo"
+                        if lang == "es" else
+                        f"heading followed by a one-line filler ({nxt_words} words) restating the label"
+                    ),
+                    suggestion=(
+                        "borra la frase de calentamiento y deja que el contenido arranque directo"
+                        if lang == "es" else
+                        "delete the warm-up line and let the content start directly"
+                    ),
+                ))
+    return out
+
+
+def _check_emoji_headers(text: str, lang: str) -> list[StructuralFinding]:
+    """humanizer §18: emojis decorating heading/bullet labels.
+
+    Emojis inside prose are fine; a line that STARTS with an emoji as a
+    bullet/heading decoration is AI list formatting.
+    """
+    count = 0
+    for ln in text.splitlines():
+        s = ln.strip()
+        if not s:
+            continue
+        if _EMOJI_RX.match(s) and re.search(r"\S{2,}", s[1:]):
+            count += 1
+    if count < 2:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="emoji-headers",
+        severity=1,
+        message=(
+            f"{count} líneas decoradas con emoji — formato de lista IA"
+            if lang == "es" else
+            f"{count} emoji-decorated lines — AI list formatting"
+        ),
+        suggestion=(
+            "quita los emojis de títulos y viñetas; deja que el texto diga lo importante"
+            if lang == "es" else
+            "remove emojis from headings and bullets; let the text carry the meaning"
+        ),
+    )]
+
+
+def _check_tailing_negation(text: str, lang: str) -> list[StructuralFinding]:
+    """humanizer §9: clipped 'no X' fragments tacked onto a sentence (EN).
+
+    'The options come from the selected item, no guessing.' — a real clause
+    should follow the comma; the fragment is an AI rhythm tick.
+    """
+    if lang != "en":
+        return []
+    rx = re.compile(r"\b(" + "|".join(_TAILING_NEGATIONS) + r")\b", re.I)
+    hits = len(rx.findall(text))
+    if hits < 2:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="tailing-negation",
+        severity=2,
+        message=f"{hits} negaciones colgadas al final de frase — muletilla rítmica de IA",
+        suggestion="convierte el fragmento en una cláusula real o elimínalo",
+    )]
+
+
 def _score_sections(sentences: list[str], lang: str) -> list[SectionScore]:
     if not sentences:
         return []
@@ -1235,6 +1455,13 @@ def analyze(
         report.structural.extend(_check_nominalization_density(authorial_text, lang))
         report.structural.extend(_check_impersonal_se_stacking(authorial_text, lang))
         report.structural.extend(_check_storyscope_discourse(authorial_text, lang))
+        # humanizer v2.9.1 + stop-slop gaps (2026-08)
+        report.structural.extend(_check_staccato_runs(sentences, lang))
+        report.structural.extend(_check_hyphenated_pairs(authorial_text, lang))
+        report.structural.extend(_check_adverb_density(authorial_text, lang))
+        report.structural.extend(_check_fragmented_headers(authorial_text, lang))
+        report.structural.extend(_check_emoji_headers(authorial_text, lang))
+        report.structural.extend(_check_tailing_negation(authorial_text, lang))
     report.sections = _score_sections(sentences, lang)
 
     # score — evidence-aware combiner.

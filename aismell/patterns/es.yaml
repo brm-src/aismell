@@ -1770,3 +1770,270 @@ patterns:
     pattern: vale la pena mencionar
     message: '"vale la pena mencionar" — transición introductoria verbosa sobreusada típica de texto generado por máquina'
     suggestion: introduce el punto directamente sin hedging
+
+  # ==== HUMANIZER v2.9.1 + STOP-SLOP GAPS (2026-08) ====
+
+  # -- Atribuciones vagas (humanizer §5) --
+  - id: es.weasel_expertos
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(los |unos |ciertos )?(expertos|investigadores|analistas|observadores|especialistas) (afirman|señalan|sostienen|sugieren|indican|advierten)\b'
+    message: '"los expertos afirman" — atribución vaga sin fuente nombrada'
+    suggestion: nombra a la persona, estudio o institución detrás de la afirmación
+
+  - id: es.weasel_informes
+    kind: regex
+    severity: 2
+    pattern: '(?i)\binformes de (la |)industria\b|\bfuentes de la industria\b'
+    message: '"informes de la industria" — autoridad anónima'
+    suggestion: cita el informe real o borra el marco
+
+  - id: es.weasel_criticos
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(algunos |ciertos )?críticos señalan\b'
+    message: '"algunos críticos señalan" — observadores sin nombre'
+    suggestion: di quién lo señala
+
+  # -- Relleno especulativo de datos faltantes (humanizer §21b) --
+  - id: es.gapfill_info_publica
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bno es información (pública|de dominio público)\b'
+    message: '"no es información pública" — el modelo escribiendo sobre su propio vacío'
+    suggestion: di lo que se sabe o corta la frase
+
+  - id: es.gapfill_perfil_bajo
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bmantiene un perfil bajo\b'
+    message: '"mantiene un perfil bajo" — suposición de relleno para tapar datos que faltan'
+    suggestion: di lo que está realmente documentado
+
+  - id: es.gapfill_se_cree
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bse cree que\b'
+    message: '"se cree que" — conjetura sin quien la sostenga (equivalente a "it is believed that")'
+    suggestion: di quién lo cree o elimínalo
+
+  # -- Gerundio colgado tras coma (humanizer §3) --
+  - id: es.gerundio_colgado
+    kind: regex
+    severity: 2
+    pattern: '(?i),\s+(simbolizando|reflejando|asegurando|garantizando|evidenciando|demostrando|abarcando|fomentando|fortaleciendo|consolidando|favoreciendo|impulsando|mostrando)\b'
+    message: 'gerundio colgado tras coma — profundidad falsa (humanizer §3)'
+    suggestion: 'convierte la cláusula en una oración real o bórrala'
+
+  # -- Fórmulas de aforismo (humanizer §32) --
+  - id: es.aphorism_lenguaje_de
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bes el lenguaje de\b'
+    message: '"X es el lenguaje de Y" — fórmula de aforismo (humanizer §32)'
+    suggestion: di la afirmación concreta sin la fórmula
+
+  - id: es.aphorism_moneda_de
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bes la moneda de(l)?\b'
+    message: '"X es la moneda de Y" — fórmula de aforismo'
+    suggestion: di qué es realmente, sin la metáfora
+
+  # -- Aperturas conversacionales retóricas (humanizer §33) --
+  - id: es.opener_la_cosa_es
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bla cosa es que\b'
+    message: '"la cosa es que" — gancho de falsa candidez (humanizer §33)'
+    suggestion: di la cosa directamente
+
+  - id: es.opener_seamos_honestos
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bseamos honestos\b'
+    message: '"seamos honestos" — anuncio de sinceridad'
+    suggestion: sé honesto sin anunciarlo
+
+  - id: es.opener_hablemos_claro
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bhablemos claro\b'
+    message: '"hablemos claro" — apertura de intimidad fabricada'
+    suggestion: quita el gancho y ve al punto
+
+  # -- Tropos de autoridad persuasiva (humanizer §27) --
+  - id: es.authority_verdadera_pregunta
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bla verdadera pregunta es\b'
+    message: '"la verdadera pregunta es" — ceremonia antes de un punto ordinario'
+    suggestion: formula la pregunta directamente
+
+  - id: es.authority_realmente_importa
+    kind: regex
+    severity: 2
+    pattern: '(?i)\blo que realmente importa\b'
+    message: '"lo que realmente importa" — tropo de autoridad'
+    suggestion: nombra lo que importa
+
+  - id: es.authority_meollo
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bel meollo del asunto\b'
+    message: '"el meollo del asunto" — falsa profundidad'
+    suggestion: di el asunto con claridad
+
+  # -- Letreros de signposting (humanizer §28) --
+  - id: es.signpost_vamos_a_explorar
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bvamos a explorar\b'
+    message: '"vamos a explorar" — anuncio en vez de acción'
+    suggestion: parte con el contenido
+
+  - id: es.signpost_lo_que_necesitas
+    kind: regex
+    severity: 3
+    pattern: '(?i)\besto es lo que necesitas saber\b'
+    message: '"esto es lo que necesitas saber" — letrero de tutorial'
+    suggestion: parte con el dato
+
+  - id: es.signpost_sin_preambulo
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bsin más preámbulo\b'
+    message: '"sin más preámbulo" — apertura escenificada'
+    suggestion: bórralo y arranca
+
+  # -- Meta-joiners (stop-slop) --
+  - id: es.metajoiner_en_ensayo
+    kind: regex
+    severity: 2
+    pattern: '(?i)\ben este (ensayo|artículo|trabajo|texto|capítulo|informe)\b'
+    message: '"en este ensayo" — anunciar el texto en vez de hacerlo avanzar'
+    suggestion: bórralo y deja que el texto avance
+
+  - id: es.metajoiner_como_veremos
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bcomo veremos\b'
+    message: '"como veremos" — promesa de pago diferido'
+    suggestion: muéstralo ahora o quita la promesa
+
+  - id: es.metajoiner_dejame_guiar
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bdéjame guiarte\b'
+    message: '"déjame guiarte" — preámbulo de guía'
+    suggestion: presenta el material directo
+
+  - id: es.metajoiner_resto_ensayo
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bel resto de este (ensayo|artículo|trabajo|texto|informe)\b'
+    message: '"el resto de este ensayo" — hablar de la estructura misma'
+    suggestion: corta la hoja de ruta
+
+  # -- Feature-not-bug (stop-slop) --
+  - id: es.feature_not_bug
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bes una característica,? no un error\b'
+    message: '"es una característica, no un error" — aforismo enlatado'
+    suggestion: describe el comportamiento concreto
+
+  # -- Declarativas vagas (stop-slop) --
+  - id: es.vague_apuestas
+    kind: regex
+    severity: 2
+    pattern: '(?i)\blas apuestas son (altas|reales)\b'
+    message: '"las apuestas son altas" — declarativa vaga'
+    suggestion: nombra la consecuencia específica
+
+  - id: es.vague_implicancias
+    kind: regex
+    severity: 2
+    pattern: '(?i)\blas (implicancias|implicaciones) son significativas?\b'
+    message: '"las implicancias son significativas" — declarativa vaga'
+    suggestion: nombra la implicancia concreta
+
+  - id: es.vague_consecuencias
+    kind: regex
+    severity: 2
+    pattern: '(?i)\blas consecuencias son reales\b'
+    message: '"las consecuencias son reales" — declarativa vaga'
+    suggestion: nombra la consecuencia real
+
+  # -- Frases de relleno (humanizer §23) --
+  - id: es.filler_con_el_fin
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bcon el fin de\b'
+    message: '"con el fin de" — relleno verboso'
+    suggestion: '"para"'
+
+  - id: es.filler_debido_hecho
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bdebido al hecho de que\b'
+    message: '"debido al hecho de que" — relleno'
+    suggestion: '"porque"'
+
+  - id: es.filler_tiene_capacidad
+    kind: regex
+    severity: 2
+    pattern: '(?i)\btiene(n)? la capacidad de\b'
+    message: '"tiene la capacidad de" — modal inflado'
+    suggestion: '"puede"'
+
+  # -- Vocabulario AI extra (humanizer §7) --
+  - id: es.vocab_granjear
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bgranjear\b'
+    message: '"granjear" — verbo formal de IA'
+    suggestion: '"conseguir", "atraer", "ganar"'
+
+  - id: es.vocab_potenciar
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bpotencia(r|n|ndo|mos)?\b'
+    message: '"potenciar" — verbo corporativo de IA'
+    suggestion: di qué mejora y cómo
+
+  - id: es.vocab_perdurable
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bvalor perdurable\b'
+    message: '"valor perdurable" — inflación de importancia'
+    suggestion: di qué dura y por qué
+
+  # -- Vocabulario promocional (humanizer §4) --
+  - id: es.promo_ejemplifica
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bejemplifica\b'
+    message: '"ejemplifica" — verbo promocional'
+    suggestion: '"muestra", "es un buen ejemplo de"'
+
+  - id: es.promo_renombrado
+    kind: regex
+    severity: 2
+    pattern: '(?i)\brenombrad[oa]s?\b'
+    message: '"renombrado" — adjetivo promocional'
+    suggestion: di por qué es conocido
+
+  - id: es.promo_deslumbrante
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(deslumbrantes?|sobrecogedor[oa]s?)\b'
+    message: '"deslumbrante" — adjetivo de copy turístico'
+    suggestion: describe la vista concretamente
+
+  - id: es.promo_imperdible
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bimperdible\b'
+    message: '"imperdible" — presión de lista de recomendados'
+    suggestion: di qué ofrece

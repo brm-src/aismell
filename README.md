@@ -139,7 +139,7 @@ Add a pattern, open a PR. No code changes needed for new rules.
 
 ## Related
 
-This project is built on top of the patterns documented in [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) and [blader/humanizer](https://github.com/blader/humanizer). The bloat lexicon and structural checks are informed by [Pangram Labs research](https://arxiv.org/abs/2402.14873) (2024-2025), the [DAMAGE paper on AI humanizers](https://arxiv.org/html/2501.03437v1), and [EditLens](https://arxiv.org/abs/2510.03154). See [docs/research.md](docs/research.md) for the full breakdown.
+This project is built on top of the patterns documented in [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing), [blader/humanizer](https://github.com/blader/humanizer), and [hardikpandya/stop-slop](https://github.com/hardikpandya/stop-slop). The bloat lexicon and structural checks are informed by [Pangram Labs research](https://arxiv.org/abs/2402.14873) (2024-2025), the [DAMAGE paper on AI humanizers](https://arxiv.org/html/2501.03437v1), and [EditLens](https://arxiv.org/abs/2510.03154). See [docs/research.md](docs/research.md) for the full breakdown.
 
 All sources MIT-compatible, and so is this.
 

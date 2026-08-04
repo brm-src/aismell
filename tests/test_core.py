@@ -461,6 +461,464 @@ def test_example_ai_copy_scores_high_not_moderate():
     assert report.severity_label == "alto"
 
 
+# ===================== humanizer v2.9.1 + stop-slop gaps (2026-08) =====================
+
+def test_humanizer_speculative_gap_fill_en():
+    text = (
+        "Information about her early life is not publicly available, suggesting she "
+        "maintains a low profile and keeps personal details private. "
+        "It is believed that she likely grew up in a middle-class household."
+    )
+    report, _ = analyze(text, lang="en")
+    ids = {h.pattern.id for h in report.hits}
+    assert "en.gapfill_not_public" in ids
+    assert "en.gapfill_low_profile" in ids
+    assert "en.gapfill_it_is_believed" in ids
+
+
+def test_humanizer_speculative_gap_fill_es():
+    text = (
+        "La información sobre su vida temprana no es información pública, lo que sugiere "
+        "que mantiene un perfil bajo y resguarda su vida privada. "
+        "Se cree que probablemente creció en un hogar de clase media."
+    )
+    report, _ = analyze(text, lang="es")
+    ids = {h.pattern.id for h in report.hits}
+    assert "es.gapfill_info_publica" in ids
+    assert "es.gapfill_perfil_bajo" in ids
+    assert "es.gapfill_se_cree" in ids
+
+
+def test_humanizer_weasel_attributions_en():
+    text = (
+        "Experts argue that the policy is ineffective. "
+        "Industry reports suggest adoption is slowing. "
+        "Observers have cited several sources."
+    )
+    report, _ = analyze(text, lang="en")
+    ids = {h.pattern.id for h in report.hits}
+    assert "en.weasel_experts" in ids
+    assert "en.weasel_industry" in ids
+    assert "en.weasel_observers" in ids
+
+
+def test_humanizer_weasel_attributions_es():
+    text = (
+        "Los expertos afirman que la política es ineficaz. "
+        "Informes de la industria sugieren que la adopción se desacelera. "
+        "Algunos críticos señalan que falta evidencia."
+    )
+    report, _ = analyze(text, lang="es")
+    ids = {h.pattern.id for h in report.hits}
+    assert "es.weasel_expertos" in ids
+    assert "es.weasel_informes" in ids
+    assert "es.weasel_criticos" in ids
+
+
+def test_humanizer_ing_tackon_en():
+    text = (
+        "The temple uses blue, green and gold, symbolizing the local landscape, "
+        "reflecting the community's bond with the land, ensuring a lasting legacy."
+    )
+    report, _ = analyze(text, lang="en")
+    ids = {h.pattern.id for h in report.hits}
+    assert "en.ing_tackon" in ids
+
+
+def test_humanizer_gerundio_colgado_es():
+    text = (
+        "El templo usa azul, verde y oro, simbolizando el paisaje local, "
+        "reflejando el vínculo de la comunidad con la tierra, asegurando un legado duradero."
+    )
+    report, _ = analyze(text, lang="es")
+    ids = {h.pattern.id for h in report.hits}
+    assert "es.gerundio_colgado" in ids
+
+
+def test_humanizer_aphorism_formulas_en():
+    text = (
+        "Symmetry is the language of trust. "
+        "Attention is the currency of leadership. "
+        "Consistency is the architecture of reliability."
+    )
+    report, _ = analyze(text, lang="en")
+    ids = {h.pattern.id for h in report.hits}
+    assert "en.aphorism_language_of" in ids
+    assert "en.aphorism_currency_of" in ids
+    assert "en.aphorism_architecture_of" in ids
+
+
+def test_humanizer_aphorism_formulas_es():
+    text = (
+        "La simetría es el lenguaje de la confianza. "
+        "La atención es la moneda del liderazgo."
+    )
+    report, _ = analyze(text, lang="es")
+    ids = {h.pattern.id for h in report.hits}
+    assert "es.aphorism_lenguaje_de" in ids
+    assert "es.aphorism_moneda_de" in ids
+
+
+def test_humanizer_conversational_openers_en():
+    text = (
+        "The thing is, we keep postponing the decision. "
+        "Let's be honest: nobody reads the report. "
+        "Real talk, this needs a different owner."
+    )
+    report, _ = analyze(text, lang="en")
+    ids = {h.pattern.id for h in report.hits}
+    assert "en.opener_the_thing_is" in ids
+    assert "en.opener_lets_be_honest" in ids
+    assert "en.opener_real_talk" in ids
+
+
+def test_humanizer_conversational_openers_es():
+    text = (
+        "La cosa es que seguimos postergando la decisión. "
+        "Seamos honestos: nadie lee el informe. "
+        "Hablemos claro, esto necesita otro responsable."
+    )
+    report, _ = analyze(text, lang="es")
+    ids = {h.pattern.id for h in report.hits}
+    assert "es.opener_la_cosa_es" in ids
+    assert "es.opener_seamos_honestos" in ids
+    assert "es.opener_hablemos_claro" in ids
+
+
+def test_humanizer_persuasive_authority_en():
+    text = (
+        "The real question is whether teams can adapt. "
+        "What really matters is organizational readiness. "
+        "The deeper issue is trust, the heart of the matter."
+    )
+    report, _ = analyze(text, lang="en")
+    ids = {h.pattern.id for h in report.hits}
+    assert "en.authority_real_question" in ids
+    assert "en.authority_what_really_matters" in ids
+    assert "en.authority_deeper_issue" in ids
+
+
+def test_humanizer_persuasive_authority_es():
+    text = (
+        "La verdadera pregunta es si los equipos pueden adaptarse. "
+        "Lo que realmente importa es la disposición organizacional. "
+        "El verdadero asunto es la confianza, el meollo del asunto."
+    )
+    report, _ = analyze(text, lang="es")
+    ids = {h.pattern.id for h in report.hits}
+    assert "es.authority_verdadera_pregunta" in ids
+    assert "es.authority_realmente_importa" in ids
+    assert "es.authority_meollo" in ids
+
+
+def test_humanizer_signposting_en():
+    text = (
+        "Let's explore how caching works. "
+        "Here's what you need to know before you start. "
+        "Without further ado, here is the plan."
+    )
+    report, _ = analyze(text, lang="en")
+    ids = {h.pattern.id for h in report.hits}
+    assert "en.signpost_lets_explore" in ids
+    assert "en.signpost_heres_what_you_need" in ids
+    assert "en.signpost_without_ado" in ids
+
+
+def test_humanizer_signposting_es():
+    text = (
+        "Vamos a explorar cómo funciona el caché. "
+        "Esto es lo que necesitas saber antes de empezar. "
+        "Sin más preámbulo, este es el plan."
+    )
+    report, _ = analyze(text, lang="es")
+    ids = {h.pattern.id for h in report.hits}
+    assert "es.signpost_vamos_a_explorar" in ids
+    assert "es.signpost_lo_que_necesitas" in ids
+    assert "es.signpost_sin_preambulo" in ids
+
+
+def test_stop_slop_meta_joiners_en():
+    text = (
+        "In this essay, I argue that habits matter. "
+        "As we'll see, the evidence supports this. "
+        "Let me walk you through the data. "
+        "The rest of this essay explains the method."
+    )
+    report, _ = analyze(text, lang="en")
+    ids = {h.pattern.id for h in report.hits}
+    assert "en.metajoiner_in_essay" in ids
+    assert "en.metajoiner_as_we_see" in ids
+    assert "en.metajoiner_walk_through" in ids
+    assert "en.metajoiner_rest_of_essay" in ids
+
+
+def test_stop_slop_meta_joiners_es():
+    text = (
+        "En este ensayo sostengo que los hábitos importan. "
+        "Como veremos, la evidencia lo respalda. "
+        "Déjame guiarte por los datos. "
+        "El resto de este ensayo explica el método."
+    )
+    report, _ = analyze(text, lang="es")
+    ids = {h.pattern.id for h in report.hits}
+    assert "es.metajoiner_en_ensayo" in ids
+    assert "es.metajoiner_como_veremos" in ids
+    assert "es.metajoiner_dejame_guiar" in ids
+    assert "es.metajoiner_resto_ensayo" in ids
+
+
+def test_stop_slop_feature_not_bug_en_es():
+    en_report, _ = analyze("That quirk is a feature, not a bug.", lang="en")
+    assert "en.feature_not_bug" in {h.pattern.id for h in en_report.hits}
+    es_report, _ = analyze("Ese detalle es una característica, no un error.", lang="es")
+    assert "es.feature_not_bug" in {h.pattern.id for h in es_report.hits}
+
+
+def test_stop_slop_vague_declaratives_en_es():
+    en_report, _ = analyze(
+        "The stakes are high. The implications are significant. The consequences are real.",
+        lang="en",
+    )
+    ids = {h.pattern.id for h in en_report.hits}
+    assert "en.vague_stakes" in ids
+    assert "en.vague_implications" in ids
+
+    es_report, _ = analyze(
+        "Las apuestas son altas. Las implicancias son significativas. Las consecuencias son reales.",
+        lang="es",
+    )
+    ids = {h.pattern.id for h in es_report.hits}
+    assert "es.vague_apuestas" in ids
+    assert "es.vague_implicancias" in ids
+
+
+def test_stop_slop_fillers_en_es():
+    en_report, _ = analyze(
+        "In order to succeed, due to the fact that time is short, the system has the ability to adapt.",
+        lang="en",
+    )
+    ids = {h.pattern.id for h in en_report.hits}
+    assert "en.filler_in_order_to" in ids
+    assert "en.filler_due_to_fact" in ids
+    assert "en.filler_has_ability" in ids
+
+    es_report, _ = analyze(
+        "Con el fin de avanzar, debido al hecho de que el tiempo escasea, el sistema tiene la capacidad de adaptarse.",
+        lang="es",
+    )
+    ids = {h.pattern.id for h in es_report.hits}
+    assert "es.filler_con_el_fin" in ids
+    assert "es.filler_debido_hecho" in ids
+    assert "es.filler_tiene_capacidad" in ids
+
+
+def test_stop_slop_business_jargon_en():
+    text = (
+        "We need to lean into the change, double down on focus, "
+        "and take a deep dive into the data before we circle back."
+    )
+    report, _ = analyze(text, lang="en")
+    ids = {h.pattern.id for h in report.hits}
+    assert "en.jargon_lean_into" in ids
+    assert "en.jargon_double_down" in ids
+    assert "en.jargon_deep_dive" in ids
+    assert "en.jargon_circle_back" in ids
+
+
+def test_humanizer_ai_vocab_extra_en():
+    text = (
+        "The proposal aims to garner support and enhance outcomes. "
+        "Its enduring value shapes the technological landscape."
+    )
+    report, _ = analyze(text, lang="en")
+    ids = {h.pattern.id for h in report.hits}
+    assert "en.vocab_garner" in ids
+    assert "en.vocab_enhance" in ids
+    assert "en.vocab_enduring" in ids
+    assert "en.vocab_landscape_of" in ids
+
+
+def test_humanizer_ai_vocab_extra_es():
+    text = (
+        "La propuesta busca granjear apoyo y potenciar los resultados. "
+        "Su valor perdurable configura el paisaje del campo."
+    )
+    report, _ = analyze(text, lang="es")
+    ids = {h.pattern.id for h in report.hits}
+    assert "es.vocab_granjear" in ids
+    assert "es.vocab_potenciar" in ids
+    assert "es.vocab_perdurable" in ids
+
+
+def test_humanizer_promotional_extra_en():
+    text = (
+        "The hotel exemplifies local craft. This renowned landmark offers breathtaking views "
+        "and is a must-visit stop."
+    )
+    report, _ = analyze(text, lang="en")
+    ids = {h.pattern.id for h in report.hits}
+    assert "en.promo_exemplifies" in ids
+    assert "en.promo_renowned" in ids
+    assert "en.promo_breathtaking" in ids
+    assert "en.promo_must_visit" in ids
+
+
+def test_humanizer_promotional_extra_es():
+    text = (
+        "El hotel ejemplifica la artesanía local. Este renombrado hito ofrece vistas deslumbrantes "
+        "y es una parada imperdible."
+    )
+    report, _ = analyze(text, lang="es")
+    ids = {h.pattern.id for h in report.hits}
+    assert "es.promo_ejemplifica" in ids
+    assert "es.promo_renombrado" in ids
+    assert "es.promo_deslumbrante" in ids
+    assert "es.promo_imperdible" in ids
+
+
+def test_humanizer_collaborative_artifacts_en():
+    text = (
+        "Want me to expand this section? Should I continue? "
+        "Would you like me to add more examples?"
+    )
+    report, _ = analyze(text, lang="en")
+    ids = {h.pattern.id for h in report.hits}
+    assert "en.chatbot_want_me_to" in ids
+    assert "en.chatbot_should_i_continue" in ids
+    assert "en.chatbot_would_you_like_me" in ids
+
+
+# ---- structural: humanizer v2.9.1 §14/§26/§29/§31/§33 + stop-slop adverbs ----
+
+
+def test_en_dash_and_spaced_em_dash_flagged():
+    text = "This is a test – with en dashes – in a row. And another -- spaced -- pair."
+    report, _ = analyze(text, lang="en")
+    assert any(f.kind == "em-dash" for f in report.structural)
+
+
+def test_staccato_runs_flagged():
+    text = (
+        "It had no preference. No aesthetic prior. No nostalgia. "
+        "No memories at all. The old rules were gone."
+    )
+    report, _ = analyze(text, lang="en")
+    assert any(f.kind == "staccato-runs" for f in report.structural)
+
+
+def test_staccato_runs_not_flagged_for_natural_text():
+    text = (
+        "The market opened flat on Tuesday. Analysts pointed to the earnings report "
+        "released the night before. By noon, most of the losses had been recovered."
+    )
+    report, _ = analyze(text, lang="en")
+    assert not any(f.kind == "staccato-runs" for f in report.structural)
+
+
+def test_hyphenated_pairs_density_flagged_en():
+    text = (
+        "The cross-functional team delivered a high-quality, data-driven, real-time report. "
+        "The decision-making process was end-to-end and well-known for being long-term."
+    )
+    report, _ = analyze(text, lang="en")
+    assert any(f.kind == "hyphenated-pairs" for f in report.structural)
+
+
+def test_hyphenated_pairs_not_flagged_es():
+    text = (
+        "El equipo multifuncional entregó un informe de alta calidad basado en datos en tiempo real. "
+        "El proceso de toma de decisiones era conocido por ser de largo plazo."
+    )
+    report, _ = analyze(text, lang="es")
+    assert not any(f.kind == "hyphenated-pairs" for f in report.structural)
+
+
+def test_adverb_density_flagged_en():
+    text = (
+        "It is literally true that this genuinely matters. "
+        "Honestly, this is simply the most important thing. "
+        "Actually, this truly changes everything fundamentally."
+    )
+    report, _ = analyze(text, lang="en")
+    assert any(f.kind == "adverb-density" for f in report.structural)
+
+
+def test_adverb_density_flagged_es():
+    text = (
+        "Verdaderamente, esto es fundamentalmente importante. "
+        "Genuinamente, el proceso es inherentemente complejo e inevitablemente lento."
+    )
+    report, _ = analyze(text, lang="es")
+    assert any(f.kind == "adverb-density" for f in report.structural)
+
+
+def test_adverb_density_not_flagged_for_natural_text():
+    text = (
+        "Ayer salí a caminar por la costanera. El viento estaba fuerte y el mar se veía gris. "
+        "Volví temprano porque empezó a llover."
+    )
+    report, _ = analyze(text, lang="es")
+    assert not any(f.kind == "adverb-density" for f in report.structural)
+
+
+def test_fragmented_headers_flagged():
+    text = (
+        "## Performance\n\n"
+        "Speed matters.\n\n"
+        "When users hit a slow page, they leave immediately and never come back."
+    )
+    report, _ = analyze(text, lang="en")
+    assert any(f.kind == "fragmented-headers" for f in report.structural)
+
+
+def test_fragmented_headers_not_flagged_when_no_restatement():
+    text = (
+        "## Performance\n\n"
+        "When users hit a slow page, they leave immediately and never come back."
+    )
+    report, _ = analyze(text, lang="en")
+    assert not any(f.kind == "fragmented-headers" for f in report.structural)
+
+
+def test_emoji_decorated_headers_flagged():
+    text = (
+        "🚀 **Launch Phase:** The product launches in Q3.\n"
+        "💡 **Key Insight:** Users prefer simplicity.\n"
+        "✅ **Next Steps:** Schedule the follow-up meeting."
+    )
+    report, _ = analyze(text, lang="en")
+    assert any(f.kind == "emoji-headers" for f in report.structural)
+
+
+def test_tailing_negation_flagged_en():
+    text = (
+        "The options come from the selected item, no guessing. "
+        "The pipeline runs in the background, no wasted motion."
+    )
+    report, _ = analyze(text, lang="en")
+    assert any(f.kind == "tailing-negation" for f in report.structural)
+
+
+def test_humanizer_new_families_raise_score_en():
+    text = (
+        "Experts argue the change is overdue. The real question is whether teams can adapt. "
+        "The thing is, attention is the currency of leadership, no guessing. "
+        "It is believed that the stakes are high. Let's explore what really matters."
+    )
+    report, _ = analyze(text, lang="en")
+    assert report.score >= 0.45
+
+
+def test_humanizer_new_families_raise_score_es():
+    text = (
+        "Los expertos afirman que el cambio es urgente. La verdadera pregunta es si los equipos pueden adaptarse. "
+        "La cosa es que la atención es la moneda del liderazgo. "
+        "Se cree que las apuestas son altas. Vamos a explorar lo que realmente importa."
+    )
+    report, _ = analyze(text, lang="es")
+    assert report.score >= 0.45
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in list(globals().items()):

@@ -42,5 +42,19 @@
     "min_score": 0.0,
     "max_score": 0.25,
     "text": "Ayer revisé tres cuadernos del 4B en Valparaíso y me quedé pegado en una corrección mal hecha. La profe había anotado 'falta desarrollar', pero el cabro sí desarrolló: lo hizo desordenado, con dos ejemplos pobres y una frase cortada. No era brillante, pero tampoco era vacío. Ahí está el problema real."
+  },
+  {
+    "id": "en_humanizer_v291_tells",
+    "lang": "en",
+    "label": "ai",
+    "min_score": 0.45,
+    "text": "Experts argue the change is overdue. The real question is whether teams can adapt. The thing is, attention is the currency of leadership, no guessing. It is believed that the stakes are high. Let's explore what really matters. Information about her early life is not publicly available, suggesting she maintains a low profile."
+  },
+  {
+    "id": "es_humanizer_v291_tells",
+    "lang": "es",
+    "label": "ai",
+    "min_score": 0.45,
+    "text": "Los expertos afirman que el cambio es urgente. La verdadera pregunta es si los equipos pueden adaptarse. La cosa es que la atención es la moneda del liderazgo. Se cree que las apuestas son altas. Vamos a explorar lo que realmente importa. La información sobre su vida temprana no es información pública, lo que sugiere que mantiene un perfil bajo."
   }
 ]

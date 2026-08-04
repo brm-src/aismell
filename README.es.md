@@ -139,7 +139,7 @@ Agrega un patrón, abre un PR. No necesitas tocar código para reglas nuevas.
 
 ## Créditos
 
-Este proyecto se apoya en los patrones documentados en [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) y [blader/humanizer](https://github.com/blader/humanizer). El léxico inflado y los chequeos estructurales vienen de la investigación de [Pangram Labs](https://arxiv.org/abs/2402.14873) (2024-2025), el [paper DAMAGE sobre humanizadores](https://arxiv.org/html/2501.03437v1) y [EditLens](https://arxiv.org/abs/2510.03154). Detalle completo en [docs/research.md](docs/research.md).
+Este proyecto se apoya en los patrones documentados en [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing), [blader/humanizer](https://github.com/blader/humanizer) y [hardikpandya/stop-slop](https://github.com/hardikpandya/stop-slop). El léxico inflado y los chequeos estructurales vienen de la investigación de [Pangram Labs](https://arxiv.org/abs/2402.14873) (2024-2025), el [paper DAMAGE sobre humanizadores](https://arxiv.org/html/2501.03437v1) y [EditLens](https://arxiv.org/abs/2510.03154). Detalle completo en [docs/research.md](docs/research.md).
 
 Todas las fuentes compatibles con MIT, y este también.
 

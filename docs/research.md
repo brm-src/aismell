@@ -86,9 +86,12 @@ The detection-side research:
 The lexical taxonomy:
 
 - Wikipedia: WikiProject AI Cleanup. *Signs of AI writing.* https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
-- Siqi Chen / @blader. *humanizer.* https://github.com/blader/humanizer
+- Siqi Chen / @blader. *humanizer* (v2.9.1). https://github.com/blader/humanizer
+- Hardik Pandya. *stop-slop.* https://github.com/hardikpandya/stop-slop
 - Margaret Efron. *Words and phrases that make it obvious you used ChatGPT.* https://medium.com/learning-data/words-and-phrases-that-make-it-obvious-you-used-chatgpt-2ba374033ac6
 - Walter Writes AI. *Most common ChatGPT words to avoid in 2026.* https://walterwrites.ai/most-common-chatgpt-words-to-avoid/
+
+The 2026-08 pass integrated the humanizer v2.9.1 additions (speculative gap-fill, aphorism formulas, conversational rhetorical openers, staccato drama, fragmented headers, en-dash clusters, uniform hyphenation) and the remaining stop-slop gaps (weasel attributions, meta-joiners, vague declaratives, filler phrases, business jargon, stacked adverbs), with EN/ES parity.
 
 The sociotechnical critique (read these before trusting any AI detector for academic discipline):
 

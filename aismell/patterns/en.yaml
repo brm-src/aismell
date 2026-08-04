@@ -1238,3 +1238,342 @@ patterns:
     pattern: '\bAs\s+requested\b'
     message: '"As requested" — artifact of multi-turn conversational prompting, common in automated email campaigns'
     suggestion: begin with a direct professional greeting (e.g., "Attached is the document you needed")
+
+  # ==== HUMANIZER v2.9.1 + STOP-SLOP GAPS (2026-08) ====
+
+  # -- Weasel attributions (humanizer §5) --
+  - id: en.weasel_experts
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(expert|experts|analysts?|researchers?|observers)\s+(argue|argues|believe|believes|suggest|suggests|claim|claims)\b'
+    message: '"experts argue/believe" — vague attribution with no named source'
+    suggestion: name the person, study, or institution behind the claim
+
+  - id: en.weasel_industry
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bindustry (reports|sources|analysts?|experts?)\b'
+    message: '"industry reports" — anonymous authority'
+    suggestion: cite the actual report or drop the framing
+
+  - id: en.weasel_observers
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bobservers have (cited|noted|said|pointed)\b'
+    message: '"observers have cited" — unnamed observers (humanizer §5)'
+    suggestion: name who observed it
+
+  # -- Speculative gap-fill (humanizer §21b) --
+  - id: en.gapfill_not_public
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bnot publicly available\b'
+    message: '"not publicly available" — the model writing about its own gap'
+    suggestion: say what is known or cut the sentence
+
+  - id: en.gapfill_low_profile
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bmaintains? a low profile\b'
+    message: '"maintains a low profile" — stock guess to cover missing facts'
+    suggestion: state what is actually documented
+
+  - id: en.gapfill_keeps_private
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bkeeps (her|his|their) personal details private\b'
+    message: '"keeps personal details private" — invented filler for missing bio data'
+    suggestion: cut the filler, keep only sourced facts
+
+  - id: en.gapfill_it_is_believed
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bit is believed that\b'
+    message: '"it is believed that" — hedge with no believer named'
+    suggestion: name who believes it or delete
+
+  # -- Superficial -ing tack-ons (humanizer §3) --
+  - id: en.ing_tackon
+    kind: regex
+    severity: 2
+    pattern: '(?i),\s+(ensuring|reflecting|symbolizing|emphasizing|underscoring|highlighting|contributing to|cultivating|fostering|encompassing|showcasing|cementing|solidifying)\b'
+    message: 'present participle tacked after a comma — fake depth (humanizer §3)'
+    suggestion: 'turn the -ing clause into a real sentence or cut it'
+
+  # -- Aphorism formulas (humanizer §32) --
+  - id: en.aphorism_language_of
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bis the language of\b'
+    message: '"X is the language of Y" — aphorism formula (humanizer §32)'
+    suggestion: say the concrete claim without the formula
+
+  - id: en.aphorism_currency_of
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bis the currency of\b'
+    message: '"X is the currency of Y" — aphorism formula'
+    suggestion: say what it actually is, no metaphor
+
+  - id: en.aphorism_architecture_of
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bis the architecture of\b'
+    message: '"X is the architecture of Y" — aphorism formula'
+    suggestion: describe the concrete structure instead
+
+  # -- Conversational rhetorical openers (humanizer §33) --
+  - id: en.opener_the_thing_is
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bthe thing is[,:]'
+    message: '"the thing is" — fake-candid hook (humanizer §33)'
+    suggestion: just say the thing
+
+  - id: en.opener_lets_be_honest
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\blet's be honest\\b"
+    message: "sincerity announcement: 'let us be honest'"
+    suggestion: be honest without announcing it
+
+  - id: en.opener_real_talk
+    kind: regex
+    severity: 2
+    pattern: '(?i)\breal talk\b'
+    message: '"real talk" — manufactured intimacy opener'
+    suggestion: drop the hook, state the point
+
+  # -- Persuasive authority tropes (humanizer §27) --
+  - id: en.authority_real_question
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bthe real question is\b'
+    message: '"the real question is" — ceremony before an ordinary point'
+    suggestion: state the question directly
+
+  - id: en.authority_what_really_matters
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bwhat really matters\b'
+    message: '"what really matters" — authority trope'
+    suggestion: name the thing that matters
+
+  - id: en.authority_deeper_issue
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bthe deeper issue\b|\bthe heart of the matter\b'
+    message: '"the deeper issue / heart of the matter" — false profundity'
+    suggestion: say the issue plainly
+
+  # -- Signposting and announcements (humanizer §28) --
+  - id: en.signpost_lets_explore
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\blet's (explore|break down|dive into|look at)\\b"
+    message: "announcing the move instead of doing it: 'let's explore'"
+    suggestion: start with the content
+
+  - id: en.signpost_heres_what_you_need
+    kind: regex
+    severity: 3
+    pattern: "(?i)\\bhere's what you need to know\\b"
+    message: "tutorial-script signpost: 'here is what you need to know'"
+    suggestion: lead with the fact itself
+
+  - id: en.signpost_without_ado
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bwithout further ado\b'
+    message: '"without further ado" — staged opener'
+    suggestion: cut it and start
+
+  # -- Meta-joiners (stop-slop) --
+  - id: en.metajoiner_in_essay
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bin this (essay|article|post|guide|report|chapter)\b'
+    message: '"in this essay" — announcing the text instead of moving it'
+    suggestion: delete and let the essay move
+
+  - id: en.metajoiner_as_we_see
+    kind: regex
+    severity: 2
+    pattern: "(?i)\\bas we'll see\\b|\\bas we shall see\\b"
+    message: "deferred-payoff meta-joiner: 'as we will see'"
+    suggestion: show it now or drop the promise
+
+  - id: en.metajoiner_walk_through
+    kind: regex
+    severity: 2
+    pattern: '(?i)\blet me walk you through\b'
+    message: '"let me walk you through" — guide preamble'
+    suggestion: present the material directly
+
+  - id: en.metajoiner_rest_of_essay
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bthe rest of this (essay|article|post|guide|report)\b'
+    message: '"the rest of this essay" — self-referential structure talk'
+    suggestion: cut the roadmap
+
+  # -- Feature-not-bug (stop-slop) --
+  - id: en.feature_not_bug
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bis a feature,? not a bug\b'
+    message: "canned aphorism: 'it is a feature, not a bug'"
+    suggestion: describe the behavior concretely
+
+  # -- Vague declaratives (stop-slop) --
+  - id: en.vague_stakes
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bthe stakes are (high|real)\b'
+    message: '"the stakes are high" — vague declarative'
+    suggestion: name the specific consequence
+
+  - id: en.vague_implications
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bthe implications are (significant|profound|far-reaching)\b'
+    message: '"the implications are significant" — vague declarative'
+    suggestion: name the specific implication
+
+  - id: en.vague_consequences
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bthe consequences are real\b'
+    message: '"the consequences are real" — vague declarative'
+    suggestion: name the actual consequence
+
+  # -- Filler phrases (humanizer §23) --
+  - id: en.filler_in_order_to
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bin order to\b'
+    message: '"in order to" — verbose filler'
+    suggestion: '"to"'
+
+  - id: en.filler_due_to_fact
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bdue to the fact that\b'
+    message: '"due to the fact that" — filler'
+    suggestion: '"because"'
+
+  - id: en.filler_has_ability
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(has|have) the ability to\b'
+    message: '"has the ability to" — bloated modal'
+    suggestion: '"can"'
+
+  # -- Business jargon (stop-slop phrases.md) --
+  - id: en.jargon_lean_into
+    kind: regex
+    severity: 2
+    pattern: '(?i)\blean(ing)? into\b'
+    message: '"lean into" — business jargon'
+    suggestion: '"accept", "embrace", or be specific'
+
+  - id: en.jargon_double_down
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bdouble down on\b'
+    message: '"double down on" — business jargon'
+    suggestion: '"commit to", "increase"'
+
+  - id: en.jargon_deep_dive
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bdeep dive (into|on)\b'
+    message: '"deep dive into" — business jargon'
+    suggestion: '"analysis", "examination", or name the review'
+
+  - id: en.jargon_circle_back
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bcircle back\b'
+    message: '"circle back" — business jargon'
+    suggestion: '"return to", "revisit"'
+
+  # -- AI vocabulary extras (humanizer §7) --
+  - id: en.vocab_garner
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bgarner(s|ed|ing)?\s+(support|attention|recognition|traction|interest|praise)\b'
+    message: '"garner support" — formal AI verb'
+    suggestion: '"get", "attract", "win"'
+
+  - id: en.vocab_enhance
+    kind: regex
+    severity: 2
+    pattern: '(?i)\benhanc(e|es|ed|ing)\s+(the |our |its |user |learning )?(outcomes?|performance|experience|capabilities?|learning)\b'
+    message: '"enhance outcomes" — empty AI verb-object pair'
+    suggestion: say what improves and how
+
+  - id: en.vocab_enduring
+    kind: regex
+    severity: 2
+    pattern: '(?i)\benduring\s+(value|legacy|appeal|relevance|significance|impact)\b'
+    message: '"enduring value" — significance inflation'
+    suggestion: say what lasts and why
+
+  - id: en.vocab_landscape_of
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(technological|digital|political|economic|regulatory|competitive|social|media|business|innovation) landscape\b'
+    message: '"the X landscape" — abstract scene-setter'
+    suggestion: name the concrete context
+
+  # -- Promotional vocabulary (humanizer §4) --
+  - id: en.promo_exemplifies
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bexemplif(ies|y|ied|ying)\b'
+    message: '"exemplifies" — promotional verb'
+    suggestion: '"shows", "is a good example of"'
+
+  - id: en.promo_renowned
+    kind: regex
+    severity: 2
+    pattern: '(?i)\brenowned\b'
+    message: '"renowned" — promotional adjective'
+    suggestion: say why it is known
+
+  - id: en.promo_breathtaking
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bbreathtaking\b'
+    message: '"breathtaking" — travel-copy adjective'
+    suggestion: describe the view concretely
+
+  - id: en.promo_must_visit
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bmust[- ]visit\b'
+    message: '"must-visit" — listicle pressure'
+    suggestion: say what it offers
+
+  # -- Collaborative chatbot artifacts (humanizer §20, new v2.9.1) --
+  - id: en.chatbot_want_me_to
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bwant me to\b'
+    message: '"Want me to...?" — chatbot correspondence pasted as content'
+    suggestion: delete the offer or do it
+
+  - id: en.chatbot_should_i_continue
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bshould i continue\b'
+    message: '"Should I continue?" — chatbot turn-taking artifact'
+    suggestion: delete
+
+  - id: en.chatbot_would_you_like_me
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bwould you like me to\b'
+    message: '"Would you like me to...?" — chatbot offer'
+    suggestion: delete the offer, finish the point
