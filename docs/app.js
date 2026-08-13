@@ -152,7 +152,6 @@ const I18N = {
     pdf_browser_unsupported: "PDF en la web aún no se puede (la librería no carga en el navegador). Para PDF usa el CLI: aismell paper.pdf --out paper-marcado.pdf",
     pdf_extracting: "extrayendo texto del PDF…",
     pdf_extracting_page: "extrayendo PDF: página {page}/{total}…",
-    pdf_long: "PDF largo: analicé las primeras {pages} páginas / {chars} caracteres para no colgar el navegador. Para el documento completo usa el CLI.",
     pdf_too_big: "PDF demasiado pesado para el navegador ({mb} MB). Usa el CLI: aismell archivo.pdf --out archivo-marcado.pdf",
     pdf_no_text: "El PDF no tiene capa de texto (probablemente escaneado). Sin OCR no puedo leerlo. Para PDFs escaneados usa el CLI con OCR.",
     biblio: "verificar bibliografía",
@@ -346,7 +345,6 @@ const I18N = {
     pdf_browser_unsupported: "PDF in the browser isn't supported yet (the library doesn't run in WASM). For PDF use the CLI: aismell paper.pdf --out paper-marked.pdf",
     pdf_extracting: "extracting text from PDF…",
     pdf_extracting_page: "extracting PDF: page {page}/{total}…",
-    pdf_long: "Long PDF: analyzed the first {pages} pages / {chars} characters to avoid freezing the browser. For the full document, use the CLI.",
     pdf_too_big: "PDF too heavy for the browser ({mb} MB). Use the CLI: aismell file.pdf --out file-marked.pdf",
     pdf_no_text: "This PDF has no text layer (probably scanned). Without OCR I can't read it. Use the CLI with OCR for scanned PDFs.",
     biblio: "verify bibliography",
@@ -983,7 +981,7 @@ function plainSuggestion(s) {
       ? "Quita los emojis de los encabezados. Si necesitas íconos, usa bullet points normales."
       : "Remove emojis from headers. If you need icons, use normal bullet points.",
     "tailing-negation": es
-      ? "Convierte el fragmento colgado en una cláusula real: '...no es el caso' → corta o reformula."
+      ? "Convierte la negación final en una oración completa: '...no es el caso' → corta o reformula."
       : "Turn the trailing fragment into a real clause: '...not the case' → cut or rephrase.",
   };
   return map[kind] || s.suggestion || "";
@@ -1234,15 +1232,14 @@ function segmentCopy(segment, es) {
 
 function renderSegments(report) {
   const segments = report.segments || [];
-  if (segments.length < 2) return "";
+  const relevant = segments.filter((segment) => segment.findings > 0);
+  if (segments.length < 2 || !relevant.length) return "";
   const es = UILANG === "es";
-  const marked = segments.filter((segment) => segment.findings > 0).length;
   const summary = es
-    ? `${segments.length} tramos · ${marked} con señales`
-    : `${segments.length} segments · ${marked} with signals`;
-  const title = es ? "ver tramos del texto" : "view text segments";
-  const hide = es ? "ocultar tramos" : "hide segments";
-  const cards = segments.map((segment) => {
+    ? `${relevant.length} con señales · ${segments.length} en total`
+    : `${relevant.length} with signals · ${segments.length} total`;
+  const title = es ? "ver tramos con señales" : "view segments with signals";
+  const cards = relevant.map((segment) => {
     const copy = segmentCopy(segment, es);
     const pct = Math.round(segment.score * 100);
     const excerpt = segment.text.length > 240 ? `${segment.text.slice(0, 240).trim()}…` : segment.text;
@@ -2750,8 +2747,6 @@ async function extractPdfText(file, opts = {}) {
   const pdfjs = await loadPdfJs();
   const t = I18N[UILANG];
   const MAX_PDF_BYTES = 25 * 1024 * 1024;
-  const MAX_PDF_PAGES = 40;
-  const MAX_PDF_CHARS = 60000;
   if (file.size > MAX_PDF_BYTES) {
     const mb = (file.size / (1024 * 1024)).toFixed(1);
     throw new Error((t.pdf_too_big || "PDF too heavy for the browser ({mb} MB).").replace("{mb}", mb));
@@ -2760,13 +2755,9 @@ async function extractPdfText(file, opts = {}) {
   const task = pdfjs.getDocument({ data: buf });
   const doc = await task.promise;
   const out = [];
-  let truncated = false;
-  let pagesRead = 0;
-  let charCount = 0;
   const totalPages = doc.numPages || 0;
   try {
-    const pagesToRead = Math.min(totalPages, MAX_PDF_PAGES);
-    for (let i = 1; i <= pagesToRead; i++) {
+    for (let i = 1; i <= totalPages; i++) {
       opts.onProgress?.(i, totalPages);
       const page = await doc.getPage(i);
       const content = await page.getTextContent();
@@ -2783,22 +2774,13 @@ async function extractPdfText(file, opts = {}) {
         const items = lines.get(y).sort((a, b) => a.transform[4] - b.transform[4]);
         const line = items.map((x) => x.str).join(" ").replace(/\s+/g, " ").trim();
         out.push(line);
-        charCount += line.length + 1;
       }
       out.push(""); // page break
-      charCount += 1;
-      pagesRead = i;
-      if (charCount >= MAX_PDF_CHARS) {
-        truncated = true;
-        break;
-      }
-      // Let the browser paint/cancel between pages. This is what prevents the
-      // "uploaded a long PDF and the tab froze" failure mode.
+      // Yield between pages so the browser can paint and process input.
       await new Promise((r) => setTimeout(r, 0));
     }
-    if (totalPages > pagesRead) truncated = true;
-    const text = out.join("\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, MAX_PDF_CHARS);
-    return { text, pagesRead, totalPages, truncated, maxChars: MAX_PDF_CHARS };
+    const text = out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+    return { text, totalPages };
   } finally {
     try { await doc.destroy?.(); } catch (_) { /* noop */ }
   }
@@ -2821,21 +2803,8 @@ async function handlePdf(file) {
     }
     els.input.value = text;
     document.body.classList.add("has-text");
-    if (extracted.truncated) {
-      const msg = (t.pdf_long || "PDF largo: analicé las primeras {pages} páginas / {chars} caracteres.")
-        .replace("{pages}", extracted.pagesRead)
-        .replace("{chars}", text.length.toLocaleString(UILANG === "es" ? "es-CL" : "en-US"));
-      setStatus(msg);
-    } else {
-      setStatus(null);
-    }
+    setStatus(null);
     await analyze({ fileAnalysis: true });
-    if (extracted.truncated) {
-      const msg = (t.pdf_long || "PDF largo: analicé las primeras {pages} páginas / {chars} caracteres.")
-        .replace("{pages}", extracted.pagesRead)
-        .replace("{chars}", text.length.toLocaleString(UILANG === "es" ? "es-CL" : "en-US"));
-      setStatus(msg);
-    }
   } catch (err) {
     console.error("pdf extract failed", err);
     setStatus(`${t.error} PDF: ${err.message}`, true);
