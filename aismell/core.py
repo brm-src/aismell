@@ -68,6 +68,21 @@ class SectionScore:
 
 
 @dataclass
+class SegmentScore:
+    """A local, human-readable snapshot of one contiguous text window."""
+
+    index: int
+    start_sentence: int
+    end_sentence: int
+    sentences: int
+    score: float
+    label: str
+    confidence: str
+    findings: int
+    text: str
+
+
+@dataclass
 class Report:
     sentences: int
     hits: list[Hit] = field(default_factory=list)
@@ -78,6 +93,7 @@ class Report:
     era: str = "unknown"       # 'pre-llm' | 'post-llm' | 'unknown'
     era_max_year: int = 0      # largest year found in the text
     notes: list[str] = field(default_factory=list)
+    segments: list[SegmentScore] = field(default_factory=list)
 
     @property
     def total_findings(self) -> int:
@@ -1428,6 +1444,62 @@ def load_canary_samples(path: str | Path | None = None) -> list[dict]:
     return json.loads(p.read_text(encoding="utf-8"))
 
 
+# ---------- local segment snapshots ----------
+
+def _segment_confidence(report: Report, lang: str) -> str:
+    """Confidence in the local signal, not confidence of authorship."""
+    findings = report.total_findings
+    if findings >= 3 and report.score >= 0.35:
+        return "alta" if lang == "es" else "high"
+    if findings:
+        if report.severity_label in ("moderado", "moderate"):
+            return "media" if lang == "es" else "medium"
+        return "baja" if lang == "es" else "low"
+    return "baja" if lang == "es" else "low"
+
+
+def _score_segments(
+    sentences: list[str],
+    lang: str,
+    strict: bool,
+    era: str,
+) -> list[SegmentScore]:
+    """Analyze contiguous windows without changing the document-level score.
+
+    Three sentences is the minimum useful window. Six keeps the result useful
+    on mobile; a final short tail is merged into the previous window.
+    """
+    if len(sentences) < 3:
+        return []
+    window = 6
+    starts = list(range(0, len(sentences), window))
+    if len(starts) > 1 and len(sentences) - starts[-1] < 3:
+        starts.pop()
+    segments: list[SegmentScore] = []
+    for index, start in enumerate(starts, start=1):
+        end = len(sentences) if index == len(starts) else min(len(sentences), start + window)
+        segment_text = " ".join(sentences[start:end]).strip()
+        local, _ = analyze(
+            segment_text,
+            lang=lang,
+            strict=strict,
+            era=era,
+            include_segments=False,
+        )
+        segments.append(SegmentScore(
+            index=index,
+            start_sentence=start + 1,
+            end_sentence=end,
+            sentences=end - start,
+            score=local.score,
+            label=local.severity_label,
+            confidence=_segment_confidence(local, lang),
+            findings=local.total_findings,
+            text=segment_text,
+        ))
+    return segments
+
+
 # ---------- main analyze ----------
 
 def analyze(
@@ -1435,6 +1507,7 @@ def analyze(
     lang: str | None = None,
     strict: bool = False,
     era: str = "auto",
+    include_segments: bool = True,
 ) -> tuple[Report, str]:
     """Analyze text. Returns (report, lang_used).
 
@@ -1716,5 +1789,8 @@ def analyze(
         report.severity_label = "bajo" if lang == "es" else "low"
     else:
         report.severity_label = "limpio" if lang == "es" else "clean"
+
+    if include_segments:
+        report.segments = _score_segments(sentences, lang, strict, era)
 
     return report, lang

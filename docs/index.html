@@ -452,6 +452,51 @@
     line-height: 1.55;
   }
 
+  /* Segment view: useful detail, hidden until requested. */
+  .segments-more {
+    margin: 12px 0 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: rgba(255,255,255,0.02);
+  }
+  .segments-more > summary {
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 10px;
+    align-items: center;
+    padding: 13px 16px;
+    list-style: none;
+    color: var(--fg);
+    font-size: 13px;
+  }
+  .segments-more > summary::-webkit-details-marker { display: none; }
+  .segments-more > summary small { color: var(--dim); }
+  .segments-more > summary b { color: var(--hl); font-size: 16px; }
+  .segments-more > summary .segment-hide { display: none; }
+  .segments-more[open] > summary .segment-show { display: none; }
+  .segments-more[open] > summary .segment-hide { display: inline; }
+  .segments-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 8px;
+    padding: 0 10px 10px;
+  }
+  .segment-card {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 12px;
+    background: rgba(255,255,255,0.025);
+  }
+  .segment-head { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+  .segment-head span { color: var(--dim); }
+  .segment-score { display: flex; align-items: baseline; gap: 8px; margin: 12px 0 8px; }
+  .segment-score strong { font-size: 22px; }
+  .segment-score span { color: var(--hl); font-size: 12px; }
+  .segment-score em { margin-left: auto; color: var(--dim); font-size: 10px; font-style: normal; }
+  .segment-card p { color: var(--dim); font-size: 12px; line-height: 1.5; margin: 0; }
+  .segments-note { color: var(--dim); font-size: 11px; margin: 0; padding: 0 16px 13px; }
+
   /* Docx download bar (shown after annotateDocx finishes) */
   .docx-download {
     border: 1px solid rgba(232, 197, 71, 0.55);

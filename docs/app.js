@@ -646,6 +646,7 @@ def run(text, lang_code, strict, era_code):
         "hits": [],
         "structural": [],
         "sections": [],
+        "segments": [],
     }
     for h in report.hits:
         out["hits"].append({
@@ -673,6 +674,18 @@ def run(text, lang_code, strict, era_code):
             "score": sec.score,
             "sentences": sec.sentences,
             "reasons": sec.reasons,
+        })
+    for segment in report.segments:
+        out["segments"].append({
+            "index": segment.index,
+            "start_sentence": segment.start_sentence,
+            "end_sentence": segment.end_sentence,
+            "sentences": segment.sentences,
+            "score": segment.score,
+            "label": segment.label,
+            "confidence": segment.confidence,
+            "findings": segment.findings,
+            "text": segment.text,
         })
     return out
 
@@ -1208,6 +1221,47 @@ function computeVerdict(report) {
   return { label, klass, conf, confKey, reasons: reasons.slice(0, 3), heur: h };
 }
 
+function segmentCopy(segment, es) {
+  const label = segment.label;
+  const verdict = es
+    ? ({ alto: "suena cargado", moderado: "tiene señales", bajo: "pocas señales", limpio: "limpio" }[label] || label)
+    : ({ high: "signal-heavy", moderate: "some signals", low: "few signals", clean: "clean" }[label] || label);
+  const confidence = es
+    ? ({ alta: "clara", media: "media", baja: "baja" }[segment.confidence] || segment.confidence)
+    : ({ high: "clear", medium: "medium", low: "low" }[segment.confidence] || segment.confidence);
+  return { verdict, confidence };
+}
+
+function renderSegments(report) {
+  const segments = report.segments || [];
+  if (segments.length < 2) return "";
+  const es = UILANG === "es";
+  const marked = segments.filter((segment) => segment.findings > 0).length;
+  const summary = es
+    ? `${segments.length} tramos · ${marked} con señales`
+    : `${segments.length} segments · ${marked} with signals`;
+  const title = es ? "ver tramos del texto" : "view text segments";
+  const hide = es ? "ocultar tramos" : "hide segments";
+  const cards = segments.map((segment) => {
+    const copy = segmentCopy(segment, es);
+    const pct = Math.round(segment.score * 100);
+    const excerpt = segment.text.length > 240 ? `${segment.text.slice(0, 240).trim()}…` : segment.text;
+    return `<article class="segment-card">
+      <div class="segment-head">
+        <strong>${es ? `Tramo ${segment.index}` : `Segment ${segment.index}`}</strong>
+        <span>${es ? `oraciones ${segment.start_sentence}–${segment.end_sentence}` : `sentences ${segment.start_sentence}–${segment.end_sentence}`}</span>
+      </div>
+      <div class="segment-score"><strong>${pct}%</strong><span>${escapeHtml(copy.verdict)}</span><em>${es ? "seguridad" : "confidence"}: ${escapeHtml(copy.confidence)}</em></div>
+      <p>${escapeHtml(excerpt)}</p>
+    </article>`;
+  }).join("");
+  return `<details class="segments-more">
+    <summary><span>${title}</span><small>${summary}</small><b class="segment-show">⌄</b><b class="segment-hide">⌃</b></summary>
+    <div class="segments-list">${cards}</div>
+    <p class="segments-note">${es ? "Cada tramo se lee por separado. El índice muestra señales editoriales, no probabilidad de autoría." : "Each segment is read on its own. The index shows editorial signals, not authorship probability."}</p>
+  </details>`;
+}
+
 function renderActionSummary(report) {
   const es = UILANG === "es";
   const structural = report.structural || [];
@@ -1326,6 +1380,7 @@ function render(report) {
     </div>`;
 
   scoreHtml += renderActionSummary(report);
+  scoreHtml += renderSegments(report);
 
   // Sections (apertura/cuerpo/cierre) intentionally removed —
   // their per-section scorer was inconsistent with the global one

@@ -107,7 +107,7 @@ def _natural_advice(suggestion: str, lang: str) -> str:
         return f"Try {value[4:].strip()}."
     if value.lower().startswith("use "):
         return f"Try {value[4:].strip()}."
-    return f"Try: {value}."
+    return value[:1].upper() + value[1:] + "."
 
 
 def _hit_reason(pattern_id: str, lang: str) -> str:

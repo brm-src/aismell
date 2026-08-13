@@ -1005,6 +1005,40 @@ def test_long_text_still_can_reach_high():
     assert report.score >= 0.60, f"long dense text should still hit high, got {report.score:.2f}"
 
 
+def test_segment_scores_are_local_and_do_not_change_global_score():
+    clean = "Ayer llovió en la ciudad. La calle quedó vacía. Cerré la ventana y seguí trabajando."
+    marked = "Cabe mencionar que el cambio es fundamental. En este sentido, debemos optimizar el proceso. En conclusión, el futuro será brillante."
+    text = " ".join([clean] * 3 + [marked] * 3 + [clean] * 3)
+    report, _ = analyze(text, lang="es")
+    no_segments, _ = analyze(text, lang="es", include_segments=False)
+    assert report.score == no_segments.score
+    assert len(report.segments) >= 2
+    assert any(segment.findings == 0 for segment in report.segments)
+    assert any(segment.findings > 0 for segment in report.segments)
+    assert report.segments[1].text != report.segments[0].text
+
+
+def test_short_text_has_no_misleading_segment_verdict():
+    report, _ = analyze("Ayer llovió. Cerré la ventana.", lang="es")
+    assert report.segments == []
+
+
+def test_web_wrapper_exposes_segment_fields():
+    """The Pyodide wrapper must carry segment data to the browser explicitly."""
+    from pathlib import Path
+
+    app = Path(__file__).resolve().parents[1] / "docs" / "app.js"
+    source = app.read_text(encoding="utf-8")
+    for marker in (
+        '"segments": [],',
+        '"start_sentence": segment.start_sentence',
+        '"end_sentence": segment.end_sentence',
+        '"confidence": segment.confidence',
+        'function renderSegments(report)',
+    ):
+        assert marker in source, marker
+
+
 def test_curated_no_ai_slop_gaps_en():
     """Import only compound no-ai-slop frames; ordinary prose stays clean."""
     text = (
