@@ -88,6 +88,7 @@ The lexical taxonomy:
 - Wikipedia: WikiProject AI Cleanup. *Signs of AI writing.* https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
 - Siqi Chen / @blader. *humanizer* (v2.9.1). https://github.com/blader/humanizer
 - Hardik Pandya. *stop-slop.* https://github.com/hardikpandya/stop-slop
+- Kartik Kabadi. *no-ai-slop.* Curated source for compound corporate/AI framing phrases; imported selectively, not as a blanket blacklist. https://github.com/kartikkabadi/no-ai-slop
 - Margaret Efron. *Words and phrases that make it obvious you used ChatGPT.* https://medium.com/learning-data/words-and-phrases-that-make-it-obvious-you-used-chatgpt-2ba374033ac6
 - Walter Writes AI. *Most common ChatGPT words to avoid in 2026.* https://walterwrites.ai/most-common-chatgpt-words-to-avoid/
 

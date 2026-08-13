@@ -974,6 +974,76 @@ def test_long_text_still_can_reach_high():
     assert report.score >= 0.60, f"long dense text should still hit high, got {report.score:.2f}"
 
 
+def test_curated_no_ai_slop_gaps_en():
+    """Import only compound no-ai-slop frames; ordinary prose stays clean."""
+    text = (
+        "In a nutshell, the proposal changes the filing date. "
+        "Needless to say, the old date no longer applies. "
+        "As you can see, the table has one row. "
+        "With that in mind, the team chose Friday. "
+        "In the same vein, the second office chose Friday. "
+        "The bottom line is that the change is small."
+    )
+    report, lang = analyze(text, lang="en")
+    assert lang == "en"
+    ids = {hit.pattern.id for hit in report.hits}
+    assert {
+        "en.stop_slop_in_a_nutshell",
+        "en.stop_slop_needless_to_say",
+        "en.stop_slop_as_you_can_see",
+        "en.stop_slop_with_that_in_mind",
+        "en.stop_slop_same_vein",
+        "en.stop_slop_bottom_line",
+    } <= ids
+
+
+def test_curated_no_ai_slop_gaps_es():
+    """Spanish equivalents are editorial signals, not certainty claims."""
+    text = (
+        "No hace falta decirlo: la fecha anterior ya no aplica. "
+        "Como puedes ver, la tabla tiene una fila. "
+        "Con esto en mente, el equipo eligió el viernes. "
+        "En la misma línea, la segunda oficina eligió el viernes. "
+        "En el mundo acelerado de hoy, la decisión parece urgente. "
+        "La conclusión es que el cambio es pequeño."
+    )
+    report, lang = analyze(text, lang="es")
+    assert lang == "es"
+    ids = {hit.pattern.id for hit in report.hits}
+    assert {
+        "es.stop_slop_no_hace_falta_decirlo",
+        "es.stop_slop_como_puedes_ver",
+        "es.stop_slop_con_esto_en_mente",
+        "es.stop_slop_en_la_misma_linea",
+        "es.stop_slop_mundo_acelerado",
+        "es.stop_slop_la_conclusion_es",
+    } <= ids
+
+
+def test_curated_no_ai_slop_does_not_blacklist_common_words():
+    """The integration must not add isolated words such as very/really/in addition."""
+    text = (
+        "The very small change is really useful. In addition, it fixes the import. "
+        "The team wrote a short note with the exact reason."
+    )
+    report, _ = analyze(text, lang="en")
+    imported_ids = {hit.pattern.id for hit in report.hits if hit.pattern.id.startswith("en.stop_slop_")}
+    assert imported_ids == set()
+
+
+def test_curated_no_ai_slop_patterns_have_unique_ids_and_valid_yaml():
+    """Both pattern files remain loadable and the imported IDs stay unique."""
+    from aismell.core import load_patterns
+
+    for lang in ("en", "es"):
+        patterns = load_patterns(lang)
+        ids = [pattern.id for pattern in patterns if pattern.id.startswith(f"{lang}.stop_slop_")]
+        assert ids
+        assert len(ids) == len(set(ids))
+        for pattern in patterns:
+            pattern.compile()
+
+
 # ===================== era detection + academic register (2026-08) =====================
 
 

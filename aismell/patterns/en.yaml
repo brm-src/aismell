@@ -1577,3 +1577,75 @@ patterns:
     pattern: '(?i)\bwould you like me to\b'
     message: '"Would you like me to...?" — chatbot offer'
     suggestion: delete the offer, finish the point
+
+  # -- Curated no-ai-slop gaps (kartikkabadi/no-ai-slop voice.md) --
+  # These are compound framing phrases, not a blacklist of ordinary words.
+  - id: en.stop_slop_in_a_nutshell
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bin a nutshell\b'
+    message: '"in a nutshell" — canned summary frame'
+    suggestion: state the short version directly
+
+  - id: en.stop_slop_needless_to_say
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bneedless to say\b'
+    message: '"needless to say" — announces an obvious point instead of making it'
+    suggestion: delete the announcement
+
+  - id: en.stop_slop_as_you_can_see
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bas you can see\b'
+    message: '"as you can see" — points at the reader instead of the evidence'
+    suggestion: name the evidence directly
+
+  - id: en.stop_slop_with_that_in_mind
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bwith that in mind\b'
+    message: '"with that in mind" — generic transition frame'
+    suggestion: start with the next concrete point
+
+  - id: en.stop_slop_to_that_end
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bto that end\b'
+    message: '"to that end" — formal transition filler'
+    suggestion: say what the action does
+
+  - id: en.stop_slop_same_vein
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bin the same vein\b'
+    message: '"in the same vein" — vague analogy transition'
+    suggestion: name the shared point
+
+  - id: en.stop_slop_flip_side
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bon the flip side\b'
+    message: '"on the flip side" — packaged contrast marker'
+    suggestion: state the contrast directly
+
+  - id: en.stop_slop_fast_paced_world
+    kind: regex
+    severity: 2
+    pattern: "(?i)\bin today'?s fast[- ]paced world\b"
+    message: '"in today''s fast-paced world" — generic scene-setter'
+    suggestion: name the time, place, or pressure that matters
+
+  - id: en.stop_slop_bottom_line
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bthe bottom line is\b'
+    message: '"the bottom line is" — canned conclusion frame'
+    suggestion: state the conclusion directly
+
+  - id: en.stop_slop_no_brainer
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bno-brainer\b'
+    message: '"no-brainer" — casual certainty used as a shortcut'
+    suggestion: give the reason instead

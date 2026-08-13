@@ -2037,3 +2037,61 @@ patterns:
     pattern: '(?i)\bimperdible\b'
     message: '"imperdible" — presión de lista de recomendados'
     suggestion: di qué ofrece
+
+  # -- Huecos curados de no-ai-slop (kartikkabadi/no-ai-slop voice.md) --
+  # Son marcos compuestos, no una lista indiscriminada de palabras comunes.
+  - id: es.stop_slop_no_hace_falta_decirlo
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bno hace falta decirlo\b'
+    message: '"no hace falta decirlo" — anuncia una obviedad en vez de plantearla'
+    suggestion: elimina el anuncio
+
+  - id: es.stop_slop_como_puedes_ver
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bcomo puedes ver\b'
+    message: '"como puedes ver" — señala al lector en vez de nombrar la evidencia'
+    suggestion: nombra la evidencia directamente
+
+  - id: es.stop_slop_con_esto_en_mente
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bcon esto en mente\b'
+    message: '"con esto en mente" — transición genérica'
+    suggestion: empieza con el punto concreto
+
+  - id: es.stop_slop_con_ese_fin
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bcon ese fin\b'
+    message: '"con ese fin" — transición formal de relleno'
+    suggestion: di qué acción se toma y para qué
+
+  - id: es.stop_slop_en_la_misma_linea
+    kind: regex
+    severity: 1
+    pattern: '(?i)\ben la misma línea\b'
+    message: '"en la misma línea" — analogía vaga usada como transición'
+    suggestion: nombra el punto en común
+
+  - id: es.stop_slop_mundo_acelerado
+    kind: regex
+    severity: 2
+    pattern: '(?i)\ben el mundo acelerado de hoy\b|\ben un mundo cada vez más acelerado\b'
+    message: '"en el mundo acelerado de hoy" — marco genérico de apertura'
+    suggestion: nombra el momento, lugar o presión que importa
+
+  - id: es.stop_slop_la_conclusion_es
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bla conclusión es que\b'
+    message: '"la conclusión es que" — marco prefabricado para cerrar'
+    suggestion: afirma la conclusión directamente
+
+  - id: es.stop_slop_sin_lugar_a_dudas
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bsin lugar a dudas\b'
+    message: '"sin lugar a dudas" — certeza enfática sin argumento'
+    suggestion: da la razón o elimina la certeza enfática
