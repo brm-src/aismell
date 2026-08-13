@@ -1437,7 +1437,7 @@ function render(report) {
   els.resultPanel.hidden = false;
 }
 
-async function analyze() {
+async function analyze(options = {}) {
   if (!analyzeFn) return;
   const text = els.input.value;
   if (!text.trim()) {
@@ -1463,14 +1463,13 @@ async function analyze() {
     const obj = res.toJs({ dict_converter: Object.fromEntries });
     res.destroy();
 
-    // Carril 2 — semantic embedding analysis (browser-side, after Python core).
-    // Augments findings; never sends text out. First run downloads ~120 MB model
-    // and caches it in IndexedDB.
+  // Text-file uploads use the same local analysis path as pasted text.
+  // Keep the input path responsive: semantic embeddings are opt-in for
+  // pasted text and must not make an uploaded file look frozen.
+  const fileAnalysis = options.fileAnalysis === true;
+  if (!fileAnalysis) {
     try {
       const EMBEDDING_CHAR_LIMIT = 25000;
-      // Long PDFs can easily hit 60k+ chars. The rule engine is fast enough,
-      // but the semantic model pass can pin the browser for too long. Keep it
-      // as a polish layer for short/medium text, not a reason to force-close.
       if (text.length <= EMBEDDING_CHAR_LIMIT) {
         progress.advance(7);
         const { analyzeEmbeddings, onModelProgress } = await import("./embedding-analysis.js");
@@ -1491,7 +1490,6 @@ async function analyze() {
                 suggestion: f.suggestion,
               })),
             );
-            // Bump score if a strong semantic signal lands.
             const strongSemantic = semantic.findings.some((f) => f.severity >= 3);
             if (strongSemantic && obj.score < 0.55) {
               obj.score = Math.max(obj.score, 0.55);
@@ -1502,13 +1500,11 @@ async function analyze() {
         } finally {
           offProgress();
         }
-      } else {
-        console.info("embedding analysis skipped for long text", { chars: text.length });
       }
     } catch (err) {
-      // Embedding layer is best-effort. Never block on it.
       console.warn("embedding analysis failed:", err);
     }
+  }
 
     // Live hit count once analysis is back
     const totalHits = (obj.hits ? obj.hits.length : 0) + (obj.structural ? obj.structural.length : 0);
@@ -2734,7 +2730,8 @@ async function handleFile(file) {
   }
   const text = await file.text();
   els.input.value = text;
-  await analyze();
+  document.body.classList.add("has-text");
+  await analyze({ fileAnalysis: true });
 }
 
 // PDF text extraction via pdf.js (Mozilla). No OCR — only embedded text layers.
@@ -2832,7 +2829,7 @@ async function handlePdf(file) {
     } else {
       setStatus(null);
     }
-    await analyze();
+    await analyze({ fileAnalysis: true });
     if (extracted.truncated) {
       const msg = (t.pdf_long || "PDF largo: analicé las primeras {pages} páginas / {chars} caracteres.")
         .replace("{pages}", extracted.pagesRead)
