@@ -439,8 +439,39 @@ def test_docx_structural_comments_use_readable_labels_not_internal_kinds():
         "es",
     )
     assert "negative-listing" not in comment
-    assert "lista negativa" in comment
-    assert "Qué cambiar" in comment
+    assert "lista negativa" not in comment
+    assert "Prueba a decir primero la tesis central." in comment
+    assert "Qué cambiar" not in comment
+
+
+def test_docx_hit_comments_sound_like_editorial_notes_in_both_languages():
+    from aismell.core import Hit, Pattern
+    from aismell.docx import _format_hit_comment
+
+    pattern = Pattern(
+        id="es.cabe_mencionar",
+        kind="phrase",
+        severity=3,
+        pattern="cabe mencionar",
+        message="unused",
+        suggestion="menciónalo sin anunciarlo",
+    )
+    hit = Hit(line=1, col=0, end=14, text="Cabe mencionar esto.", matched="Cabe mencionar", pattern=pattern)
+    es_comment = _format_hit_comment(hit, "es")
+    en_pattern = Pattern(
+        id="en.it_is_worth_noting",
+        kind="phrase",
+        severity=3,
+        pattern="it is worth noting",
+        message="unused",
+        suggestion="just note it",
+    )
+    en_hit = Hit(line=1, col=0, end=18, text="It is worth noting this.", matched="It is worth noting", pattern=en_pattern)
+    en_comment = _format_hit_comment(en_hit, "en")
+    assert es_comment == "«Cabe mencionar» pertenece a una fórmula muy gastada de ese registro. Menciónalo sin anunciarlo."
+    assert en_comment == "“It is worth noting” can make the writing feel generic. Just note it."
+    assert "Hallazgo:" not in es_comment
+    assert "What to change:" not in en_comment
 
 
 def test_example_ai_copy_scores_high_not_moderate():

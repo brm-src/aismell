@@ -6,6 +6,7 @@ import os
 import sys
 
 from .core import Hit, Report, StructuralFinding
+from .docx import _format_hit_comment, _format_structural_comment
 
 
 _USE_COLOR = sys.stdout.isatty() and os.environ.get("NO_COLOR") is None
@@ -34,8 +35,8 @@ _T = {
     "es": {
         "summary": "{path}  •  {n} oraciones  •  smell: {pct}% ({label})",
         "no_findings": "limpio. nada que delatar.",
-        "header_findings": "Hallazgos línea por línea",
-        "header_structural": "Hallazgos estructurales",
+        "header_findings": "Frases para revisar",
+        "header_structural": "Cómo está armado el texto",
         "suggestion": "→",
         "global": "(global)",
         "stdin": "<stdin>",
@@ -43,8 +44,8 @@ _T = {
     "en": {
         "summary": "{path}  •  {n} sentences  •  smell: {pct}% ({label})",
         "no_findings": "clean. nothing tells.",
-        "header_findings": "Line-by-line findings",
-        "header_structural": "Structural findings",
+        "header_findings": "Phrases to review",
+        "header_structural": "How the text is built",
         "suggestion": "→",
         "global": "(global)",
         "stdin": "<stdin>",
@@ -108,19 +109,13 @@ def _render_hit(hit: Hit, t: dict[str, str]) -> str:
         s, e = max(0, hit.col - 35), min(len(hit.text), hit.end + 35)
         context = ("…" if s > 0 else "") + before[s:] + matched + after[: hit.end - s + 35] + ("…" if e < len(hit.text) else "")
         context = context.strip()
-    msg = _c(DIM, hit.pattern.message)
-    sug = ""
-    if hit.pattern.suggestion:
-        sug = f"\n        {t['suggestion']} {_c(GRN, hit.pattern.suggestion)}"
-    return f"  {glyph} {line} {context}\n        {msg} [{hit.pattern.id}]{sug}"
+    comment = _format_hit_comment(hit, "es" if t is _T["es"] else "en")
+    return f"  {glyph} {line} {context}\n        {comment}"
 
 
 def _render_struct(f: StructuralFinding, t: dict[str, str]) -> str:
     sev = f.severity
     glyph = _c(SEV_COLOR[sev], SEV_GLYPH[sev])
     where = f"L{f.line}" if f.line else t["global"]
-    msg = _c(DIM, f.message)
-    sug = ""
-    if f.suggestion:
-        sug = f"\n        {t['suggestion']} {_c(GRN, f.suggestion)}"
-    return f"  {glyph} {where:<6} {msg} [{f.kind}]{sug}"
+    comment = _format_structural_comment(f, "es" if t is _T["es"] else "en")
+    return f"  {glyph} {where:<6} {comment}"

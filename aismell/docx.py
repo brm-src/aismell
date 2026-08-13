@@ -85,44 +85,88 @@ def _kind_label(kind: str, lang: str) -> str:
     return labels.get(kind, kind.replace("-", " "))
 
 
+def _natural_advice(suggestion: str, lang: str) -> str:
+    value = (suggestion or "").strip().rstrip(".!?")
+    if not value:
+        return "Prueba a decirlo de forma más directa." if lang == "es" else "Try saying it more directly."
+    if value.lower() == "borrar":
+        return "Puedes borrarla." if lang == "es" else "You can delete it."
+    if lang == "es":
+        if value.lower().startswith("borrar o reemplazar por "):
+            return f"Prueba con {value[len('borrar o reemplazar por '):]}."
+        if value.lower().startswith("borra"):
+            return value[:1].upper() + value[1:] + "."
+        if value.lower().startswith("di "):
+            return f"Prueba a decir {value[3:].strip()}."
+        if value.lower().startswith("usa "):
+            return f"Prueba con {value[4:].strip()}."
+        return f"{value[:1].upper()}{value[1:]}."
+    if value.lower().startswith(("just ", "start ", "begin ", "delete ")):
+        return value[:1].upper() + value[1:] + "."
+    if value.lower().startswith("say "):
+        return f"Try {value[4:].strip()}."
+    if value.lower().startswith("use "):
+        return f"Try {value[4:].strip()}."
+    return f"Try: {value}."
+
+
+def _hit_reason(pattern_id: str, lang: str) -> str:
+    key = (pattern_id or "").lower()
+    if any(token in key for token in ("chatbot", "espero_sirva", "want_me", "would_you_like")):
+        return "parece una respuesta de chatbot pegada al texto" if lang == "es" else "it reads like a chatbot reply pasted into the text"
+    if "calco" in key:
+        return "suena traducida literalmente del inglés" if lang == "es" else "it sounds translated too literally from English"
+    if any(token in key for token in ("not_just", "no_solo", "binary", "negative", "mas_que")):
+        return "arma un contraste prefabricado" if lang == "es" else "sets up a prefabricated contrast"
+    if any(token in key for token in ("academic", "admin", "edu", "cabe_mencionar", "cabe_destacar", "vale_pena", "importante_notar")):
+        return "pertenece a una fórmula muy gastada de ese registro" if lang == "es" else "belongs to a worn-out formula from that register"
+    if any(token in key for token in ("filler", "connector", "conector", "moreover", "additionally")):
+        return "anuncia o conecta la idea con más ceremonia de la necesaria" if lang == "es" else "announces or connects the idea with more ceremony than it needs"
+    if any(token in key for token in ("promo", "vocab", "jargon", "bloat", "stop_slop")):
+        return "usa una fórmula inflada que vuelve el texto más genérico" if lang == "es" else "uses an inflated formula that makes the writing feel generic"
+    return "puede hacer que el texto suene genérico" if lang == "es" else "can make the writing feel generic"
+
+
 def _format_hit_comment(hit: Hit, lang: str) -> str:
     matched = hit.matched.strip()
-    msg = hit.pattern.message.strip()
-    sug = (hit.pattern.suggestion or "").strip()
+    reason = _hit_reason(hit.pattern.id, lang)
+    advice = _natural_advice(hit.pattern.suggestion, lang)
     if lang == "es":
-        advice = sug or "reescribe esta parte con una afirmación más directa y específica"
-        if "activa" in advice and "voz" not in advice:
-            advice += "; voz activa significa nombrar quién realiza la acción y qué hace"
-        return (
-            f"Hallazgo: expresión con olor a IA.\n"
-            f"Texto marcado: «{matched}».\n"
-            f"Por qué importa: {msg}.\n"
-            f"Qué cambiar: {advice}. Ajusta la frase según el argumento de este documento; no reemplaces mecánicamente."
-        )
-    advice = sug or "rewrite this part with a more direct and specific claim"
-    return (
-        f"Finding: AI-smell expression.\n"
-        f"Marked text: “{matched}”.\n"
-        f"Why it matters: {msg}.\n"
-        f"What to change: {advice}. Adapt it to this document; do not replace mechanically."
-    )
+        return f"«{matched}» {reason}. {advice}"
+    return f"“{matched}” {reason}. {advice}"
 
 
 def _format_structural_comment(finding: StructuralFinding, lang: str) -> str:
-    label = _kind_label(finding.kind, lang)
-    msg = finding.message.strip()
-    sug = (finding.suggestion or "").strip()
-    if lang == "es":
-        advice = sug or "revisa este patrón en el contexto del párrafo y decide si aporta precisión o solo forma"
-        if finding.kind == "passive-voice":
-            advice = "usa voz activa: nombra quién hizo la acción y qué hizo; por ejemplo, «el equipo omitió X» es más claro que «se cometieron errores»"
-        elif finding.kind == "false-agency":
-            advice = "cambia abstracciones que actúan solas por actores concretos: autor, institución, muestra, entrevistado, dato o decisión documentada"
-        elif finding.kind == "low-specificity":
-            advice = "agrega evidencia local: cita, autor, fecha, caso, muestra, lugar o consecuencia verificable dentro del documento"
-        return f"Hallazgo: {label}.\nPor qué importa: {msg}.\nQué cambiar: {advice}."
-    advice = sug or "review this pattern in context and decide whether it adds precision or only polish"
-    return f"Finding: {label}.\nWhy it matters: {msg}.\nWhat to change: {advice}."
+    messages = {
+        "nominalization_density": ("Hay demasiados sustantivos abstractos juntos.", "Too many abstract nouns are packed together."),
+        "semantic-cohesion-mid": ("Los párrafos se parecen demasiado y avanzan con el mismo tono.", "The paragraphs sound too similar and move in the same tone."),
+        "semantic-cohesion-high": ("Varios párrafos repiten el mismo ángulo.", "Several paragraphs repeat the same angle."),
+        "semantic-uniformity": ("El texto se mantiene demasiado pegado a un solo tema.", "The text stays too tightly on one topic."),
+        "semantic-loop-closed": ("El cierre vuelve a decir lo mismo que la apertura.", "The ending repeats the opening instead of taking the text somewhere new."),
+        "discourse-overexplained-theme": ("El texto explica la moraleja en vez de dejar que aparezca en los hechos.", "The text explains its lesson instead of letting the details carry it."),
+        "discourse-tidy-resolution": ("El cierre deja todo demasiado ordenado.", "The ending ties everything up too neatly."),
+        "paragraph-connectors": ("Varios párrafos empiezan con el mismo tipo de conector.", "Several paragraphs open with the same kind of connector."),
+        "paragraph-symmetry": ("Los párrafos tienen una simetría demasiado pareja.", "The paragraphs are unusually similar in shape."),
+        "low-specificity": ("Faltan nombres, datos o consecuencias concretas.", "The passage needs names, numbers, or concrete consequences."),
+        "false-agency": ("Las abstracciones aparecen haciendo cosas que debería hacer una persona o institución.", "Abstract ideas are doing work that should belong to a person or institution."),
+        "passive-voice": ("La frase oculta quién hizo la acción.", "The sentence hides who did the action."),
+        "negative-listing": ("La frase acumula negaciones antes de decir cuál es la idea central.", "The sentence stacks negations before stating its main idea."),
+        "essay-scaffolding": ("El texto anuncia su recorrido en vez de empezar con el contenido.", "The text announces its route instead of starting with the content."),
+        "vague-sentence-stack": ("Se acumulan frases abstractas sin ejemplos ni consecuencias.", "Abstract sentences pile up without examples or consequences."),
+        "rhythm": ("Las oraciones tienen un ritmo demasiado parejo.", "The sentences keep the same rhythm for too long."),
+        "rhetorical-qa": ("La pregunta parece preparar una respuesta enlatada.", "The question sets up a canned answer."),
+        "rule-of-three": ("La estructura de tres elementos se repite demasiado.", "The three-part structure repeats too often."),
+        "staccato-runs": ("Hay demasiadas frases cortas seguidas.", "There are too many short sentences in a row."),
+        "em-dash": ("Los guiones largos se acumulan y cargan el ritmo.", "The em dashes pile up and make the rhythm feel staged."),
+        "tricolon": ("La frase insiste en una serie de tres elementos.", "The sentence leans hard on a three-part list."),
+    }
+    es = lang == "es"
+    message = messages.get(finding.kind, (finding.message.strip(), finding.message.strip()))[0 if es else 1]
+    suggestion = finding.suggestion or (
+        "revisa este patrón en contexto y decide si aporta precisión" if es
+        else "review this pattern in context and decide whether it adds precision"
+    )
+    return f"{message} {_natural_advice(suggestion, lang)}"
 
 
 # OOXML namespaces

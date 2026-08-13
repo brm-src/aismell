@@ -82,16 +82,16 @@ const I18N = {
     verdict_conf_low: "baja",
     verdict_subtitle: {
       es: {
-        ai: "Aparecen muchas señales juntas. No prueba autoría, pero sí pide una revisión cuidadosa.",
-        mixed: "Hay señales, aunque no bastan para sacar una conclusión fuerte. Puede ser un texto formal, editado o escrito sobre un borrador de IA.",
-        human: "Aparecen pocas señales típicas de IA. Si el texto es tuyo, no hay mucho que corregir.",
-        clean: "No encontró señales claras. Texto limpio.",
+        ai: "Aparecen varias señales a la vez. No demuestra quién escribió el texto; sí indica dónde conviene editar.",
+        mixed: "Hay algunas señales, pero no alcanzan para sacar una conclusión. Puede ser un texto formal, editado o simplemente muy pulido.",
+        human: "Aparecen pocas señales de las que suele repetir la IA. Si el texto es tuyo, probablemente solo necesite retoques puntuales.",
+        clean: "No encontré señales claras de ese tipo. No hay nada urgente que corregir.",
       },
       en: {
-        ai: "The detector found many signals together. It is rare to see this many in a text written without assistance.",
-        mixed: "Found some signals, but not enough to be sure. Could be an edited AI draft, or just formal writing.",
-        human: "Hardly any of the patterns AI overuses. Most likely your own writing.",
-        clean: "Nothing found. Clean text.",
+        ai: "Several signals show up together. This does not prove who wrote the text; it does show where to edit.",
+        mixed: "There are some signals, but not enough for a conclusion. The writing may be formal, edited, or simply very polished.",
+        human: "Only a few patterns often repeated by AI appear here. If this is your text, it probably needs only small edits.",
+        clean: "I found no clear signals of that kind. Nothing urgent to fix.",
       },
     },
     verdict_summary_label: "por qué lo digo",
@@ -835,6 +835,8 @@ const FINDING_LABELS = {
   "vague-sentence-stack": { es: "frases abstractas acumuladas", en: "stacked abstract sentences" },
   "essay-scaffolding": { es: "andamiaje de ensayo", en: "essay scaffold" },
   "rhythm": { es: "ritmo plano", en: "flat rhythm" },
+  "semicolon_overuse": { es: "punto y coma repetido", en: "repeated semicolons" },
+  "impersonal_se": { es: "muchos ‘se’ impersonales", en: "stacked impersonal phrasing" },
   "nominalization_density": { es: "sustantivos abstractos en exceso", en: "too many abstract nouns" },
   "semantic-cohesion-high": { es: "párrafos demasiado parecidos", en: "paragraphs too similar" },
   "semantic-cohesion-mid": { es: "párrafos parecidos entre sí", en: "similar paragraphs" },
@@ -982,6 +984,55 @@ function detectionLabel() {
   return UILANG === "es" ? "Qué detecté:" : "What I found:";
 }
 
+function hitReason(id, es) {
+  const key = String(id || "").toLowerCase();
+  if (key.includes("chatbot") || key.includes("espero_sirva") || key.includes("want_me") || key.includes("would_you_like")) {
+    return es ? "parece una respuesta de chatbot pegada al texto" : "it reads like a chatbot reply pasted into the text";
+  }
+  if (key.includes("calco")) {
+    return es ? "suena traducida literalmente del inglés" : "it sounds translated too literally from English";
+  }
+  if (key.includes("not_just") || key.includes("no_solo") || key.includes("binary") || key.includes("negative") || key.includes("mas_que")) {
+    return es ? "arma un contraste prefabricado" : "sets up a prefabricated contrast";
+  }
+  if (key.includes("academic") || key.includes("admin") || key.includes("edu") || key.includes("cabe_mencionar") || key.includes("cabe_destacar") || key.includes("vale_pena") || key.includes("importante_notar")) {
+    return es ? "pertenece a una fórmula muy gastada de ese registro" : "belongs to a worn-out formula from that register";
+  }
+  if (key.includes("filler") || key.includes("connector") || key.includes("conector") || key.includes("moreover") || key.includes("additionally")) {
+    return es ? "anuncia o conecta la idea con más ceremonia de la necesaria" : "announces or connects the idea with more ceremony than it needs";
+  }
+  if (key.includes("promo") || key.includes("vocab") || key.includes("jargon") || key.includes("bloat") || key.includes("stop_slop")) {
+    return es ? "usa una fórmula inflada que vuelve el texto más genérico" : "uses an inflated formula that makes the writing feel generic";
+  }
+  return es ? "puede hacer que el texto suene genérico" : "can make the writing feel generic";
+}
+
+function naturalAdvice(suggestion, es) {
+  const value = String(suggestion || "").trim().replace(/[.!?]+$/, "");
+  if (!value) return es ? "Prueba a decirlo de forma más directa." : "Try saying it more directly.";
+  if (/^borrar$/i.test(value)) return es ? "Puedes borrarla." : "You can delete it.";
+  if (/^borrar\s+o\s+reemplazar\s+por\s+/i.test(value)) return es ? `Prueba con ${value.replace(/^borrar\s+o\s+reemplazar\s+por\s+/i, "")}.` : `Try ${value}.`;
+  if (/^borra\b/i.test(value)) return `${value[0].toUpperCase()}${value.slice(1)}.`;
+  if (/^di\b/i.test(value)) return es ? `Prueba a decir ${value.slice(3).trim()}.` : `Try stating ${value.slice(3).trim()}.`;
+  if (/^usa\b/i.test(value)) return es ? `Prueba con ${value.slice(4).trim()}.` : `Try ${value.slice(4).trim()}.`;
+  if (/^just\s+/i.test(value)) return `${value[0].toUpperCase()}${value.slice(1)}.`;
+  if (/^(start|begin)\s+/i.test(value)) return `${value[0].toUpperCase()}${value.slice(1)}.`;
+  if (/^delete\b/i.test(value)) return `${value[0].toUpperCase()}${value.slice(1)}.`;
+  if (/^use\b/i.test(value)) return `Try ${value.slice(4).trim()}.`;
+  if (/^say\b/i.test(value)) return `Try ${value.slice(3).trim()}.`;
+  return es ? value[0].toUpperCase() + value.slice(1) + "." : value[0].toUpperCase() + value.slice(1) + ".";
+}
+
+function naturalHitComment(hit) {
+  const es = UILANG === "es";
+  const phrase = String(hit.matched || "").trim();
+  const reason = hitReason(hit.id, es);
+  const advice = naturalAdvice(hit.suggestion, es);
+  return es
+    ? `«${phrase}» ${reason}. ${advice}`
+    : `“${phrase}” ${reason}. ${advice}`;
+}
+
 function renderHit(hit, t) {
   // Compact context: ±60 chars around the match (was: whole paragraph).
   const CTX = 60;
@@ -1000,10 +1051,43 @@ function renderHit(hit, t) {
       <div class="glyph s-${hit.severity}">${glyph}</div>
       <div class="body">
         <div class="ctx">${lead}${before}<span class="match">${matched}</span>${after}${tail}</div>
-        <div class="meta"><strong>${detectionLabel()}</strong> <span class="finding-label">${escapeHtml(findingLabel(hit.id))}</span> · ${escapeHtml(hit.message)}</div>
-        ${hit.suggestion ? `<div class="sug"><strong>${actionLabel()}</strong> ${escapeHtml(hit.suggestion)}</div>` : ""}
+        <div class="meta">${escapeHtml(naturalHitComment(hit))}</div>
       </div>
     </div>`;
+}
+
+function naturalStructuralComment(s) {
+  const es = UILANG === "es";
+  const kind = s.kind || "";
+  const advice = naturalAdvice(plainSuggestion(s), es);
+  const messages = {
+    "nominalization_density": es ? "Hay demasiados sustantivos abstractos juntos." : "Too many abstract nouns are packed together.",
+    "semantic-cohesion-mid": es ? "Los párrafos se parecen demasiado y avanzan con el mismo tono." : "The paragraphs sound too similar and move in the same tone.",
+    "semantic-cohesion-high": es ? "Varios párrafos repiten el mismo ángulo." : "Several paragraphs repeat the same angle.",
+    "semantic-uniformity": es ? "El texto se mantiene demasiado pegado a un solo tema." : "The text stays too tightly on one topic.",
+    "semantic-loop-closed": es ? "El cierre vuelve a decir lo mismo que la apertura." : "The ending repeats the opening instead of taking the text somewhere new.",
+    "discourse-overexplained-theme": es ? "El texto explica la moraleja en vez de dejar que aparezca en los hechos." : "The text explains its lesson instead of letting the details carry it.",
+    "discourse-tidy-resolution": es ? "El cierre deja todo demasiado ordenado." : "The ending ties everything up too neatly.",
+    "paragraph-connectors": es ? "Varios párrafos empiezan con el mismo tipo de conector." : "Several paragraphs open with the same kind of connector.",
+    "paragraph-symmetry": es ? "Los párrafos tienen una simetría demasiado pareja." : "The paragraphs are unusually similar in shape.",
+    "low-specificity": es ? "Faltan nombres, datos o consecuencias concretas." : "The passage needs names, numbers, or concrete consequences.",
+    "false-agency": es ? "Las abstracciones aparecen haciendo cosas que debería hacer una persona o institución." : "Abstract ideas are doing work that should belong to a person or institution.",
+    "passive-voice": es ? "La frase oculta quién hizo la acción." : "The sentence hides who did the action.",
+    "impersonal_se": es ? "Se acumulan formas impersonales y cuesta ver quién actúa." : "Impersonal phrasing piles up and hides who is acting.",
+    "semicolon_overuse": es ? "Los puntos y coma se repiten y le dan al texto un ritmo armado." : "The repeated semicolons give the writing a staged rhythm.",
+    "rhetorical-qa": es ? "La pregunta parece preparar una respuesta enlatada." : "The question sets up a canned answer.",
+    "negative-listing": es ? "La frase acumula negaciones antes de decir cuál es la idea central." : "The sentence stacks negations before stating its main idea.",
+    "essay-scaffolding": es ? "El texto anuncia su recorrido en vez de empezar con el contenido." : "The text announces its route instead of starting with the content.",
+    "vague-sentence-stack": es ? "Se acumulan frases abstractas sin ejemplos ni consecuencias." : "Abstract sentences pile up without examples or consequences.",
+    "low-specificity": es ? "Faltan nombres, datos o consecuencias concretas." : "The passage needs names, numbers, or concrete consequences.",
+    "rhythm": es ? "Las oraciones tienen un ritmo demasiado parejo." : "The sentences keep the same rhythm for too long.",
+    "rule-of-three": es ? "La estructura de tres elementos se repite demasiado." : "The three-part structure repeats too often.",
+    "staccato-runs": es ? "Hay demasiadas frases cortas seguidas." : "There are too many short sentences in a row.",
+    "em-dash": es ? "Los guiones largos se acumulan y cargan el ritmo." : "The em dashes pile up and make the rhythm feel staged.",
+    "tricolon": es ? "La frase insiste en una serie de tres elementos." : "The sentence leans hard on a three-part list.",
+  };
+  const message = messages[kind] || plainStructuralMessage(s).replace(/\s*\([^)]*\)/g, "");
+  return `${message} ${advice}`.trim();
 }
 
 function renderStructural(s, t) {
@@ -1017,9 +1101,7 @@ function renderStructural(s, t) {
     <div class="finding">
       <div class="glyph s-${s.severity}">${glyph}</div>
       <div class="body">
-        <div class="ctx" style="color: var(--fg);"><span class="finding-label">${escapeHtml(findingLabel(s.kind))}</span></div>
-        <div class="meta"><strong>${detectionLabel()}</strong> ${escapeHtml(msg)}</div>
-        ${sug ? `<div class="sug"><strong>${actionLabel()}</strong> ${escapeHtml(sug)}</div>` : ""}
+        <div class="ctx" style="color: var(--fg);">${escapeHtml(naturalStructuralComment(s))}</div>
       </div>
     </div>`;
 }
@@ -1156,8 +1238,8 @@ function renderActionSummary(report) {
   const firstHit = hits.find((h) => h.severity >= 2) || hits[0];
   if (firstHit) {
     priority.push(es
-      ? `Revisa la frase marcada “${firstHit.matched}”: ${firstHit.suggestion || "elimínala o reformúlala"}.`
-      : `Review the marked phrase “${firstHit.matched}”: ${firstHit.suggestion || "delete or rephrase it"}.`);
+      ? `Empieza por «${firstHit.matched}». ${naturalAdvice(firstHit.suggestion, true)}`
+      : `Start with “${firstHit.matched}”. ${naturalAdvice(firstHit.suggestion, false)}`);
   }
 
   if (!priority.length) return "";
@@ -1445,35 +1527,23 @@ els.input.addEventListener("input", () => {
 const EXAMPLES = {
   es: {
     ai: [
-    `El presente ensayo aborda la cuestión de la migración digital desde tres ejes principales. En primer lugar, examinaremos la transformación cultural que esta implica. En segundo lugar, analizaremos el impacto económico que ha tenido en las últimas décadas. En tercer lugar, exploraremos las consecuencias políticas que se derivan de este proceso.
+    `La migración digital cambió la forma en que trabajamos, estudiamos y nos relacionamos. El cambio no fue igual para todos: mientras algunos pudieron adaptarse rápido, otros quedaron fuera por falta de conexión, tiempo o apoyo.
 
-Es importante destacar que la migración digital no es solo un fenómeno tecnológico, sino que constituye un cambio estructural profundo en la forma en que las sociedades contemporáneas se organizan, se comunican y se relacionan entre sí. Lo que enseña la historia es que estos procesos rara vez son neutros: se imponen, se resisten, se traducen, se renegocian.
+El problema no es solo el acceso a la tecnología. También importa qué hacemos con ella. Una plataforma nueva puede facilitar una tarea, pero no resuelve por sí sola las desigualdades que ya existían. Por eso conviene mirar los costos, los beneficios y a quiénes deja atrás.
 
-En definitiva, comprender la migración digital requiere adoptar una mirada interdisciplinar que combine perspectivas de la sociología, la economía y la ciencia política. Solo así podremos abordar de manera integral los desafíos que este fenómeno plantea para el siglo XXI.`,
+La discusión suele terminar en una defensa automática de la innovación o en un rechazo igual de automático. Hay una pregunta más útil: qué herramienta sirve, para quién y bajo qué condiciones.`,
 
-    `En el mundo actual, la inteligencia artificial se ha convertido en una herramienta fundamental para abordar los desafíos del siglo XXI. Desde la salud hasta la educación, sus aplicaciones son prácticamente ilimitadas y prometen transformar profundamente la forma en que vivimos y trabajamos.
+    `La inteligencia artificial ya se usa en tareas que antes parecían exclusivamente humanas: redactar informes, ordenar información y responder consultas. Eso no significa que todas esas respuestas sean confiables. El sistema puede escribir con seguridad y equivocarse en los datos, las fuentes o el contexto.
 
-Es fundamental comprender que la IA no es solo una tecnología, sino un cambio de paradigma que requiere una reflexión ética profunda. Diversos expertos coinciden en que su desarrollo debe guiarse por principios sólidos de transparencia, equidad y responsabilidad.
+El riesgo no está solo en la herramienta. También está en delegar una decisión sin revisar cómo se llegó a ella. En educación, salud y administración pública, una respuesta rápida no basta si nadie puede explicar de dónde salió o a quién afecta.
 
-En conclusión, el futuro de la inteligencia artificial dependerá de nuestra capacidad colectiva para equilibrar innovación y regulación. Solo a través de un diálogo abierto y multidisciplinar podremos garantizar que esta tecnología beneficie a toda la humanidad.`,
+La discusión debería moverse de la fascinación y el rechazo hacia preguntas concretas: qué tarea se automatiza, qué margen de error tiene y quién responde cuando falla.`,
 
-    `La sostenibilidad ambiental constituye uno de los desafíos más apremiantes de nuestra era. Cabe destacar que las decisiones que tomemos hoy tendrán un impacto duradero en las generaciones futuras, lo cual exige un compromiso firme y articulado por parte de todos los actores sociales.
+    `La sostenibilidad suele aparecer como una promesa amplia, pero las decisiones reales son menos cómodas. Una ciudad puede ampliar sus áreas verdes y, al mismo tiempo, aprobar proyectos que aumentan el tráfico. Una empresa puede reducir residuos en una planta y mantener una cadena de suministro difícil de rastrear.
 
-En primer lugar, resulta imperativo reconocer que el cambio climático no es solo un problema ambiental, sino que constituye un desafío multidimensional que afecta a la economía, la salud pública y la estabilidad social. En segundo lugar, debemos considerar que las soluciones requieren un enfoque integral. En tercer lugar, la cooperación internacional resulta esencial.
+Estas tensiones no invalidan las medidas parciales. Sí obligan a describirlas sin convertir cada avance en una transformación histórica. Conviene decir qué cambió, cuánto costó y qué quedó pendiente.
 
-En síntesis, abordar la crisis climática requiere voluntad política, innovación tecnológica y cambios profundos en nuestros patrones de consumo. Estamos ante una oportunidad histórica para construir un mundo más justo y sostenible para todos.`,
-
-    `La educación en el siglo XXI atraviesa una transformación sin precedentes. Las metodologías tradicionales, basadas en la transmisión unidireccional del conocimiento, están dando paso a modelos más dinámicos, colaborativos y centrados en el estudiante.
-
-Es importante señalar que esta transformación no se limita a la incorporación de tecnología en el aula. Más bien, supone repensar profundamente los objetivos educativos, los roles de docentes y estudiantes, así como los criterios de evaluación. En este contexto, conceptos como el aprendizaje significativo, las competencias del siglo XXI y la educación inclusiva adquieren una relevancia fundamental.
-
-Para concluir, el futuro de la educación dependerá de nuestra capacidad para integrar lo mejor de la tradición pedagógica con las posibilidades que ofrecen las nuevas tecnologías. Sin duda, estamos ante un momento apasionante.`,
-
-    `El liderazgo efectivo en las organizaciones modernas requiere una combinación única de habilidades técnicas, emocionales y estratégicas. Los líderes contemporáneos deben navegar entornos cada vez más complejos, volátiles e inciertos, lo que demanda capacidades adaptativas excepcionales.
-
-En primer lugar, la inteligencia emocional emerge como un factor crítico de éxito. En segundo lugar, la visión estratégica permite anticipar tendencias y oportunidades. En tercer lugar, la capacidad de comunicación inspira y moviliza a los equipos. Estos tres pilares constituyen la base del liderazgo transformacional.
-
-Cabe mencionar que el liderazgo no es solo una posición jerárquica, sino una influencia que se ejerce a través del ejemplo, la coherencia y el compromiso genuino con el desarrollo de las personas. En última instancia, los grandes líderes son aquellos que dejan un legado de transformación positiva.`,
+Una política ambiental gana credibilidad cuando muestra sus límites junto con sus resultados.`,
   ],
 
   human: [
@@ -1582,23 +1652,23 @@ Quispe-Achacollo, M. (2021). Saberes ancestrales andinos frente al cambio climá
   },
   en: {
     ai: [
-      `In today's rapidly changing world, artificial intelligence has become a powerful tool for addressing the challenges of the twenty-first century. From healthcare to education, its applications are virtually limitless and promise to transform the way we live, work and interact with one another.
+      `Digital migration changed how we work, study and keep in touch. The change was not equal for everyone: some people adapted quickly, while others were held back by poor connections, limited time or a lack of support.
 
-It is essential to understand that AI is not merely a technological development, but a paradigm shift that requires deep ethical reflection. Experts increasingly agree that its deployment must be guided by robust principles of transparency, fairness and accountability.
+Access is only part of the problem. What matters is also what we do with the technology once it arrives. A new platform may make one task easier without fixing the inequality around it. The useful questions are simpler: who benefits, who pays and who gets left out?
 
-In conclusion, the future of artificial intelligence will depend on our collective ability to balance innovation with regulation. Only through open, multidisciplinary dialogue can we ensure that this technology benefits humanity as a whole.`,
+The debate often swings between automatic praise and automatic rejection. It is more useful to ask which tool helps, in which setting and under whose control.`,
 
-      `The present essay examines digital migration through three main dimensions. First, it explores the cultural transformations associated with online life. Second, it analyzes the economic impact of these changes over the past decades. Third, it considers the political consequences that emerge from this process.
+      `Artificial intelligence is already used to draft reports, sort information and answer questions. That does not make every answer reliable. A system can sound certain while getting the facts, sources or context wrong.
 
-It is important to note that digital migration is not simply a technological phenomenon, but a structural shift in how contemporary societies organize, communicate and relate to one another. This makes it necessary to adopt a comprehensive and interdisciplinary perspective.
+The risk is not only in the tool. It is also in handing over a decision without checking how it was reached. In schools, hospitals and public offices, a fast answer is not enough if nobody can explain where it came from or whom it affects.
 
-Ultimately, understanding digital migration requires more than describing new platforms. It requires examining the broader social conditions that make these transformations possible and the tensions they create.`,
+The useful questions are concrete: what task is being automated, how often does it fail and who is responsible when it does?`,
 
-      `Environmental sustainability represents one of the most pressing challenges of our time. It is worth highlighting that the decisions made today will have a lasting impact on future generations, which requires a firm and coordinated commitment from all social actors.
+      `Sustainability is often presented as a broad promise, while real decisions are less tidy. A city may expand its parks and approve a road project that increases traffic. A company may cut waste at one plant while keeping a supply chain that nobody can fully trace.
 
-First, climate change should not be understood only as an environmental issue. Second, the solutions demand an integrated approach that includes policy, technology and public participation. Third, international cooperation remains essential for meaningful progress.
+Those tensions do not make partial measures worthless. They do mean we should describe them without calling every improvement historic. Say what changed, what it cost and what is still unresolved.
 
-In summary, addressing the climate crisis requires political will, technological innovation and profound changes in consumption patterns. We are facing a historic opportunity to build a fairer and more sustainable future for everyone.`,
+An environmental policy earns trust when it shows its limits as well as its results.`,
     ],
 
     human: [
