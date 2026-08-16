@@ -25,3 +25,6 @@ htmlcov/
 
 # Generated demo
 *.cast
+
+# Cloudflare Worker state
+.wrangler/

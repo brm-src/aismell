@@ -1,0 +1,10 @@
+name = "aismell-rewrite"
+main = "src/index.js"
+compatibility_date = "2026-08-16"
+workers_dev = true
+
+[observability]
+enabled = true
+
+[ai]
+binding = "AI"
