@@ -1,0 +1,9 @@
+[project]
+name = "aismell-analyzer-worker"
+version = "0.1.0"
+description = "Runs the actual aismell detector before an opt-in rewrite."
+requires-python = ">=3.13"
+dependencies = ["pyyaml"]
+
+[dependency-groups]
+dev = ["workers-py", "workers-runtime-sdk"]

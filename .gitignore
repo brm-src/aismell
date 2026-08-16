@@ -28,3 +28,4 @@ htmlcov/
 
 # Cloudflare Worker state
 .wrangler/
+worker/analyzer/python_modules/

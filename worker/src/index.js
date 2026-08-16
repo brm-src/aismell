@@ -1,6 +1,6 @@
 const MAX_CHARS = 3000;
 const MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
-const VERSION = "2026-08-16-rewrite-v1";
+const VERSION = "2026-08-16-rewrite-v2";
 
 function headers(origin = "") {
   return {
@@ -53,6 +53,27 @@ function parseModelResponse(result, original) {
   return { text: parsed.text, changes };
 }
 
+async function analyzeWithAismell(env, text) {
+  if (!env?.ANALYZER?.fetch) throw new Error("aismell analyzer unavailable");
+  const response = await env.ANALYZER.fetch("https://aismell-analyzer/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!response.ok) throw new Error("aismell analyzer unavailable");
+  const result = await response.json();
+  if (!result || (result.language !== "es" && result.language !== "en") || !Array.isArray(result.findings)) {
+    throw new Error("aismell analyzer returned invalid data");
+  }
+  return {
+    language: result.language,
+    findings: result.findings
+      .filter((finding) => typeof finding?.id === "string")
+      .map((finding) => `${finding.id}${typeof finding.matched === "string" ? ` (${finding.matched})` : ""}`)
+      .slice(0, 24),
+  };
+}
+
 export async function handleRewrite(request, env) {
   let body;
   try {
@@ -68,9 +89,10 @@ export async function handleRewrite(request, env) {
   if (!env?.AI?.run) return json({ error: "rewrite-unavailable" }, { status: 503 }, origin);
 
   try {
+    const analysis = await analyzeWithAismell(env, text);
     const response = await env.AI.run(MODEL, {
       messages: [
-        { role: "system", content: editorPrompt(body.language, body.findings) },
+        { role: "system", content: editorPrompt(analysis.language, analysis.findings) },
         { role: "user", content: text },
       ],
       response_format: { type: "json_object" },

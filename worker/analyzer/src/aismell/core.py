@@ -1,0 +1,1796 @@
+"""aismell core detector — sniffs AI-smell line by line."""
+
+from __future__ import annotations
+
+import json
+import re
+import statistics
+from dataclasses import dataclass, field
+from pathlib import Path
+
+try:
+    import yaml
+except ImportError as exc:  # pragma: no cover
+    raise SystemExit("aismell needs PyYAML. install: pip install pyyaml") from exc
+
+
+PATTERNS_DIR = Path(__file__).resolve().parent / "patterns"
+
+
+@dataclass
+class Pattern:
+    id: str
+    kind: str  # phrase | regex
+    severity: int
+    pattern: str
+    message: str
+    suggestion: str = ""
+    _compiled: re.Pattern | None = field(default=None, repr=False)
+
+    def compile(self) -> re.Pattern:
+        if self._compiled is None:
+            if self.kind == "phrase":
+                # case-insensitive whole-ish word match
+                self._compiled = re.compile(
+                    r"\b" + self.pattern + r"\b",
+                    re.IGNORECASE,
+                )
+            else:
+                self._compiled = re.compile(self.pattern)
+        return self._compiled
+
+
+@dataclass
+class Hit:
+    line: int
+    col: int
+    end: int
+    text: str           # full sentence/line context
+    matched: str        # what matched
+    pattern: Pattern
+
+
+@dataclass
+class StructuralFinding:
+    line: int
+    kind: str           # 'rhythm' | 'list-density' | 'em-dash' | 'tricolon'
+    severity: int
+    message: str
+    suggestion: str = ""
+
+
+@dataclass
+class SectionScore:
+    name: str             # apertura | cuerpo | cierre
+    score: float
+    sentences: int
+    reasons: list[str] = field(default_factory=list)
+
+
+@dataclass
+class SegmentScore:
+    """A local, human-readable snapshot of one contiguous text window."""
+
+    index: int
+    start_sentence: int
+    end_sentence: int
+    sentences: int
+    score: float
+    label: str
+    confidence: str
+    findings: int
+    text: str
+
+
+@dataclass
+class Report:
+    sentences: int
+    hits: list[Hit] = field(default_factory=list)
+    structural: list[StructuralFinding] = field(default_factory=list)
+    sections: list[SectionScore] = field(default_factory=list)
+    score: float = 0.0  # 0..1
+    severity_label: str = ""
+    era: str = "unknown"       # 'pre-llm' | 'post-llm' | 'unknown'
+    era_max_year: int = 0      # largest year found in the text
+    notes: list[str] = field(default_factory=list)
+    segments: list[SegmentScore] = field(default_factory=list)
+
+    @property
+    def total_findings(self) -> int:
+        return len(self.hits) + len(self.structural)
+
+
+# ---------- loading ----------
+
+# Era detection: public LLMs (ChatGPT) launched Nov 2022. A text whose
+# largest mentioned year is <= 2020 cannot be LLM-generated. Formal
+# academic connectors in such a text are genre markers, not AI signals.
+_ERA_LLM_BOUNDARY = 2020
+_YEAR_RE = re.compile(r"\b(?:19|20)\d{2}\b")
+
+
+def detect_era(text: str) -> tuple[str, int]:
+    """Return ('pre-llm'|'post-llm'|'unknown', max_year)."""
+    years = [int(m) for m in _YEAR_RE.findall(text)]
+    if not years:
+        return "unknown", 0
+    max_year = max(years)
+    if max_year <= _ERA_LLM_BOUNDARY:
+        return "pre-llm", max_year
+    return "post-llm", max_year
+
+
+# Discourse-connector / filler pattern families. In academic prose these are
+# genre markers, not AI tells. When they dominate the hits AND the text is
+# clearly academic (citations present), the score must not rise from them.
+_CONNECTOR_FAMILIES = {
+    "primer_lugar", "segundo_lugar", "tercer_lugar",
+    "este_sentido", "no_obstante", "por_lo_tanto", "en_sintesis",
+    "en_resumen", "en_definitiva", "en_otras_palabras", "ademas",
+    "consecuentemente", "en_el_marco", "se_argumenta", "se_sostiene",
+    "cabe_", "es_importante", "es_fundamental", "hay_que", "conviene",
+    "vale_la_pena", "resulta_", "filler", "calco", "conector",
+    "in_this_sense", "first_and_foremost", "furthermore", "moreover",
+    "nevertheless", "in_conclusion", "in_summary", "in_other_words",
+    "it_is_important", "it_should_be", "consequently", "additionally",
+    "notably", "namely", "hence", "therefore", "thus",
+}
+_CITATION_RE_ACADEMIC = re.compile(
+    r"\([^()]{0,60}(?:19|20)\d{2}[^()]{0,60}\)"
+)
+
+
+def load_patterns(lang: str) -> list[Pattern]:
+    path = PATTERNS_DIR / f"{lang}.yaml"
+    if not path.exists():
+        raise FileNotFoundError(f"patterns file not found: {path}")
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    out: list[Pattern] = []
+    for raw in data.get("patterns", []):
+        out.append(Pattern(
+            id=raw["id"],
+            kind=raw["kind"],
+            severity=int(raw["severity"]),
+            pattern=raw["pattern"],
+            message=raw["message"],
+            suggestion=raw.get("suggestion", ""),
+        ))
+    return out
+
+
+# ---------- language detection ----------
+
+_ES_HINTS = re.compile(
+    r"\b(que|para|como|pero|porque|según|también|así|este|esta|del|los|las|una|uno|"
+    r"hacia|cuando|aunque|entonces|aquí|allí|qué|sí|no|gracias|hola|por favor|"
+    r"señor|señora|muy|está|están|estoy|estamos|era|eras|éramos)\b",
+    re.IGNORECASE,
+)
+_ES_ACCENT_CHARS = re.compile(r"[áéíóúüñÁÉÍÓÚÜÑ]")
+_EN_HINTS = re.compile(
+    r"\b(the|and|of|to|in|that|is|with|for|on|as|by|are|this|from|but|or|"
+    r"because|when|where|which|though|thank you|please|sir|madam)\b",
+    re.IGNORECASE,
+)
+
+
+def detect_lang(text: str) -> str:
+    es = len(_ES_HINTS.findall(text))
+    en = len(_EN_HINTS.findall(text))
+    # strong punctuation + accent marks are strong Spanish hints.
+    es_extra = 0
+    if "¿" in text or "¡" in text:
+        es_extra += 2
+    if _ES_ACCENT_CHARS.search(text):
+        es_extra += 1
+    es = es + es_extra
+    return "es" if es >= en else "en"
+
+
+# ---------- sentence splitting (simple, language-agnostic) ----------
+
+_SENT_SPLIT = re.compile(r"(?<=[\.\?!¡¿…])\s+(?=[A-ZÁÉÍÓÚÑ¿¡])|\n+")
+
+
+def split_sentences(text: str) -> list[str]:
+    return [s.strip() for s in _SENT_SPLIT.split(text) if s.strip()]
+
+
+def _authorial_lines(lines: list[str]) -> list[tuple[int, str]]:
+    """Return lines that should count as the author's prose.
+
+    aismell often documents bad phrases as examples. Code blocks,
+    blockquotes, and Markdown tables are examples more often than author voice,
+    so lexical hits there should not poison the score.
+    """
+    out: list[tuple[int, str]] = []
+    in_fence = False
+    for i, line in enumerate(lines, start=1):
+        stripped = line.strip()
+        if stripped.startswith(("```", "~~~")):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if stripped.startswith(">"):
+            continue
+        if stripped.startswith("|") and stripped.endswith("|"):
+            continue
+        out.append((i, line))
+    return out
+
+
+def _inside_spans(line: str, start: int, end: int, delimiters: list[tuple[str, str]]) -> bool:
+    for opener, closer in delimiters:
+        pos = 0
+        while True:
+            left = line.find(opener, pos)
+            if left == -1:
+                break
+            right = line.find(closer, left + len(opener))
+            if right == -1:
+                break
+            span_start = left + len(opener)
+            span_end = right
+            if span_start <= start and end <= span_end:
+                return True
+            pos = right + len(closer)
+    return False
+
+
+def _match_is_quoted_example(line: str, start: int, end: int) -> bool:
+    """Skip inline examples like *"delve into"* or `hope this helps`.
+
+    This keeps documentation of slop from being scored as slop.
+    """
+    return _inside_spans(line, start, end, [
+        ("`", "`"),
+        ('"', '"'),
+        ("“", "”"),
+        ("*", "*"),
+    ])
+
+
+# ---------- structural checks ----------
+
+def _check_em_dashes(text: str, lines: list[str]) -> list[StructuralFinding]:
+    out: list[StructuralFinding] = []
+    for i, line in enumerate(lines, start=1):
+        count = line.count("—") + line.count("–") + line.count("--")
+        if count >= 2:
+            out.append(StructuralFinding(
+                line=i,
+                kind="em-dash",
+                severity=2,
+                message=f"{count} rayas (—/–/--) en una línea — la IA las abusa",
+                suggestion="reemplaza por comas, paréntesis o puntos",
+            ))
+    return out
+
+
+def _check_rhythm(sentences: list[str], lang: str = "en") -> list[StructuralFinding]:
+    """If sentence lengths cluster too tight, flag monorhythm.
+
+    Spanish calibration (Deep Technical Analysis, June 2026):
+    Machine ES: μ≈25-30 words, σ≈3-5 words
+    Human ES: σ≥12 words
+    English keeps original threshold (CV<0.35)."""
+    if len(sentences) < 6:
+        return []
+    lengths = [len(s.split()) for s in sentences]
+    mean = statistics.mean(lengths)
+    if mean < 5:
+        return []
+    try:
+        std = statistics.stdev(lengths)
+    except statistics.StatisticsError:
+        return []
+    cv = std / mean if mean else 0
+
+    # Spanish: stricter because sentences are naturally longer but machine text is even flatter
+    if lang == "es":
+        threshold = 0.30
+        # Extra: if std is very tight in absolute terms (σ < 6) and mean is in machine range (20-35)
+        if cv < threshold or (std < 6 and 20 < mean < 35):
+            return [StructuralFinding(
+                line=0,
+                kind="rhythm",
+                severity=2,
+                message=f"varianza de oración baja (CV={cv:.2f}, σ={std:.1f} palabras) — ritmo plano de IA (texto máquina ES: σ≈3-5, humano: σ≥12)",
+                suggestion="mezcla oraciones cortas (5-10 palabras) y largas (40-60)",
+            )]
+        return []
+
+    if cv < 0.35:
+        return [StructuralFinding(
+            line=0,
+            kind="rhythm",
+            severity=2,
+            message=f"sentence length variance low (CV={cv:.2f}) — flat machine rhythm",
+            suggestion="mix short and long sentences",
+        )]
+    return []
+
+
+def _check_list_density(text: str) -> list[StructuralFinding]:
+    lines = text.splitlines()
+    bullets = sum(1 for ln in lines if re.match(r"\s*([-*•]|\d+\.)\s", ln))
+    if not lines:
+        return []
+    ratio = bullets / max(len(lines), 1)
+    if bullets >= 5 and ratio > 0.4:
+        return [StructuralFinding(
+            line=0,
+            kind="list-density",
+            severity=1,
+            message=f"{bullets} bullets ({ratio:.0%} del texto) — densidad alta de listas",
+            suggestion="convierte algunas viñetas en párrafos con una idea completa: afirmación, evidencia y consecuencia",
+        )]
+    return []
+
+
+def _check_ellipses(text: str, lang: str) -> list[StructuralFinding]:
+    """Google Doc AI-isms: repeated ellipses used for fake drama."""
+    count = text.count("...") + text.count("…")
+    if count < 3:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="ellipses",
+        severity=2,
+        message=(
+            f"{count} elipsis — pausa dramática artificial típica de IA"
+            if lang == "es" else
+            f"{count} ellipses — artificial dramatic pause typical of AI"
+        ),
+        suggestion=(
+            "usa puntos normales salvo que alguien realmente se interrumpa"
+            if lang == "es" else
+            "use periods unless someone is genuinely trailing off"
+        ),
+    )]
+
+
+def _check_section_headers(text: str, lang: str) -> list[StructuralFinding]:
+    """Google Doc AI-isms: generic essay/chatbot headings.
+
+    Markdown documentation legitimately has many headings. Flag the LLM-ish
+    shape only when the heading labels themselves are generic response scaffolds.
+    """
+    generic = re.compile(
+        r"^(understanding|overview|key takeaways|the problem|the solution|"
+        r"moving forward|conclusion|summary|contexto|introducción|desarrollo|"
+        r"conclusión|resumen|puntos clave|el problema|la solución)\b",
+        re.I,
+    )
+    headers = 0
+    for ln in text.splitlines():
+        s = ln.strip()
+        if not s:
+            continue
+        if re.match(r"^#{1,4}\s+\S", s):
+            label = re.sub(r"^#{1,4}\s+", "", s).strip()
+            if generic.match(label):
+                headers += 1
+        elif generic.match(s):
+            headers += 1
+    if headers < 3:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="section-headers",
+        severity=2,
+        message=(
+            f"{headers} encabezados genéricos — formato de respuesta IA"
+            if lang == "es" else
+            f"{headers} generic section headers — AI answer formatting"
+        ),
+        suggestion=(
+            "reemplaza los rótulos genéricos por subtítulos específicos o por prosa"
+            if lang == "es" else
+            "replace generic labels with specific headings or prose"
+        ),
+    )]
+
+
+def _check_emphasis_overload(text: str, lang: str) -> list[StructuralFinding]:
+    """Google Doc AI-isms: excessive markdown emphasis in prose.
+
+    README-style bold labels ("**pipx:**", "**1. Phrase patterns.**") are
+    structure, not breathless emphasis, so they do not count here.
+    """
+    total = 0
+    emphasis_rx = re.compile(r"\*\*([^*]+)\*\*|(?<!\*)\*([^*\n]+)\*(?!\*)")
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        label_prefix = re.match(r"^(?:[-*•]\s+|\d+\.\s+)?", stripped)
+        label_start = label_prefix.end() if label_prefix else 0
+        for match in emphasis_rx.finditer(stripped):
+            content = (match.group(1) or match.group(2) or "").strip()
+            tail = stripped[match.end():].lstrip()
+            span_starts_label = match.start() == label_start
+            label_like = span_starts_label and (
+                content.endswith((":", "."))
+                or re.match(r"\d+\.\s+.+", content)
+                or tail.startswith((":", "."))
+            )
+            if label_like:
+                continue
+            total += 1
+    if total < 4:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="emphasis-overload",
+        severity=2,
+        message=(
+            f"{total} énfasis en negrita/cursiva — subrayado excesivo típico de IA"
+            if lang == "es" else
+            f"{total} bold/italic emphases — over-explained AI emphasis"
+        ),
+        suggestion=(
+            "deja que la frase pese por sí sola"
+            if lang == "es" else
+            "let the sentence carry the emphasis"
+        ),
+    )]
+
+
+def _check_tricolon(sentences: list[str]) -> list[StructuralFinding]:
+    """Flag sentences that contain exactly three comma-separated items in a list."""
+    out: list[StructuralFinding] = []
+    pattern = re.compile(r"\b\w+\b,\s+\b\w+\b,?\s+(?:and|y)\s+\b\w+\b", re.IGNORECASE)
+    triples = sum(1 for s in sentences if pattern.search(s))
+    if triples >= 3:
+        out.append(StructuralFinding(
+            line=0,
+            kind="tricolon",
+            severity=1,
+            message=f"{triples} oraciones con regla de tres — patrón AI",
+            suggestion="rompe alguna en dos items o cuatro",
+        ))
+    return out
+
+
+def _check_rhetorical_qa(sentences: list[str], lang: str) -> list[StructuralFinding]:
+    """Google Doc AI-isms: question immediately answered by the writer."""
+    pattern = re.compile(
+        r"(¿?\b(qué|por qué|cómo|cuándo|dónde|what|why|how|when|where)\b[^?\n]{0,90}\?\s*(because|porque|the answer|la respuesta|esto|that|it|simple|sencillo)\b|\b(the result|el resultado|why|por qué)\?\s*\w+)",
+        re.IGNORECASE,
+    )
+    hits = sum(1 for s in sentences if pattern.search(s))
+    if hits < 2:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="rhetorical-qa",
+        severity=3,
+        message=(
+            f"{hits} preguntas retóricas respondidas al tiro — patrón IA"
+            if lang == "es" else
+            f"{hits} rhetorical questions answered immediately — AI pattern"
+        ),
+        suggestion=(
+            "convierte la pregunta y respuesta en una afirmación"
+            if lang == "es" else
+            "turn the question-answer pair into a statement"
+        ),
+    )]
+
+
+def _check_binary_reframes(text: str, lang: str) -> list[StructuralFinding]:
+    if lang == "es":
+        patterns = [
+            r"\bno\s+porque\b[^.!?]{1,160}[.!?]\s*porque\b",
+            r"\bno\s+es\s+el\s+problema\b[^.!?]{0,160}[.!?]\s*[^.!?]{0,80}\b(sí|lo\s+es)\b",
+            r"\bla\s+respuesta\s+no\s+es\b[^.!?]{1,120}[.!?]\s*\bes\b",
+            r"\bparece\b[^.!?]{1,160}[.!?]\s*\ben\s+realidad\b",
+            r"\bno\b[^.!?]{1,120}[.!?]\s*\bsino\b",
+        ]
+        msg = "contraste binario partido — reencuadre mecánico típico de IA"
+        suggestion = "afirma el punto fuerte directo, sin la pista falsa previa"
+    else:
+        patterns = [
+            r"\bnot\s+because\b[^.!?]{1,160}[.!?]\s*because\b",
+            r"\b(isn['’]?t|is\s+not|aren['’]?t|are\s+not)\s+the\s+problem\b[^.!?]{0,160}[.!?]\s*[^.!?]{0,80}\b(is|are)\b",
+            r"\bthe\s+answer\s+(isn['’]?t|is\s+not)\b[^.!?]{1,120}[.!?]\s*\bit['’]?s\b",
+            r"\bit\s+feels\s+like\b[^.!?]{1,160}[.!?]\s*\b(it['’]?s\s+actually|actually)\b",
+            r"\bnot\b[^.!?]{1,120}[.!?]\s*\bbut\b",
+        ]
+        msg = "split binary reframe — mechanical AI contrast"
+        suggestion = "state the stronger point directly, without the decoy"
+    if any(re.search(p, text, re.IGNORECASE | re.DOTALL) for p in patterns):
+        return [StructuralFinding(line=0, kind="binary-reframe", severity=3, message=msg, suggestion=suggestion)]
+    return []
+
+
+def _check_negative_listing(text: str, lang: str) -> list[StructuralFinding]:
+    if lang == "es":
+        pattern = r"\bno\s+(era|fue|es)\b[^.!?]{1,120}[.!?]\s*\bno\s+(era|fue|es)\b[^.!?]{1,120}[.!?]\s*\b(era|fue|es)\b"
+        msg = "listado negativo antes del punto — acumulación dramática de IA"
+        suggestion = "di primero la tesis central y usa la negación solo si corrige una confusión real"
+    else:
+        pattern = r"\bnot\s+(a|an|the)?\b[^.!?]{1,120}[.!?]\s*\bnot\s+(a|an|the)?\b[^.!?]{1,120}[.!?]\s*\b(a|an|the|it\s+was)\b"
+        msg = "negative listing before the point — AI dramatic buildup"
+        suggestion = "state the central claim first; use negation only if it corrects a real misconception"
+    if re.search(pattern, text, re.IGNORECASE | re.DOTALL):
+        return [StructuralFinding(line=0, kind="negative-listing", severity=2, message=msg, suggestion=suggestion)]
+    return []
+
+
+def _check_false_agency(text: str, lang: str) -> list[StructuralFinding]:
+    if lang == "es":
+        patterns = [
+            r"\bla\s+decisi[oó]n\s+emerge\b",
+            r"\blos\s+datos\s+nos\s+dicen\b",
+            r"\bel\s+mercado\s+premia\b",
+            r"\bla\s+conversaci[oó]n\s+se\s+mueve\s+hacia\b",
+            r"\bla\s+cultura\s+cambia\b",
+            r"\bla\s+queja\s+se\s+convierte\s+en\b",
+        ]
+        msg = "cosas abstractas actúan como personas — falsa agencia de IA"
+        suggestion = "reemplaza la abstracción por un actor concreto: quién decidió, qué dato muestra algo, quién cambió qué"
+    else:
+        patterns = [
+            r"\bthe\s+decision\s+emerges\b",
+            r"\bthe\s+data\s+tells\s+us\b",
+            r"\bthe\s+market\s+rewards\b",
+            r"\bthe\s+conversation\s+moves\s+toward\b",
+            r"\bthe\s+culture\s+shifts\b",
+            r"\bthe\s+complaint\s+becomes\s+a\s+fix\b",
+        ]
+        msg = "abstract things act like people — false AI agency"
+        suggestion = "replace the abstraction with a concrete actor: who decided, what data shows it, who changed what"
+    hits = sum(1 for p in patterns if re.search(p, text, re.IGNORECASE))
+    if hits >= 1:
+        sev = 3 if hits >= 2 else 2
+        return [StructuralFinding(line=0, kind="false-agency", severity=sev, message=f"{hits} casos: {msg}", suggestion=suggestion)]
+    return []
+
+
+def _check_passive_voice(text: str, lang: str) -> list[StructuralFinding]:
+    if lang == "es":
+        patterns = [
+            r"\bse\s+cometieron\s+errores\b",
+            r"\bla\s+decisi[oó]n\s+fue\s+tomada\b",
+            r"\bel\s+producto\s+fue\s+creado\b",
+            r"\bse\s+cree\s+que\b",
+        ]
+        msg = "voz pasiva evasiva — esconde quién hizo qué"
+        suggestion = "usa voz activa: nombra quién hizo la acción y qué hizo; por ejemplo, cambia «se cometieron errores» por «el equipo omitió X»"
+    else:
+        patterns = [
+            r"\bmistakes\s+were\s+made\b",
+            r"\bthe\s+decision\s+was\s+reached\b",
+            r"\bthe\s+product\s+was\s+created\b",
+            r"\bit\s+is\s+believed\s+that\b",
+        ]
+        msg = "evasively passive voice — hides who did what"
+        suggestion = "use active voice: name who did the action and what they did; e.g. change «mistakes were made» to «the team missed X»"
+    hits = sum(1 for p in patterns if re.search(p, text, re.IGNORECASE))
+    if hits >= 1:
+        sev = 3 if hits >= 2 else 2
+        return [StructuralFinding(line=0, kind="passive-voice", severity=sev, message=f"{hits} casos: {msg}", suggestion=suggestion)]
+    return []
+
+
+def _check_wh_starters(sentences: list[str], lang: str) -> list[StructuralFinding]:
+    if lang == "es":
+        rx = re.compile(r"^(qu[eé]|por\s+qu[eé]|c[oó]mo|cu[aá]ndo|d[oó]nde)\b", re.IGNORECASE)
+        msg = "arranques interrogativos repetidos — molde de explicación IA"
+        suggestion = "convierte preguntas retóricas en afirmaciones: sujeto + acción + consecuencia; deja una sola pregunta si de verdad organiza el argumento"
+    else:
+        rx = re.compile(r"^(what|why|how|when|where|which|who)\b", re.IGNORECASE)
+        msg = "repeated Wh- starters — AI explainer template"
+        suggestion = "turn rhetorical prompts into claims: subject + action + consequence; keep only one real organizing question"
+    hits = sum(1 for s in sentences if rx.search(s.strip()))
+    if hits >= 2:
+        return [StructuralFinding(line=0, kind="wh-starters", severity=2, message=f"{hits} casos: {msg}", suggestion=suggestion)]
+    return []
+
+
+_PARAGRAPH_CONNECTORS_ES = re.compile(
+    r"^(además|adicionalmente|por otra parte|por otro lado|en consecuencia|"
+    r"asimismo|posteriormente|en primer lugar|en segundo lugar|finalmente|"
+    r"en conclusión|en resumen)[,\s]",
+    re.IGNORECASE | re.MULTILINE,
+)
+_PARAGRAPH_CONNECTORS_EN = re.compile(
+    r"^(furthermore|moreover|additionally|consequently|hence|"
+    r"subsequently|firstly|secondly|finally|in conclusion|"
+    r"nonetheless|nevertheless|in summary)[,\s]",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _check_paragraph_connectors(text: str, lang: str) -> list[StructuralFinding]:
+    """Pangram research: AI signals strongest when each new paragraph
+    starts with an explicit logical connector. Flag if there are 2+."""
+    paragraphs = [p for p in re.split(r"\n\s*\n", text) if p.strip()]
+    if len(paragraphs) < 2:
+        return []
+    rx = _PARAGRAPH_CONNECTORS_ES if lang == "es" else _PARAGRAPH_CONNECTORS_EN
+    hits = sum(1 for p in paragraphs if rx.match(p.lstrip()))
+    if hits >= 2:
+        msg_es = (
+            f"{hits}/{len(paragraphs)} párrafos abren con conector formal — "
+            "firma fuerte de IA (Pangram)"
+        )
+        msg_en = (
+            f"{hits}/{len(paragraphs)} paragraphs open with a formal connector — "
+            "strong AI tell (Pangram)"
+        )
+        return [StructuralFinding(
+            line=0,
+            kind="paragraph-connectors",
+            severity=3,
+            message=msg_es if lang == "es" else msg_en,
+            suggestion=(
+                "borra los conectores de apertura, deja que la lógica fluya"
+                if lang == "es"
+                else "drop the opening connectors, let logic flow"
+            ),
+        )]
+    return []
+
+
+def _check_paragraph_symmetry(text: str, lang: str) -> list[StructuralFinding]:
+    """LLMs produce paragraphs of suspiciously similar length.
+    Flag when CV of word-count across 4+ paragraphs is below 0.25."""
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    if len(paragraphs) < 4:
+        return []
+    word_counts = [len(p.split()) for p in paragraphs]
+    if min(word_counts) < 20:
+        # Skip when there are very short ones (lists, headers); not interesting.
+        return []
+    mean = statistics.mean(word_counts)
+    try:
+        std = statistics.stdev(word_counts)
+    except statistics.StatisticsError:
+        return []
+    cv = std / mean if mean else 0
+    if cv < 0.25:
+        msg_es = (
+            f"{len(paragraphs)} párrafos con longitud casi idéntica (CV={cv:.2f}) — "
+            "simetría paramétrica AI"
+        )
+        msg_en = (
+            f"{len(paragraphs)} paragraphs of near-identical length (CV={cv:.2f}) — "
+            "AI parametric symmetry"
+        )
+        return [StructuralFinding(
+            line=0,
+            kind="paragraph-symmetry",
+            severity=2,
+            message=msg_es if lang == "es" else msg_en,
+            suggestion=(
+                "rompe la simetría: mezcla un párrafo largo con uno de una línea"
+                if lang == "es"
+                else "break symmetry: mix a long paragraph with a one-liner"
+            ),
+        )]
+    return []
+
+
+_SYNTHETIC_ACADEMIC_ES = re.compile(
+    r"\b(transformación|educativa|contemporánea|evaluación|proceso|integral|"
+    r"fortalecimiento|trayectorias?|formativas?|incorporación|metodologías?|activas?|"
+    r"articular|dimensiones?|pedagógicas?|institucionales?|culturales?|experiencia|"
+    r"aprendizaje|pertinente|perspectiva|complejidad|contextos?|escolares?|"
+    r"condiciones?|capacidades?|reflexivas?|gestión|curricular|práctica|colaborativa|"
+    r"coherencia|objetivos?|estrategias?|propuesta|estudiantes?|diversos?|mejora|"
+    r"evidencias?|logro|retroalimentación|"
+    r"sistemática|posibilita|consolidar|mejora continua|se configura|herramienta|"
+    r"relevante|significativos?|calidad educativa|dimensión|abordaje|problemática)\b",
+    re.IGNORECASE,
+)
+_WEAK_ABSTRACT_VERBS_ES = re.compile(
+    r"\b(permite|permiten|posibilita|posibilitan|contribuye|contribuyen|favorece|"
+    r"favorecen|promueve|promueven|orienta|orientan|fortalece|fortalecen|"
+    r"desarrollar|generar|articular|consolidar|reconoce|comprender)\b",
+    re.IGNORECASE,
+)
+_CONCRETE_ANCHORS = re.compile(
+    r"\b\d+(?:[.,]\d+)?\b|[\"“”«»]|\b(yo|me|mi|nos|ayer|hoy|mañana|"
+    r"lunes|martes|miércoles|jueves|viernes|sábado|domingo|enero|febrero|marzo|"
+    r"abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b",
+    re.IGNORECASE,
+)
+
+
+def _word_count(text: str) -> int:
+    return len(re.findall(r"\b[\wáéíóúüñÁÉÍÓÚÜÑ]+\b", text))
+
+
+# ---- humanizer v2.9.1 + stop-slop gaps (2026-08) ----
+# Curated lists, deliberately shorter than stop-slop's absolutist ban:
+# the tell is density, not a single occurrence.
+
+_AI_ADVERBS_EN = [
+    "literally", "genuinely", "honestly", "simply", "actually", "truly",
+    "fundamentally", "inherently", "inevitably", "interestingly",
+    "importantly", "crucially",
+]
+_AI_ADVERBS_ES = [
+    "verdaderamente", "fundamentalmente", "genuinamente", "inherentemente",
+    "inevitablemente", "crucialmente", "interesantemente",
+]
+_CORPORATE_HYPHENATED = [
+    "third-party", "cross-functional", "client-facing", "data-driven",
+    "decision-making", "well-known", "high-quality", "real-time",
+    "long-term", "end-to-end", "cutting-edge", "state-of-the-art",
+]
+_TAILING_NEGATIONS = [
+    "no guessing", "no wasted motion", "no questions asked",
+    "no exceptions", "no regrets", "no fuss", "no drama",
+    "no second-guessing", "no excuses",
+]
+_EMOJI_RX = re.compile(r"[\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F]")
+
+
+def _check_synthetic_academic_texture(text: str, lang: str) -> list[StructuralFinding]:
+    """Catch cleaned-up AI academic Spanish: abstract, smooth, correct, unanchored."""
+    if lang != "es":
+        return []
+    words = _word_count(text)
+    if words < 80:
+        return []
+
+    abstraction_hits = len(_SYNTHETIC_ACADEMIC_ES.findall(text))
+    weak_verbs = len(_WEAK_ABSTRACT_VERBS_ES.findall(text))
+    density = abstraction_hits / max(words, 1)
+    if abstraction_hits < 12 or weak_verbs < 4 or density < 0.08:
+        return []
+
+    return [StructuralFinding(
+        line=0,
+        kind="synthetic-academic",
+        severity=2,
+        message=(
+            f"textura académica sintética: {abstraction_hits} abstracciones y "
+            f"{weak_verbs} verbos débiles en {words} palabras"
+        ),
+        suggestion=(
+            "baja la abstracción: agrega casos, decisiones, nombres, datos o una postura con filo"
+        ),
+    )]
+
+
+def _check_low_specificity(text: str, lang: str) -> list[StructuralFinding]:
+    """Flag long, polished abstraction with almost no concrete anchors."""
+    words = _word_count(text)
+    if words < 80:
+        return []
+    anchors = len(_CONCRETE_ANCHORS.findall(text))
+    abstraction_hits = len(_SYNTHETIC_ACADEMIC_ES.findall(text)) if lang == "es" else 0
+    if anchors <= 1 and abstraction_hits >= 10:
+        return [StructuralFinding(
+            line=0,
+            kind="low-specificity",
+            severity=2,
+            message=(
+                f"baja especificidad: {anchors} anclas concretas frente a "
+                f"{abstraction_hits} abstracciones"
+                if lang == "es" else
+                f"low specificity: {anchors} concrete anchors"
+            ),
+            suggestion=(
+                "agrega evidencia verificable: nombres, fechas, cifras, escenas o ejemplos no genéricos"
+                if lang == "es" else
+                "add verifiable evidence: names, dates, numbers, scenes, or non-generic examples"
+            ),
+        )]
+    return []
+
+
+def _check_vague_sentence_stack(sentences: list[str], lang: str) -> list[StructuralFinding]:
+    """Look at whole sentences: repeated abstract claim shape, not isolated words."""
+    if lang != "es" or len(sentences) < 3:
+        return []
+    vague = 0
+    for s in sentences:
+        words = _word_count(s)
+        if words < 8:
+            continue
+        abstract_terms = len(_SYNTHETIC_ACADEMIC_ES.findall(s))
+        weak_verbs = len(_WEAK_ABSTRACT_VERBS_ES.findall(s))
+        anchors = len(_CONCRETE_ANCHORS.findall(s))
+        if abstract_terms >= 3 and weak_verbs >= 1 and anchors == 0:
+            vague += 1
+    if vague >= 3:
+        return [StructuralFinding(
+            line=0,
+            kind="vague-sentence-stack",
+            severity=2,
+            message=f"{vague} frases completas hacen afirmaciones abstractas sin anclas concretas",
+            suggestion="aterriza esas frases: agrega un caso, una cita, una fecha, un actor o una consecuencia verificable por cada afirmación abstracta",
+        )]
+    return []
+
+
+# --- LLM-essay scaffolding: meta-announce + enumeration + dramatic close ---
+_ESSAY_META_ANNOUNCE = re.compile(
+    r"(?i)\b(el\s+presente\s+(ensayo|trabajo|texto|artículo|análisis|capítulo)|"
+    r"este\s+(ensayo|trabajo|texto|artículo|análisis|capítulo)\s+(recorre|aborda|revisa|examina|propone|sostiene|argumenta|explora))\b"
+)
+_ESSAY_ENUMERATION = re.compile(
+    r"(?i)\b(tres|cuatro|cinco|seis)\s+(ejes|principios|pilares|aspectos|dimensiones|razones|elementos|factores|cuestiones|puntos|niveles|caminos|vías|claves)\b"
+)
+_ESSAY_FIRST_SECOND = re.compile(
+    r"(?i)\bprimero,\b.{1,400}\bsegundo,\b", re.DOTALL,
+)
+_ESSAY_FOLLOWING_AUTHOR = re.compile(
+    r"(?i)\bsiguiendo\s+a\s+[A-ZÁÉÍÓÚÑ]\w+"
+)
+_ESSAY_DRAMATIC_CLOSE = re.compile(
+    r"(?i)\b(ese|este|el|aquel)\s+(debate|tema|asunto|problema|dilema|paradoja)\s+(sigue|permanece|continúa|queda)\s+(muy\s+)?(abierto|vigente|sin\s+resolverse|en\s+pie)\b|"
+    r"\blo\s+que\s+(enseña|muestra|deja\s+ver|revela|sugiere|indica|importa|recuerda)\b.{1,40}\bes\s+que\b"
+)
+
+
+def _check_essay_scaffolding(text: str, lang: str) -> list[StructuralFinding]:
+    """Detect the unmistakable LLM essay shape:
+    meta-announce + numbered scaffold + impersonal voice + dramatic close.
+    When 3+ of these coexist, the text is almost certainly LLM."""
+    if lang != "es":
+        return []
+    signals = []
+    if _ESSAY_META_ANNOUNCE.search(text):
+        signals.append("meta-anuncio del ensayo")
+    if _ESSAY_ENUMERATION.search(text):
+        signals.append("enumeración numerada")
+    if _ESSAY_FIRST_SECOND.search(text):
+        signals.append("estructura primero/segundo")
+    if _ESSAY_FOLLOWING_AUTHOR.search(text):
+        signals.append("'siguiendo a X'")
+    if _ESSAY_DRAMATIC_CLOSE.search(text):
+        signals.append("cierre dramático pop-essay")
+    if len(signals) < 3:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="essay-scaffolding",
+        severity=3,
+        message=f"andamiaje completo de ensayo IA: {', '.join(signals)}",
+        suggestion="rompe el molde: empieza con un dato, una cita, una escena o una tensión concreta; evita anunciar primero el plan del ensayo",
+    )]
+
+
+def _check_negative_parallelism_density(sentences: list[str], lang: str) -> list[StructuralFinding]:
+    """Wikipedia: LLMs overuse 'Not X, but Y' negative parallelisms."""
+    if lang == "es":
+        rx = re.compile(
+            r"(?i)(\bno (solo|sólo|únicamente|meramente|simplemente)\b.{1,100}\bsino\b"
+            r"|\ba pesar de (estos|los|sus|estas) (desafíos|retos|dificultades|obstáculos)\b"
+            r"|\bno (es|son)\b.{1,80}\bsino\b)",
+        )
+        msg = "densidad alta de paralelismos negativos — patrón IA (Wikipedia)"
+        suggestion = "afirma la idea positiva directa sin la negación previa"
+    else:
+        rx = re.compile(
+            r"(?i)(\bnot (only|just|merely|simply|solely)\b.{1,100}\bbut (also|rather|instead)?\b"
+            r"|\bdespite (these|its|the|this) (challenges|difficulties|obstacles|limitations)\b"
+            r"|\bnot (just|merely|simply) .{1,80}\bit'?s\b)",
+        )
+        msg = "high density of negative parallelisms — Wikipedia-confirmed AI pattern"
+        suggestion = "assert the positive idea directly without the negation preamble"
+    hits = sum(1 for s in sentences if rx.search(s))
+    if hits >= 2:
+        sev = 3 if hits >= 3 else 2
+        return [StructuralFinding(
+            line=0, kind="negative-parallelism", severity=sev,
+            message=f"{hits} casos: {msg}", suggestion=suggestion,
+        )]
+    return []
+
+
+def _check_challenges_template(text: str, lang: str) -> list[StructuralFinding]:
+    """Wikipedia: 'Despite X, Y faces challenges' formulaic AI essay structure."""
+    if lang == "es":
+        rx = re.compile(
+            r"(?i)(a pesar de|no obstante).{0,60}(desafíos|retos|dificultades)"
+            r".{0,120}(continúa|sigue|permanece|avanza|prospera)",
+            re.DOTALL,
+        )
+        header_rx = re.compile(
+            r"(?im)^(#{1,4}\s+)?(desafíos?\s+y\s+(perspectivas|futuro|oportunidades)"
+            r"|perspectivas?\s+futuras?|retos?\s+y\s+(oportunidades|futuro))",
+        )
+        msg = "fórmula 'a pesar de los desafíos' — plantilla IA (Wikipedia)"
+        suggestion = "di lo que funciona y lo que no sin la fórmula positiva al final"
+    else:
+        rx = re.compile(
+            r"(?i)(despite|however).{0,60}(challenges|difficulties|obstacles)"
+            r".{0,120}(continues?|remains?|thrives?|evolves?|advances?)",
+            re.DOTALL,
+        )
+        header_rx = re.compile(
+            r"(?im)^(#{1,4}\s+)?(challenges\s+and\s+(future|legacy|opportunities|prospects)"
+            r"|future\s+(directions?|outlook|prospects?))",
+        )
+        msg = "'Despite challenges' formula — Wikipedia AI essay template"
+        suggestion = "state what works and what doesn't without the optimistic formula"
+    signals = []
+    if rx.search(text):
+        signals.append("negativa→positiva" if lang == "es" else "negative→positive")
+    if header_rx.search(text):
+        signals.append("encabezado tipo ensayo" if lang == "es" else "essay-style section header")
+    if signals:
+        sev = 3 if len(signals) >= 2 else 2
+        return [StructuralFinding(
+            line=0, kind="challenges-template", severity=sev,
+            message=f"{msg}: {', '.join(signals)}", suggestion=suggestion,
+        )]
+    return []
+
+
+def _check_media_notability_padding(text: str, lang: str) -> list[StructuralFinding]:
+    """Wikipedia: LLMs assert notability via media coverage lists instead of content."""
+    if lang == "es":
+        rx = re.compile(
+            r"(?i)(ha sido (perfilad[oa]|cubierto|mencionad[oa]) en.{0,40}(medios|prensa)"
+            r"|presencia (activa|destacada|fuerte) en (redes sociales|línea|internet)"
+            r"|cobertura (nacional|internacional|mediática))",
+        )
+        msg = "relleno de notabilidad mediática — patrón IA (Wikipedia)"
+        suggestion = "cita la fuente directa; no anuncies que fue cubierto"
+    else:
+        rx = re.compile(
+            r"(?i)((has been|was) (profiled|featured|covered) in.{0,40}(media|outlets)"
+            r"|maintains? an active (social media|online|digital) presence"
+            r"|(national|international) (coverage|media|press))",
+        )
+        msg = "media notability padding — Wikipedia AI pattern"
+        suggestion = "cite the source directly; don't announce that coverage happened"
+    hits = len(rx.findall(text))
+    if hits >= 2:
+        sev = 3 if hits >= 3 else 2
+        return [StructuralFinding(
+            line=0, kind="media-notability", severity=sev,
+            message=f"{hits} {'patrones' if lang == 'es' else 'patterns'}: {msg}",
+            suggestion=suggestion,
+        )]
+    return []
+
+
+def _check_ai_artifact_markup(text: str, lang: str) -> list[StructuralFinding]:
+    """Wikipedia: Detect ChatGPT/Gemini/Grok/Perplexity citation artifacts in text."""
+    artifacts = [
+        (r":?contentReference\[oaicite:\d+\]", "contentReference[oaicite:N]"),
+        (r"oai_citation:\d+", "oai_citation:N"),
+        (r"【\d+†", "【N† (DeepSeek)"),
+        (r"turn0(?:search|image|news|file)\d+", "turn0searchN (ChatGPT)"),
+        (r"\[attached_file:\d+\]", "[attached_file:N]"),
+        (r"\[cite:\s*\d+[,\s\d]*\]", "[cite:N] (Gemini)"),
+        (r"<grok.?card", "<grok_card (Grok)"),
+        (r"grok_render_citation_card_json", "grok_render_citation_card_json"),
+        (r":::writing\{variant", ":::writing{variant"),
+        (r'\{"attribution":\{"attributableIndex"', '{"attribution"} (ChatGPT)'),
+    ]
+    found = [label for rx, label in artifacts if re.search(rx, text)]
+    if found:
+        return [StructuralFinding(
+            line=0, kind="ai-artifact-markup", severity=3,
+            message=(
+                f"artefacto de chatbot IA en texto: {', '.join(found)}"
+                if lang == "es" else
+                f"AI chatbot artifact in text: {', '.join(found)}"
+            ),
+            suggestion=(
+                "reemplaza con citas reales o elimina el artefacto"
+                if lang == "es" else
+                "replace with proper citations or delete the artifact"
+            ),
+        )]
+    return []
+
+
+def _check_rule_of_three_density(sentences: list[str], lang: str) -> list[StructuralFinding]:
+    """Wikipedia: LLMs overuse the rule of three — flag when it appears in many sentences."""
+    pattern = re.compile(
+        r"\b\w[\w'-]+,\s+\w[\w'-]+,\s+(?:and|or|y|e|o|ni)\s+\w[\w'-]+\b",
+        re.IGNORECASE,
+    )
+    triples = sum(1 for s in sentences if pattern.search(s))
+    if triples >= 4:
+        sev = 3 if triples >= 6 else 2
+        return [StructuralFinding(
+            line=0, kind="rule-of-three",  severity=sev,
+            message=(
+                f"{triples} oraciones con regla de tres — abuso IA (Wikipedia)"
+                if lang == "es" else
+                f"{triples} sentences with rule of three — Wikipedia AI overuse"
+            ),
+            suggestion=(
+                "rompe el patrón: usa dos items o cuatro, no siempre tres"
+                if lang == "es" else
+                "break the pattern: use two or four items, not always three"
+            ),
+        )]
+    return []
+
+
+def _sentence_score(sentence: str, lang: str, role: str) -> tuple[float, list[str]]:
+    reasons: list[str] = []
+    score = 0.0
+    abstract_terms = len(_SYNTHETIC_ACADEMIC_ES.findall(sentence)) if lang == "es" else 0
+    weak_verbs = len(_WEAK_ABSTRACT_VERBS_ES.findall(sentence)) if lang == "es" else 0
+    anchors = len(_CONCRETE_ANCHORS.findall(sentence))
+    words = max(_word_count(sentence), 1)
+    if abstract_terms >= 3 and weak_verbs >= 1 and anchors == 0:
+        score += 0.28
+        reasons.append("frase abstracta sin anclaje concreto")
+    if abstract_terms / words >= 0.18 and words >= 10:
+        score += 0.18
+        reasons.append("alta densidad de abstracciones")
+    if role == "cierre" and re.search(r"\b(de este modo|en conclusión|en síntesis|en resumen|finalmente)\b", sentence, re.I):
+        score += 0.16
+        reasons.append("cierre formulario")
+    return min(1.0, score), reasons
+
+
+# ---- Deep Technical Analysis (June 2026) structural signals ----
+
+def _check_semicolon_ratio(text: str, lang: str) -> list[StructuralFinding]:
+    """Machine text overuses semicolons (lexical cohesion crutch)."""
+    if lang == "es":
+        return []  # semicolons are rare in Spanish, not a reliable signal
+    sentences = split_sentences(text)
+    if len(sentences) < 5:
+        return []
+    period_count = text.count(".")
+    semicolon_count = text.count(";")
+    if period_count == 0:
+        return []
+    ratio = semicolon_count / max(period_count, 1)
+    # Human EN: ~0.02-0.06 semicolons per period. Machine: >0.15
+    if ratio > 0.15:
+        return [StructuralFinding(
+            line=0,
+            kind="semicolon_overuse",
+            severity=2,
+            message=f"semicolon-per-period ratio high ({ratio:.2f}) — lexical cohesion crutch typical of machine text",
+            suggestion="replace semicolons with periods or restructuring",
+        )]
+    return []
+
+
+def _check_nominalization_density(text: str, lang: str) -> list[StructuralFinding]:
+    """Flag high nominalization density (nominalized verbs replace active verbs).
+
+    Spanish calibration: -ción/-sión/-miento/-dad endings.
+    Machine ES: 12-18 per 1000 words. Human ES: 5-10."""
+    words = [w for w in text.split() if re.match(r'[\wáéíóúüñÁÉÍÓÚÜÑ]', w)]
+    total_words = len(words)
+    if total_words < 50:
+        return []
+    if lang == "es":
+        nominalizations = [w for w in words if re.search(r'ción|siones|mientos?|dades?|bilidad', w, re.I)]
+        density = len(nominalizations) / (total_words / 1000)
+        if density > 16:
+            return [StructuralFinding(
+                line=0,
+                kind="nominalization_density",
+                severity=2,
+                message=f"densidad de nominalizaciones alta ({density:.0f}/1K palabras) — IA: 12-18, humano: 5-10",
+                suggestion="sustituye nominalizaciones en -ción/-miento con verbos activos",
+            )]
+        return []
+    else:
+        nominalizations = [w for w in words if re.search(r'tion|ment|ness|ity|ance|ence', w, re.I)]
+        density = len(nominalizations) / (total_words / 1000)
+        if density > 14:
+            return [StructuralFinding(
+                line=0,
+                kind="nominalization_density",
+                severity=2,
+                message=f"nominalization density high ({density:.0f}/1K words) — machine: 10-16, human: 4-8",
+                suggestion="replace -tion/-ment/-ness nouns with active verbs",
+            )]
+        return []
+
+
+def _check_impersonal_se_stacking(text: str, lang: str) -> list[StructuralFinding]:
+    """Three or more close co-occurrences of impersonal 'se' within 200 chars
+    indicate passive-voice stacking typical of machine-generated Spanish."""
+    if lang != "es":
+        return []
+    positions = [m.start() for m in re.finditer(r'\bse\s+\w+', text, re.I)]
+    if len(positions) < 3:
+        return []
+    # check if any 3 positions fall within 200 chars of each other
+    for i in range(len(positions) - 2):
+        if positions[i + 2] - positions[i] <= 200:
+            return [StructuralFinding(
+                line=0,
+                kind="impersonal_se",
+                severity=2,
+                message="apilamiento de 'se' impersonal: alta densidad de pasiva refleja típica de texto IA",
+                suggestion="convierte algunas oraciones pasivas a voz activa",
+            )]
+    return []
+
+
+def _check_storyscope_discourse(text: str, lang: str) -> list[StructuralFinding]:
+    """StoryScope-inspired discourse signals.
+
+    This is not a narrative classifier. It adds small, auditable proxies for
+    StoryScope's product lesson: AI prose often over-explains its theme and
+    resolves conflicts too neatly. These are editorial cues, not forensic proof.
+    """
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if _word_count(p) >= 15]
+    if len(paragraphs) < 4:
+        return []
+
+    if lang == "es":
+        theme_rx = re.compile(
+            r"\b(tema|temas|moral|moraleja|lecci[oó]n|enseñanza|significado|"
+            r"sentido profundo|reflexi[oó]n|comprendi[oó]|comprender|aprendi[oó]|"
+            r"aprendizaje|verdad profunda|prop[oó]sito|humanidad|esperanza|redenci[oó]n)\b",
+            re.I,
+        )
+        narrator_moral_rx = re.compile(
+            r"\b(la historia (?:nos )?(?:enseña|recuerda|muestra)|"
+            r"esto (?:nos )?(?:enseña|recuerda|muestra)|"
+            r"al final,? (?:comprendi[oó]|aprendi[oó])|en (?:el )?fondo|m[aá]s all[aá] de)\b",
+            re.I,
+        )
+        tidy_close_rx = re.compile(
+            r"\b(al final|finalmente|en [uú]ltima instancia|en definitiva|desde ese momento|"
+            r"para siempre|comprendi[oó] que|aprendi[oó] que|lo que realmente importaba|"
+            r"un nuevo comienzo)\b",
+            re.I,
+        )
+    else:
+        theme_rx = re.compile(
+            r"\b(theme|themes|moral|lesson|meaning|deeper meaning|reflection|realized|"
+            r"understood|learned|truth|purpose|humanity|hope|redemption)\b",
+            re.I,
+        )
+        narrator_moral_rx = re.compile(
+            r"\b(the story (?:teaches|reminds|shows)|this (?:teaches|reminds|shows) us|"
+            r"in the end,? (?:he|she|they|i) (?:realized|understood|learned)|deep down|beyond the)\b",
+            re.I,
+        )
+        tidy_close_rx = re.compile(
+            r"\b(in the end|ultimately|finally|from that day forward|forever changed|"
+            r"realized that|learned that|what truly mattered|new beginning)\b",
+            re.I,
+        )
+
+    findings: list[StructuralFinding] = []
+    words = max(1, _word_count(text))
+    theme_hits = len(theme_rx.findall(text)) + len(narrator_moral_rx.findall(text)) * 2
+    theme_density = theme_hits / (words / 1000)
+    if theme_hits >= 5 and theme_density >= 8:
+        findings.append(StructuralFinding(
+            line=0,
+            kind="discourse-overexplained-theme",
+            severity=3 if theme_hits >= 9 else 2,
+            message=(
+                f"el texto explica su tema demasiadas veces ({theme_hits} marcas) — "
+                "StoryScope: la IA suele moralizar y cerrar el sentido"
+                if lang == "es" else
+                f"the text explains its theme too often ({theme_hits} marks) — "
+                "StoryScope: AI tends to moralize and close meaning down"
+            ),
+            suggestion=(
+                "borra una explicación del tema y reemplázala por una escena, un gesto, una contradicción o un detalle que deje inferir la idea"
+                if lang == "es" else
+                "delete one explanation of the theme and replace it with a scene, gesture, contradiction, or detail that lets the idea be inferred"
+            ),
+        ))
+
+    tidy_close_hits = len(tidy_close_rx.findall(paragraphs[-1]))
+    if tidy_close_hits >= 2:
+        findings.append(StructuralFinding(
+            line=0,
+            kind="discourse-tidy-resolution",
+            severity=2,
+            message=(
+                f"cierre demasiado ordenado ({tidy_close_hits} marcas) — resolución de IA muy prolija"
+                if lang == "es" else
+                f"overly tidy ending ({tidy_close_hits} marks) — AI-style neat resolution"
+            ),
+            suggestion=(
+                "quita la frase que explica la lección y termina con una consecuencia concreta o una duda que no quede totalmente resuelta"
+                if lang == "es" else
+                "remove the sentence explaining the lesson and end with a concrete consequence or a question that stays partly unresolved"
+            ),
+        ))
+    return findings
+
+
+# ---- humanizer v2.9.1 §26/§29/§31/§33 + stop-slop adverb/drama gaps (2026-08) ----
+
+
+def _check_staccato_runs(sentences: list[str], lang: str) -> list[StructuralFinding]:
+    """humanizer §31 / stop-slop dramatic fragmentation.
+
+    3+ consecutive very short sentences (≤5 words) read as manufactured
+    punchlines. One clipped sentence is human; a run is engineered.
+    """
+    if len(sentences) < 4:
+        return []
+    run = 0
+    max_run = 0
+    for s in sentences:
+        if len(s.split()) <= 5:
+            run += 1
+            max_run = max(max_run, run)
+        else:
+            run = 0
+    if max_run < 3:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="staccato-runs",
+        severity=2,
+        message=(
+            f"{max_run} oraciones cortas seguidas (≤5 palabras) — drama staccato fabricado"
+            if lang == "es" else
+            f"{max_run} consecutive very short sentences (≤5 words) — manufactured staccato drama"
+        ),
+        suggestion=(
+            "funde los fragmentos en una sola oración o varía la longitud; una frase enfática basta"
+            if lang == "es" else
+            "merge the fragments into one sentence or vary the length; one emphatic sentence is enough"
+        ),
+    )]
+
+
+def _check_hyphenated_pairs(text: str, lang: str) -> list[StructuralFinding]:
+    """humanizer §26: uniform corporate hyphenation (EN only).
+
+    Humans hyphenate inconsistently; AI hyphenates a fixed set with perfect
+    consistency. The tell is density in one text, not any single compound.
+    """
+    if lang != "en":
+        return []
+    words = _word_count(text)
+    if words < 20:
+        return []
+    rx = re.compile(r"\b(" + "|".join(_CORPORATE_HYPHENATED) + r")\b", re.I)
+    hits = len(rx.findall(text))
+    if hits < 5:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="hyphenated-pairs",
+        severity=2,
+        message=f"{hits} compuestos corporativos con guion — hipenación uniforme típica de IA",
+        suggestion="suelta los guiones en posición predicativa o escribe el concepto directo",
+    )]
+
+
+def _check_adverb_density(text: str, lang: str) -> list[StructuralFinding]:
+    """stop-slop adverbs: curated AI-favored adverbs, density-gated (EN/ES).
+
+    stop-slop bans all adverbs; aismell only flags a curated list when it
+    stacks — a single 'actually' is ordinary English, five are a texture.
+    """
+    words = _word_count(text)
+    if words < 12:
+        return []
+    if lang == "es":
+        rx = re.compile(r"\b(" + "|".join(_AI_ADVERBS_ES) + r")\b", re.I)
+        threshold = 4
+    else:
+        rx = re.compile(r"\b(" + "|".join(_AI_ADVERBS_EN) + r")\b", re.I)
+        threshold = 5
+    hits = len(rx.findall(text))
+    if hits < threshold:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="adverb-density",
+        severity=2,
+        message=(
+            f"{hits} adverbios de relleno apilados — textura típica de IA"
+            if lang == "es" else
+            f"{hits} stacked filler adverbs — typical AI texture"
+        ),
+        suggestion=(
+            "borra la mayoría; deja el adverbio solo cuando cambia el significado"
+            if lang == "es" else
+            "cut most of them; keep an adverb only when it changes the meaning"
+        ),
+    )]
+
+
+def _check_fragmented_headers(text: str, lang: str) -> list[StructuralFinding]:
+    """humanizer §29: heading followed by a one-line restatement.
+
+    A generic warm-up sentence after a heading ('Speed matters.' after
+    '## Performance') pads the prose without adding information.
+    """
+    lines = [ln.strip() for ln in text.splitlines()]
+    out: list[StructuralFinding] = []
+    n = len(lines)
+    for i in range(n - 2):
+        if not re.match(r"^#{1,4}\s+\S", lines[i]):
+            continue
+        # next non-empty line after the heading
+        j = i + 1
+        while j < n and not lines[j]:
+            j += 1
+        if j >= n:
+            continue
+        nxt = lines[j]
+        nxt_words = len(nxt.split())
+        if 2 <= nxt_words <= 8:
+            k = j + 1
+            while k < n and not lines[k]:
+                k += 1
+            following = lines[k] if k < n else ""
+            if len(following.split()) > nxt_words + 4:
+                out.append(StructuralFinding(
+                    line=i + 1,
+                    kind="fragmented-headers",
+                    severity=1,
+                    message=(
+                        f"título seguido de una línea de relleno ({nxt_words} palabras) que repite el rótulo"
+                        if lang == "es" else
+                        f"heading followed by a one-line filler ({nxt_words} words) restating the label"
+                    ),
+                    suggestion=(
+                        "borra la frase de calentamiento y deja que el contenido arranque directo"
+                        if lang == "es" else
+                        "delete the warm-up line and let the content start directly"
+                    ),
+                ))
+    return out
+
+
+def _check_emoji_headers(text: str, lang: str) -> list[StructuralFinding]:
+    """humanizer §18: emojis decorating heading/bullet labels.
+
+    Emojis inside prose are fine; a line that STARTS with an emoji as a
+    bullet/heading decoration is AI list formatting.
+    """
+    count = 0
+    for ln in text.splitlines():
+        s = ln.strip()
+        if not s:
+            continue
+        if _EMOJI_RX.match(s) and re.search(r"\S{2,}", s[1:]):
+            count += 1
+    if count < 2:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="emoji-headers",
+        severity=1,
+        message=(
+            f"{count} líneas decoradas con emoji — formato de lista IA"
+            if lang == "es" else
+            f"{count} emoji-decorated lines — AI list formatting"
+        ),
+        suggestion=(
+            "quita los emojis de títulos y viñetas; deja que el texto diga lo importante"
+            if lang == "es" else
+            "remove emojis from headings and bullets; let the text carry the meaning"
+        ),
+    )]
+
+
+def _check_tailing_negation(text: str, lang: str) -> list[StructuralFinding]:
+    """humanizer §9: clipped 'no X' fragments tacked onto a sentence (EN).
+
+    'The options come from the selected item, no guessing.' — a real clause
+    should follow the comma; the fragment is an AI rhythm tick.
+    """
+    if lang != "en":
+        return []
+    rx = re.compile(r"\b(" + "|".join(_TAILING_NEGATIONS) + r")\b", re.I)
+    hits = len(rx.findall(text))
+    if hits < 2:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="tailing-negation",
+        severity=2,
+        message=f"{hits} negaciones colgadas al final de frase — muletilla rítmica de IA",
+        suggestion="convierte el fragmento en una cláusula real o elimínalo",
+    )]
+
+
+def _score_sections(sentences: list[str], lang: str) -> list[SectionScore]:
+    if not sentences:
+        return []
+    n = len(sentences)
+    first_end = max(1, round(n * 0.25))
+    last_start = min(n - 1, max(first_end, round(n * 0.75))) if n >= 3 else n
+    buckets = [
+        ("apertura", sentences[:first_end]),
+        ("cuerpo", sentences[first_end:last_start]),
+        ("cierre", sentences[last_start:]),
+    ]
+    out: list[SectionScore] = []
+    for name, chunk in buckets:
+        if not chunk:
+            out.append(SectionScore(name=name, score=0.0, sentences=0, reasons=["sin texto"] ))
+            continue
+        vals: list[float] = []
+        reasons: list[str] = []
+        for s in chunk:
+            val, rs = _sentence_score(s, lang, name)
+            vals.append(val)
+            reasons.extend(rs)
+        score = min(1.0, sum(vals) / max(len(vals), 1))
+        if reasons:
+            # Keep stable, non-noisy summary reasons.
+            uniq = []
+            for r in reasons:
+                if r not in uniq:
+                    uniq.append(r)
+            reasons = uniq[:3]
+        else:
+            reasons = ["sin señales fuertes"]
+        out.append(SectionScore(name=name, score=score, sentences=len(chunk), reasons=reasons))
+    return out
+
+
+def load_canary_samples(path: str | Path | None = None) -> list[dict]:
+    """Load local regression samples used to keep the detector honest."""
+    if path is None:
+        path = Path(__file__).resolve().parent.parent / "tests" / "samples" / "canary.json"
+    p = Path(path)
+    if not p.exists():
+        return []
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+# ---------- local segment snapshots ----------
+
+def _segment_confidence(report: Report, lang: str) -> str:
+    """Confidence in the local signal, not confidence of authorship."""
+    findings = report.total_findings
+    if findings >= 3 and report.score >= 0.35:
+        return "alta" if lang == "es" else "high"
+    if findings:
+        if report.severity_label in ("moderado", "moderate"):
+            return "media" if lang == "es" else "medium"
+        return "baja" if lang == "es" else "low"
+    return "baja" if lang == "es" else "low"
+
+
+def _score_segments(
+    sentences: list[str],
+    lang: str,
+    strict: bool,
+    era: str,
+) -> list[SegmentScore]:
+    """Analyze contiguous windows without changing the document-level score.
+
+    Three sentences is the minimum useful window. Six keeps the result useful
+    on mobile; a final short tail is merged into the previous window.
+    """
+    if len(sentences) < 3:
+        return []
+    window = 6
+    starts = list(range(0, len(sentences), window))
+    if len(starts) > 1 and len(sentences) - starts[-1] < 3:
+        starts.pop()
+    segments: list[SegmentScore] = []
+    for index, start in enumerate(starts, start=1):
+        end = len(sentences) if index == len(starts) else min(len(sentences), start + window)
+        segment_text = " ".join(sentences[start:end]).strip()
+        local, _ = analyze(
+            segment_text,
+            lang=lang,
+            strict=strict,
+            era=era,
+            include_segments=False,
+        )
+        segments.append(SegmentScore(
+            index=index,
+            start_sentence=start + 1,
+            end_sentence=end,
+            sentences=end - start,
+            score=local.score,
+            label=local.severity_label,
+            confidence=_segment_confidence(local, lang),
+            findings=local.total_findings,
+            text=segment_text,
+        ))
+    return segments
+
+
+# ---------- main analyze ----------
+
+def analyze(
+    text: str,
+    lang: str | None = None,
+    strict: bool = False,
+    era: str = "auto",
+    include_segments: bool = True,
+) -> tuple[Report, str]:
+    """Analyze text. Returns (report, lang_used).
+
+    era: "auto" (detect from years in text) | "pre-llm" | "post-llm" | "unknown"
+    """
+    lang = lang or detect_lang(text)
+    patterns = load_patterns(lang)
+
+    lines = text.splitlines()
+    authorial = _authorial_lines(lines)
+    authorial_text = "\n".join(line for _, line in authorial)
+    sentences = split_sentences(authorial_text)
+    report = Report(sentences=len(sentences))
+
+    min_severity = 2 if strict else 1
+
+    # phrase / regex hits, line-anchored
+    for i, line in authorial:
+        for p in patterns:
+            if p.severity < min_severity:
+                continue
+            for m in p.compile().finditer(line):
+                if _match_is_quoted_example(line, m.start(), m.end()):
+                    continue
+                report.hits.append(Hit(
+                    line=i,
+                    col=m.start(),
+                    end=m.end(),
+                    text=line,
+                    matched=m.group(0),
+                    pattern=p,
+                ))
+
+    # Deduplicate overlapping hits per line: several pattern families fire on
+    # the same span ("not just X but also Y" trips en.not_just, en.not_but_direct
+    # and en.not_x_but_y_direct). One phrase = one finding. Keep the highest
+    # severity; on ties, the first match wins.
+    report.hits.sort(key=lambda h: (h.line, h.col, -(h.end - h.col), -h.pattern.severity))
+    deduped: list[Hit] = []
+    for h in report.hits:
+        if deduped and deduped[-1].line == h.line and h.col < deduped[-1].end and h.end > deduped[-1].col:
+            prev = deduped[-1]
+            prev_len = prev.end - prev.col
+            cur_len = h.end - h.col
+            if (h.pattern.severity, cur_len) > (prev.pattern.severity, prev_len):
+                deduped[-1] = h
+            continue
+        deduped.append(h)
+    report.hits = deduped
+
+    # structural checks
+    if not strict:
+        report.structural.extend(_check_em_dashes(authorial_text, [line for _, line in authorial]))
+        report.structural.extend(_check_list_density(authorial_text))
+        report.structural.extend(_check_ellipses(authorial_text, lang))
+        report.structural.extend(_check_section_headers(authorial_text, lang))
+        report.structural.extend(_check_emphasis_overload(authorial_text, lang))
+        report.structural.extend(_check_tricolon(sentences))
+        report.structural.extend(_check_rhetorical_qa(sentences, lang))
+        report.structural.extend(_check_binary_reframes(authorial_text, lang))
+        report.structural.extend(_check_negative_listing(authorial_text, lang))
+        report.structural.extend(_check_false_agency(authorial_text, lang))
+        report.structural.extend(_check_passive_voice(authorial_text, lang))
+        report.structural.extend(_check_wh_starters(sentences, lang))
+        report.structural.extend(_check_paragraph_connectors(authorial_text, lang))
+        report.structural.extend(_check_paragraph_symmetry(authorial_text, lang))
+        report.structural.extend(_check_synthetic_academic_texture(authorial_text, lang))
+        report.structural.extend(_check_low_specificity(authorial_text, lang))
+        report.structural.extend(_check_vague_sentence_stack(sentences, lang))
+        report.structural.extend(_check_essay_scaffolding(authorial_text, lang))
+        # Wikipedia-sourced checks
+        report.structural.extend(_check_negative_parallelism_density(sentences, lang))
+        report.structural.extend(_check_challenges_template(authorial_text, lang))
+        report.structural.extend(_check_media_notability_padding(authorial_text, lang))
+        report.structural.extend(_check_ai_artifact_markup(authorial_text, lang))
+        report.structural.extend(_check_rule_of_three_density(sentences, lang))
+    report.structural.extend(_check_rhythm(sentences, lang))
+    if not strict:
+        report.structural.extend(_check_semicolon_ratio(authorial_text, lang))
+        report.structural.extend(_check_nominalization_density(authorial_text, lang))
+        report.structural.extend(_check_impersonal_se_stacking(authorial_text, lang))
+        report.structural.extend(_check_storyscope_discourse(authorial_text, lang))
+        # humanizer v2.9.1 + stop-slop gaps (2026-08)
+        report.structural.extend(_check_staccato_runs(sentences, lang))
+        report.structural.extend(_check_hyphenated_pairs(authorial_text, lang))
+        report.structural.extend(_check_adverb_density(authorial_text, lang))
+        report.structural.extend(_check_fragmented_headers(authorial_text, lang))
+        report.structural.extend(_check_emoji_headers(authorial_text, lang))
+        report.structural.extend(_check_tailing_negation(authorial_text, lang))
+    report.sections = _score_sections(sentences, lang)
+
+    # score — evidence-aware combiner.
+    # It is an index of AI-smell evidence, NOT a probability that the author used AI.
+    structural_kinds = {f.kind for f in report.structural}
+    severe_structural = sum(1 for f in report.structural if f.severity >= 3)
+
+    # Dimension 1: lexical hits. Repetition matters, but it must saturate:
+    # 15 comments inside a 50-page thesis cannot mean "94% AI" by itself.
+    sev3_hits = sum(1 for h in report.hits if h.pattern.severity >= 3)
+    sev2_hits = sum(1 for h in report.hits if h.pattern.severity == 2)
+    sev1_hits = sum(1 for h in report.hits if h.pattern.severity <= 1)
+    distinct_sev3_ids = len({h.pattern.id for h in report.hits if h.pattern.severity >= 3})
+    distinct_ids = len({h.pattern.id for h in report.hits})
+    lex_d = min(0.72, distinct_sev3_ids * 0.12 + distinct_ids * 0.025 + sev3_hits * 0.025 + sev2_hits * 0.012)
+
+    # Dimension 2: structural macro-signals (essay scaffold, low specificity, symmetry, etc.)
+    macro_kinds = {
+        "essay-scaffolding", "synthetic-academic", "low-specificity",
+        "vague-sentence-stack", "paragraph-connectors", "paragraph-symmetry",
+        "rhetorical-qa", "binary-reframe", "negative-listing", "false-agency",
+        "passive-voice", "wh-starters", "discourse-overexplained-theme",
+        "discourse-tidy-resolution",
+    }
+    macro_present = macro_kinds & structural_kinds
+    macro_d = min(0.70, 0.18 * len(macro_present) + 0.08 * severe_structural)
+
+    # Dimension 3: rhythm/format. These are weak alone; they should not dominate long papers.
+    rhythm_kinds = {"em-dash", "ellipses", "section-headers", "emphasis-overload", "tricolon", "rhythm"}
+    rhythm_d = min(0.32, 0.10 * len(rhythm_kinds & structural_kinds))
+
+    # Dimension 4: anchor starvation. Only fires when several real paragraphs lack dates,
+    # examples, citations, places, numbers, or concrete actors.
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    anchor_starved = 0
+    for p in paragraphs:
+        if _word_count(p) >= 40 and len(_CONCRETE_ANCHORS.findall(p)) == 0:
+            anchor_starved += 1
+    anchor_d = 0.0
+    if len(paragraphs) >= 3 and anchor_starved >= 3:
+        ratio = anchor_starved / len(paragraphs)
+        if ratio >= 0.7:
+            anchor_d = 0.35
+        elif ratio >= 0.5:
+            anchor_d = 0.22
+
+    # Dimension 5: Wikipedia-sourced signals (negative parallelism, challenges template,
+    # media notability padding, chatbot artifact markup, rule-of-three overuse).
+    # These are strong independent signals: each alone is moderately suspicious,
+    # but two or more together are nearly definitive.
+    wiki_kinds = {
+        "negative-parallelism", "challenges-template",
+        "media-notability", "ai-artifact-markup", "rule-of-three",
+    }
+    wiki_present = wiki_kinds & structural_kinds
+    # ai-artifact-markup is a near-certain signal on its own
+    wiki_d = 0.0
+    if "ai-artifact-markup" in structural_kinds:
+        wiki_d = 0.80  # chatbot markup is near-certain AI
+    elif wiki_present:
+        wiki_d = min(0.55, 0.18 * len(wiki_present))
+
+    # Combine: 1 - prod(1 - d_i). Reacts when independent dimensions agree.
+    dims = [lex_d, macro_d, rhythm_d, anchor_d, wiki_d]
+    combined = 1.0
+    for d in dims:
+        combined *= (1.0 - d)
+    combined = 1.0 - combined
+
+    # Backstop floors for genuinely compound signals.
+    if "essay-scaffolding" in structural_kinds and "synthetic-academic" in structural_kinds:
+        combined = max(combined, 0.52)
+    elif "essay-scaffolding" in structural_kinds:
+        combined = max(combined, 0.42)
+    elif {"synthetic-academic", "low-specificity"} <= structural_kinds:
+        combined = max(combined, 0.35)
+    elif "synthetic-academic" in structural_kinds:
+        combined = max(combined, 0.25)
+    elif "binary-reframe" in structural_kinds and distinct_sev3_ids >= 1 and len(report.hits) >= 4:
+        combined = max(combined, 0.55)
+    elif severe_structural >= 2:
+        combined = max(combined, 0.30)
+    # Wikipedia-signal backstops
+    if "ai-artifact-markup" in structural_kinds:
+        combined = max(combined, 0.85)  # chatbot markup is near-certain
+    elif len(wiki_present) >= 3:
+        combined = max(combined, 0.60)
+    elif "challenges-template" in structural_kinds and "negative-parallelism" in structural_kinds:
+        combined = max(combined, 0.50)
+
+    # Short-text density backstop: if a short text (4-12 sentences) has
+    # many distinct high-severity hits, the dimensional combine can underweight
+    # them because each dimension is individually mild. But 5+ distinct
+    # signals with at least 3 moderate-or-higher in 6 sentences is suspicious.
+    if 4 <= report.sentences <= 12:
+        distinct_mod_plus = len({h.pattern.id for h in report.hits if h.pattern.severity >= 2})
+        if distinct_mod_plus >= 3 and len(report.hits) >= 5:
+            combined = max(combined, 0.60)
+
+    # Short demo-style AI answers can be dense without many paragraph-level
+    # structures. If nearly every sentence is marked and there are several
+    # high-severity lexical cues, do not leave the visible example in the
+    # moderate band.
+    sentence_density = min(1.0, len(report.hits) / max(report.sentences, 1))
+    if 4 <= report.sentences < 30 and sentence_density >= 0.70 and sev3_hits >= 2 and len(report.hits) >= 5:
+        combined = max(combined, 0.68)
+
+    # Academic dampener: long academic texts naturally contain abstraction,
+    # formal transitions, citations, and repeated section shapes.
+    if report.sentences >= 150 and {"synthetic-academic", "low-specificity"} <= structural_kinds:
+        academic_expected = {"synthetic-academic", "low-specificity", "vague-sentence-stack",
+                             "paragraph-symmetry", "essay-scaffolding", "paragraph-connectors"}
+        non_academic_kinds = structural_kinds - academic_expected
+        # Wikipedia-sourced signals and ai-artifact-markup are NOT academic — don't dampen if present
+        wiki_override = non_academic_kinds & (wiki_kinds | {"ai-artifact-markup"})
+        if not wiki_override and (not non_academic_kinds or non_academic_kinds <= {"rhythm", "tricolon"}):
+            combined *= 0.55
+
+    # Long-document density cap. Sparse findings in a thesis should read as
+    # "revise these passages", not as a conviction.
+    weighted_findings = (
+        sev3_hits * 1.3 + sev2_hits * 0.8 + sev1_hits * 0.35 +
+        sum(1.2 if f.severity >= 3 else 0.75 if f.severity == 2 else 0.35 for f in report.structural)
+    )
+    evidence_density = weighted_findings / max(report.sentences, 1)
+    if report.sentences >= 150:
+        if evidence_density < 0.035:
+            combined = min(combined, 0.24)
+        elif evidence_density < 0.10:
+            combined = min(combined, 0.34)
+        elif evidence_density < 0.13:
+            combined = min(combined, 0.42)
+    elif report.sentences >= 60:
+        if evidence_density < 0.05:
+            combined = min(combined, 0.30)
+        elif evidence_density < 0.09:
+            combined = min(combined, 0.42)
+    elif report.sentences >= 30 and evidence_density < 0.08:
+        combined = min(combined, 0.50)
+
+    # Length-aware credibility cap: a handful of hits in a 3-sentence text
+    # cannot justify 80%. Short texts need proportionally more evidence to
+    # score high — the verdict on 3 sentences is "puede ser" at most, never
+    # "suena a IA" with confidence.
+    short_cap = min(1.0, 0.40 + 0.045 * report.sentences)
+    combined = min(combined, short_cap)
+
+    # Era detection: a text whose largest mentioned year is <= 2020 predates
+    # public LLMs. Its formal register is not an AI signal — cap hard and say so.
+    if era == "auto":
+        era_used, era_year = detect_era(text)
+    else:
+        era_used, era_year = era, (0 if era != "pre-llm" else _ERA_LLM_BOUNDARY)
+    report.era = era_used
+    report.era_max_year = era_year
+    if era_used == "pre-llm":
+        combined = min(combined, 0.30)
+        report.notes.append(
+            f"El texto menciona años hasta {era_year}, antes del lanzamiento público de "
+            "los LLM (2022). El registro formal no puede ser generado por IA."
+        )
+
+    # Academic-register dampener: formal academic prose is full of connectors
+    # and impersonal voice. If the text has real citations and most hits are
+    # connector-class, cap the score — the connector tics are genre markers.
+    citation_hits = _CITATION_RE_ACADEMIC.findall(text)
+    if len(citation_hits) >= 2 and report.hits:
+        connector_hits = [
+            h for h in report.hits
+            if any(f in h.pattern.id for f in _CONNECTOR_FAMILIES)
+        ]
+        non_connector_sev3 = [
+            h for h in report.hits
+            if h.pattern.severity >= 3 and h not in connector_hits
+        ]
+        if connector_hits and len(connector_hits) / len(report.hits) >= 0.5 and len(non_connector_sev3) < 2:
+            combined = min(combined, 0.45)
+            report.notes.append(
+                "Registro académico con citas: los conectores formales ('en este sentido', "
+                "'no obstante', 'en primer lugar') son del género, no de la IA."
+            )
+
+    report.score = min(1.0, combined)
+
+    if report.score >= 0.6:
+        report.severity_label = "alto" if lang == "es" else "high"
+    elif report.score >= 0.3:
+        report.severity_label = "moderado" if lang == "es" else "moderate"
+    elif report.score > 0:
+        report.severity_label = "bajo" if lang == "es" else "low"
+    else:
+        report.severity_label = "limpio" if lang == "es" else "clean"
+
+    if include_segments:
+        report.segments = _score_segments(sentences, lang, strict, era)
+
+    return report, lang

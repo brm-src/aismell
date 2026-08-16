@@ -8,3 +8,7 @@ enabled = true
 
 [ai]
 binding = "AI"
+
+[[services]]
+binding = "ANALYZER"
+service = "aismell-analyzer"
