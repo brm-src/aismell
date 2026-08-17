@@ -103,7 +103,7 @@ async function lookupOne(entry, fetchImpl) {
   responses.forEach((result, index) => {
     const source = index === 0 ? "Crossref" : "OpenAlex";
     if (result.status === "rejected") {
-      sourceStatuses.push({ source, status: "unavailable", detail: String(result.reason?.message || result.reason || "request failed").slice(0, 120) });
+      sourceStatuses.push({ source, status: "unavailable" });
       return;
     }
     const rawItems = index === 0
