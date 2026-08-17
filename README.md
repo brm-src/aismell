@@ -94,7 +94,19 @@ aismell --lang es post.md
 aismell --no-color post.md
 ```
 
-Exit code is `0` when clean, `1` when findings are present. Useful for git hooks.
+## Conservative Python helper
+
+The package also exposes a small offline helper for high-confidence cleanup. It does not call an LLM or send text anywhere:
+
+```python
+from aismell.quickclean import clean
+
+result = clean("It is important to note that the report is ready.")
+print(result.text)
+print(result.changes)
+```
+
+Use this helper when privacy matters more than a broad rewrite. The Omarchy plugin's `clean` and `improve` actions are separate online flows documented in [ai quick clean](https://github.com/brm-src/ai-quick-clean).
 
 ## What it catches
 

@@ -96,6 +96,20 @@ aismell --no-color post.md
 
 Sale con código `0` si está limpio, `1` si encuentra cosas. Sirve para hooks de git.
 
+## Ayudante Python conservador
+
+El paquete también expone un ayudante offline para limpiar muletillas de alta confianza. No llama a un LLM ni envía el texto a ninguna parte:
+
+```python
+from aismell.quickclean import clean
+
+result = clean("Es importante señalar que el informe está listo.")
+print(result.text)
+print(result.changes)
+```
+
+Úsalo cuando la privacidad importe más que una reescritura amplia. Las acciones online `clean` y `improve` del plugin de Omarchy están documentadas en [ai quick clean](https://github.com/brm-src/ai-quick-clean).
+
 ## Qué detecta
 
 Tres capas.
