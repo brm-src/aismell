@@ -4,9 +4,9 @@ Public endpoints used by the `aismell quick clean` and `ai bibliography check` O
 
 - `GET /health` — service/version probe.
 - `POST /rewrite` — accepts `{ "text": "...", "mode": "clean" | "improve" }` up to 3,000 characters and returns `{ "text": "...", "changes": ["..."] }`.
-- `POST /bibliography` — accepts a bibliography up to 12,000 characters and returns structural checks, duplicate identifiers, consistency warnings, and aismell signals from the first 3,000 characters.
+- `POST /bibliography` — accepts a bibliography up to 12,000 characters, indexes its fields, queries Crossref and OpenAlex for up to 12 entries, and returns structural checks, catalog matches, duplicate identifiers, consistency warnings, and aismell signals from the first 3,000 characters.
 
-The bibliography endpoint checks what can be established from the pasted text. It does not claim that a source exists, that a DOI resolves, or that metadata matches Crossref, Scopus, or another catalog.
+For entries with a DOI, the Worker performs an exact DOI lookup. For entries without a DOI, it queries both catalogs with title + author + year and ranks returned records using normalized title overlap, author overlap, and year agreement. A low score is `not-found`; the service never upgrades a weak result to a match.
 
 `clean` is conservative. `improve` makes a more visible humanizing edit while preserving facts, names, dates, URLs, citations, quotations, code, lists, language, and register.
 

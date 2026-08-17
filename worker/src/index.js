@@ -1,4 +1,5 @@
 import { checkBibliography } from "./bibliography.js";
+import { lookupBibliography } from "./lookup.js";
 
 const MAX_CHARS = 3000;
 const MAX_BIBLIOGRAPHY_CHARS = 12000;
@@ -104,7 +105,9 @@ export async function handleBibliography(request, env) {
 
   try {
     const analysis = await analyzeWithAismell(env, text.slice(0, MAX_CHARS));
-    return json(checkBibliography(text, analysis), {}, origin);
+    const report = checkBibliography(text, analysis);
+    report.lookup = await lookupBibliography(report.entries, env?.LOOKUP_FETCH || globalThis.fetch);
+    return json(report, {}, origin);
   } catch (error) {
     if (error?.message === "empty" || error?.message === "too-long") {
       return json({ error: error.message }, { status: 400 }, origin);

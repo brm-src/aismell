@@ -115,6 +115,7 @@ test("returns aismell-backed bibliography findings without pretending to verify 
         }), { status: 200 });
       },
     },
+    LOOKUP_FETCH: async () => new Response("", { status: 404 }),
   });
 
   assert.equal(response.status, 200);
@@ -142,6 +143,7 @@ test("indexes corporate authors, titles, identifiers, and publication locators",
         return new Response(JSON.stringify({ language: "en", findings: [] }), { status: 200 });
       },
     },
+    LOOKUP_FETCH: async () => new Response("", { status: 404 }),
   });
 
   assert.equal(response.status, 200);
