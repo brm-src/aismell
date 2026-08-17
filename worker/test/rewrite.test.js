@@ -121,9 +121,37 @@ test("returns aismell-backed bibliography findings without pretending to verify 
   const payload = await response.json();
   assert.equal(payload.entryCount, 3);
   assert.equal(payload.analysis.findingCount, 1);
+  assert.equal(payload.method.source, "pasted-text");
+  assert.equal(payload.method.separator, "blank-line boundaries");
+  assert.ok(payload.method.fields.includes("title span"));
+  assert.equal(payload.method.aismell.characters, bibliography.length);
+  assert.equal(payload.entries[0].author, true);
+  assert.equal(payload.entries[0].title, "Manual de investigación");
   assert.ok(payload.findings.some((finding) => finding.code === "duplicate-source"));
   assert.ok(payload.findings.some((finding) => finding.code === "mixed-year-style"));
   assert.ok(payload.findings.some((finding) => finding.code === "aismell-signal"));
+});
+
+test("indexes corporate authors, titles, identifiers, and publication locators", async () => {
+  const bibliography = "World Health Organization. (2023). Global health report. Journal of Health, 10(2), 12-30. https://example.org/report";
+  const response = await handleBibliography(new Request("https://api.example/bibliography", {
+    method: "POST", body: JSON.stringify({ text: bibliography }),
+  }), {
+    ANALYZER: {
+      async fetch() {
+        return new Response(JSON.stringify({ language: "en", findings: [] }), { status: 200 });
+      },
+    },
+  });
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.entries[0].author, true);
+  assert.equal(payload.entries[0].year, "2023");
+  assert.equal(payload.entries[0].title, "Global health report");
+  assert.equal(payload.entries[0].pages, true);
+  assert.equal(payload.entries[0].volumeIssue, true);
+  assert.equal(payload.method.covered.identifiers, 1);
 });
 
 test("rejects an oversized bibliography before calling aismell", async () => {
