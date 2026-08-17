@@ -1,5 +1,9 @@
 # aismell
 
+<p align="center">
+  <a href="https://www.ko-fi.com/brmcl"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi" /></a>
+</p>
+
 > Sniff AI-smell in your text. Bilingual ES/EN. CLI. Offline. Opinionated.
 
 🇪🇸 [Léeme en español](README.es.md) · 🌐 [Try it in your browser](https://brm-src.github.io/aismell/)
