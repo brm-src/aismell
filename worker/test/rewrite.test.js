@@ -36,6 +36,23 @@ test("runs the actual aismell analyzer before rewriting a short text", async () 
   assert.match(calls[0].request.messages[0].content, /en\.important_to_note/);
 });
 
+test("uses a stronger humanizing prompt only in improve mode", async () => {
+  let systemPrompt = "";
+  const ai = {
+    async run(model, request) {
+      systemPrompt = request.messages[0].content;
+      return { response: JSON.stringify({ text, changes: ["Shortened boilerplate"] }) };
+    },
+  };
+  const response = await handleRewrite(new Request("https://api.example/rewrite", {
+    method: "POST", body: JSON.stringify({ text, mode: "improve" }),
+  }), { AI: ai, ANALYZER: analyzer() });
+
+  assert.equal(response.status, 200);
+  assert.match(systemPrompt, /Make the improvement noticeable but faithful/);
+  assert.match(systemPrompt, /ceremonial openings and closings/);
+});
+
 test("accepts the current Workers AI output message shape", async () => {
   const ai = { async run() {
     return { output: [{ type: "message", content: JSON.stringify({ text: "The report is ready.", changes: ["Removed filler"] }) }] };

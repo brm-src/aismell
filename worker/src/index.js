@@ -1,11 +1,14 @@
 const MAX_CHARS = 3000;
 const MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
-const VERSION = "2026-08-16-rewrite-v2";
+const VERSION = "2026-08-16-rewrite-v3";
 
 function headers(origin = "") {
   return {
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "interest-cohort=()",
     "Access-Control-Allow-Origin": origin || "*",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
@@ -17,13 +20,22 @@ function json(data, init = {}, origin = "") {
   return new Response(JSON.stringify(data), { ...init, headers: { ...headers(origin), ...(init.headers || {}) } });
 }
 
-function editorPrompt(language, findings) {
+function editorPrompt(language, findings, mode) {
   const languageName = language === "es" ? "Spanish" : "English";
   const signalList = Array.isArray(findings) && findings.length ? findings.join(", ") : "none supplied";
+  const instruction = mode === "improve"
+    ? [
+        "Make the improvement noticeable but faithful.",
+        "Cut ceremonial openings and closings, institutional boilerplate, generic motivational claims, redundant pairs, abstract nouns, passive constructions, and stacked adjectives.",
+        "Prefer concrete verbs, shorter sentences, and direct natural phrasing for the reader.",
+        "Keep the writer's register professional and human; do not make it slangy, casual, or sales-like.",
+      ].join(" ")
+    : "Remove only high-confidence empty AI-sounding filler and leave already-direct wording alone.";
   return [
     "You are a precise line editor, not a paraphraser.",
-    `Rewrite the user text in ${languageName} to remove empty AI-sounding filler. Preserve every fact, claim, name, date, number, URL, citation, quote, code fragment, list item, and the writer's register.`,
-    "Do not add information, praise, apologies, headings, bullets, or explanations. Do not translate. Keep wording unchanged when it is already direct.",
+    `Rewrite the user text in ${languageName}. ${instruction}`,
+    "Preserve every fact, claim, name, date, number, URL, citation, quote, code fragment, list item, and the writer's register.",
+    "Do not add information, praise, apologies, headings, bullets, or explanations. Do not translate.",
     `aismell detected these possible signals: ${signalList}.`,
     "Return only valid JSON with exactly this shape: {\"text\":\"edited text\",\"changes\":[\"short factual description of each edit\"]}. If nothing needs changing, return the original text and an empty changes array.",
   ].join("\n");
@@ -83,6 +95,7 @@ export async function handleRewrite(request, env) {
   }
 
   const text = typeof body?.text === "string" ? body.text.trim() : "";
+  const mode = body?.mode === "improve" ? "improve" : "clean";
   const origin = request.headers.get("Origin") || "";
   if (!text) return json({ error: "empty" }, { status: 400 }, origin);
   if (text.length > MAX_CHARS) return json({ error: "too-long" }, { status: 400 }, origin);
@@ -92,7 +105,7 @@ export async function handleRewrite(request, env) {
     const analysis = await analyzeWithAismell(env, text);
     const response = await env.AI.run(MODEL, {
       messages: [
-        { role: "system", content: editorPrompt(analysis.language, analysis.findings) },
+        { role: "system", content: editorPrompt(analysis.language, analysis.findings, mode) },
         { role: "user", content: text },
       ],
       response_format: { type: "json_object" },
