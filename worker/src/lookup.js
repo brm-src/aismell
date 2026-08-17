@@ -1,5 +1,5 @@
 const LOOKUP_LIMIT = 12;
-const REQUEST_TIMEOUT_MS = 4500;
+const REQUEST_TIMEOUT_MS = 8000;
 const USER_AGENT = "ai-bibliography-check/1.0 (https://github.com/brm-src/ai-bibliography-check)";
 
 function normalize(value) {
@@ -91,7 +91,7 @@ async function lookupOne(entry, fetchImpl) {
     ? `https://api.crossref.org/works/${encodeURIComponent(query)}`
     : `https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(query)}&rows=3`;
   const openAlexUrl = doiQuery
-    ? `https://api.openalex.org/works/https://doi.org/${encodeURIComponent(query)}`
+    ? `https://api.openalex.org/works?filter=doi:${encodeURIComponent(`https://doi.org/${query}`)}&per-page=3`
     : `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=3`;
 
   const responses = await Promise.allSettled([
@@ -108,7 +108,7 @@ async function lookupOne(entry, fetchImpl) {
     }
     const rawItems = index === 0
       ? (doiQuery ? [result.value?.message] : result.value?.message?.items || [])
-      : (doiQuery ? [result.value] : result.value?.results || []);
+      : (doiQuery ? result.value?.results || [] : result.value?.results || []);
     const items = rawItems.filter(Boolean).map(index === 0 ? crossrefRecord : openAlexRecord);
     const ranked = items.map((candidate) => ({ ...candidate, score: scoreCandidate(entry, candidate) }))
       .sort((a, b) => b.score - a.score);
