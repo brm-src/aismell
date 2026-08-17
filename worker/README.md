@@ -1,9 +1,12 @@
 # aismell rewrite worker
 
-Public endpoint used by the `aismell quick clean` Omarchy plugin.
+Public endpoints used by the `aismell quick clean` and `ai bibliography check` Omarchy plugins.
 
 - `GET /health` — service/version probe.
 - `POST /rewrite` — accepts `{ "text": "...", "mode": "clean" | "improve" }` up to 3,000 characters and returns `{ "text": "...", "changes": ["..."] }`.
+- `POST /bibliography` — accepts a bibliography up to 12,000 characters and returns structural checks, duplicate identifiers, consistency warnings, and aismell signals from the first 3,000 characters.
+
+The bibliography endpoint checks what can be established from the pasted text. It does not claim that a source exists, that a DOI resolves, or that metadata matches Crossref, Scopus, or another catalog.
 
 `clean` is conservative. `improve` makes a more visible humanizing edit while preserving facts, names, dates, URLs, citations, quotations, code, lists, language, and register.
 

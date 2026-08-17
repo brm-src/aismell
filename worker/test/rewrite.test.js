@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { handleRewrite } from "../src/index.js";
+import { handleRewrite, handleBibliography } from "../src/index.js";
 
 const text = "It is important to note that the report is ready.";
 
@@ -94,4 +94,45 @@ test("returns a safe upstream error instead of pretending a rewrite happened", a
 
   assert.equal(response.status, 503);
   assert.deepEqual(await response.json(), { error: "rewrite-unavailable" });
+});
+
+test("returns aismell-backed bibliography findings without pretending to verify sources", async () => {
+  const bibliography = [
+    "[1] García, M. (2024). Manual de investigación. https://doi.org/10.1234/demo",
+    "[2] García, M. 2024. Manual de investigación. https://doi.org/10.1234/demo",
+    "[3] Smith, J. (2021). A clear paper.",
+  ].join("\n\n");
+  const response = await handleBibliography(new Request("https://api.example/bibliography", {
+    method: "POST", body: JSON.stringify({ text: bibliography }),
+  }), {
+    ANALYZER: {
+      async fetch(url, init) {
+        assert.equal(new URL(url).pathname, "/analyze");
+        assert.deepEqual(JSON.parse(init.body), { text: bibliography });
+        return new Response(JSON.stringify({
+          language: "es",
+          findings: [{ id: "es.vale_pena_destacar", matched: "vale la pena destacar" }],
+        }), { status: 200 });
+      },
+    },
+  });
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.entryCount, 3);
+  assert.equal(payload.analysis.findingCount, 1);
+  assert.ok(payload.findings.some((finding) => finding.code === "duplicate-source"));
+  assert.ok(payload.findings.some((finding) => finding.code === "mixed-year-style"));
+  assert.ok(payload.findings.some((finding) => finding.code === "aismell-signal"));
+});
+
+test("rejects an oversized bibliography before calling aismell", async () => {
+  let called = false;
+  const response = await handleBibliography(new Request("https://api.example/bibliography", {
+    method: "POST", body: JSON.stringify({ text: "x".repeat(12001) }),
+  }), { ANALYZER: { async fetch() { called = true; } } });
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: "too-long" });
+  assert.equal(called, false);
 });

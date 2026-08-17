@@ -1,6 +1,9 @@
+import { checkBibliography } from "./bibliography.js";
+
 const MAX_CHARS = 3000;
+const MAX_BIBLIOGRAPHY_CHARS = 12000;
 const MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
-const VERSION = "2026-08-16-rewrite-v3";
+const VERSION = "2026-08-17-bibliography-v1";
 
 function headers(origin = "") {
   return {
@@ -86,6 +89,31 @@ async function analyzeWithAismell(env, text) {
   };
 }
 
+export async function handleBibliography(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "invalid-request" }, { status: 400 }, request.headers.get("Origin") || "");
+  }
+
+  const text = typeof body?.text === "string" ? body.text.trim() : "";
+  const origin = request.headers.get("Origin") || "";
+  if (!text) return json({ error: "empty" }, { status: 400 }, origin);
+  if (text.length > MAX_BIBLIOGRAPHY_CHARS) return json({ error: "too-long" }, { status: 400 }, origin);
+
+  try {
+    const analysis = await analyzeWithAismell(env, text.slice(0, MAX_CHARS));
+    return json(checkBibliography(text, analysis), {}, origin);
+  } catch (error) {
+    if (error?.message === "empty" || error?.message === "too-long") {
+      return json({ error: error.message }, { status: 400 }, origin);
+    }
+    console.error("bibliography check failed", error?.message || "unknown");
+    return json({ error: "bibliography-unavailable" }, { status: 503 }, origin);
+  }
+}
+
 export async function handleRewrite(request, env) {
   let body;
   try {
@@ -126,6 +154,7 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: headers(origin) });
     if (url.pathname === "/health" && request.method === "GET") return json({ ok: true, version: VERSION }, {}, origin);
     if (url.pathname === "/rewrite" && request.method === "POST") return handleRewrite(request, env);
+    if (url.pathname === "/bibliography" && request.method === "POST") return handleBibliography(request, env);
     return json({ error: "not-found" }, { status: 404 }, origin);
   },
 };
