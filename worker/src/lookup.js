@@ -119,13 +119,14 @@ async function lookupOne(entry, fetchImpl) {
   sourceResults.sort((a, b) => b.score - a.score);
   const best = sourceResults[0] || null;
   const unavailable = sourceStatuses.every((source) => source.status === "unavailable");
+  const bestStatus = unavailable ? "unavailable" : classify(best?.score || 0, sourceResults.length > 0);
   return {
     entry: entry.number,
     query,
-    status: unavailable ? "unavailable" : classify(best?.score || 0, sourceResults.length > 0),
+    status: bestStatus,
     score: best ? Number(best.score.toFixed(2)) : 0,
     sources: sourceStatuses,
-    match: best ? {
+    match: best && bestStatus !== "not-found" ? {
       source: best.source,
       title: best.title,
       author: best.author,

@@ -49,6 +49,29 @@ test("does not claim a match when both catalogs return no records", async () => 
   assert.equal(report.results[0].match, null);
 });
 
+test("does not expose a weak candidate as a match", async () => {
+  const weakFetch = async (url) => {
+    if (url.includes("api.crossref.org")) {
+      return new Response(JSON.stringify({ message: { items: [{
+        title: ["Review of \"Array programming with NumPy\""],
+        author: [{ given: "Ajit", family: "Singh" }],
+        published: { "date-parts": [[2021]] },
+      }] } }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ results: [] }), { status: 200 });
+  };
+  const report = await lookupBibliography([{
+    number: 3,
+    title: "Array programming with NumPy",
+    authorPrefix: "Harris, C.",
+    year: "2020",
+    identifier: null,
+  }], weakFetch);
+
+  assert.equal(report.results[0].status, "not-found");
+  assert.equal(report.results[0].match, null);
+});
+
 test("limits external lookups and reports skipped entries", async () => {
   const entries = Array.from({ length: 13 }, (_, index) => ({
     number: index + 1,
