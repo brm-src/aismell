@@ -34,6 +34,7 @@ test("finds a DOI exactly through Crossref and reports its source", async () => 
   assert.equal(report.results[0].status, "found");
   assert.equal(report.results[0].score, 1);
   assert.equal(report.results[0].match.source, "Crossref");
+  assert.match(report.results[0].scholarUrl, /scholar\.google\.com\/scholar\?q=/);
 });
 
 test("does not claim a match when both catalogs return no records", async () => {

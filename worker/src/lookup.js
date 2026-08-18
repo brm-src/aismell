@@ -1,5 +1,5 @@
 const LOOKUP_LIMIT = 12;
-const REQUEST_TIMEOUT_MS = 8000;
+const REQUEST_TIMEOUT_MS = 15000;
 const USER_AGENT = "ai-bibliography-check/1.0 (https://github.com/brm-src/ai-bibliography-check)";
 
 function normalize(value) {
@@ -85,7 +85,8 @@ function classify(score, hasCandidates) {
 
 async function lookupOne(entry, fetchImpl) {
   const query = queryFor(entry);
-  if (!query) return { entry: entry.number, query: "", status: "insufficient-data", sources: [] };
+  const scholarUrl = query ? `https://scholar.google.com/scholar?q=${encodeURIComponent(query)}` : "";
+  if (!query) return { entry: entry.number, query: "", status: "insufficient-data", sources: [], scholarUrl };
   const doiQuery = entry.identifier?.startsWith("doi:");
   const crossrefUrl = doiQuery
     ? `https://api.crossref.org/works/${encodeURIComponent(query)}`
@@ -123,6 +124,7 @@ async function lookupOne(entry, fetchImpl) {
   return {
     entry: entry.number,
     query,
+    scholarUrl,
     status: bestStatus,
     score: best ? Number(best.score.toFixed(2)) : 0,
     sources: sourceStatuses,
@@ -146,6 +148,7 @@ export async function lookupBibliography(entries, fetchImpl = globalThis.fetch) 
       return {
         entry: entry.number,
         query: queryFor(entry),
+        scholarUrl: queryFor(entry) ? `https://scholar.google.com/scholar?q=${encodeURIComponent(queryFor(entry))}` : "",
         status: "unavailable",
         score: 0,
         sources: [{ source: "Crossref", status: "unavailable" }, { source: "OpenAlex", status: "unavailable" }],
