@@ -4,7 +4,7 @@ import { lookupBibliography } from "./lookup.js";
 const MAX_CHARS = 3000;
 const MAX_BIBLIOGRAPHY_CHARS = 12000;
 const MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
-const VERSION = "2026-08-17-bibliography-v1";
+const VERSION = "2026-08-17-bibliography-v2";
 
 function headers(origin = "") {
   return {
