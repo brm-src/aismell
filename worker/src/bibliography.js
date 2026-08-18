@@ -69,7 +69,10 @@ function sourceId(entry) {
 
 function beforeYear(entry) {
   const match = YEAR_RE.exec(entry);
-  return match ? entry.slice(0, match.index).replace(/^\s*(?:\[\d+\]|\d+[.)])\s*/u, "").trim() : "";
+  return match ? entry.slice(0, match.index)
+    .replace(/^\s*(?:\[\d+\]|\d+[.)])\s*/u, "")
+    .replace(/[\s(]+$/u, "")
+    .trim() : "";
 }
 
 function titleCandidate(entry, yearMatch) {

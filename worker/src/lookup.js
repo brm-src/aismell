@@ -79,7 +79,7 @@ function scoreCandidate(entry, candidate) {
 function classify(score, hasCandidates) {
   if (!hasCandidates) return "not-found";
   if (score >= 0.72) return "found";
-  if (score >= 0.45) return "possible";
+  if (score >= 0.60) return "possible";
   return "not-found";
 }
 
