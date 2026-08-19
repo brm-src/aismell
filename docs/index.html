@@ -1169,6 +1169,37 @@
   }
   .info:hover::after { opacity: 1; }
 
+  /* Tooltip for toolbar buttons (hover, disappears) */
+  .btn.tip { position: relative; }
+  .btn.tip::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    padding: 8px 10px;
+    font-size: 11.5px;
+    line-height: 1.5;
+    width: 260px;
+    max-width: 60vw;
+    text-align: left;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 400;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    border-radius: 6px;
+  }
+  .btn.tip:hover::after { opacity: 1; }
+  @media (max-width: 720px) {
+    .btn.tip::after { display: none; }
+  }
+
   .biblio-link {
     color: var(--cya);
     text-decoration: underline;
@@ -1496,11 +1527,11 @@
         <span class="info" data-i18n-tip="strictTip" data-tip="Muestra solo hallazgos con severidad 3. Oculta las señales más suaves que podrían ser falsos positivos.">i</span>
       </label>
       <div class="right">
-        <button class="btn" id="analyzeBtn" disabled data-i18n="analyze">analizar</button>
-        <button class="btn ghost" id="stripBtn" data-i18n="stripMarks">quitar marcas</button>
-        <button class="btn ghost" id="clearBtn" data-i18n="clear">limpiar</button>
+        <button class="btn tip" id="analyzeBtn" disabled data-i18n="analyze" data-i18n-tip="analyzeTip" data-tip="Analiza el texto y te marca línea por línea qué suena a IA, además de verificar la bibliografía si hay.">analizar</button>
+        <button class="btn ghost tip" id="stripBtn" data-i18n="stripMarks" data-i18n-tip="stripTip" data-tip="Quita caracteres invisibles y, si quieres, reescribe el texto para que suene menos a plantilla. Solo se usa si lo pides.">quitar marcas</button>
+        <button class="btn ghost tip" id="clearBtn" data-i18n="clear" data-i18n-tip="clearTip" data-tip="Borra el texto y vuelve al inicio.">limpiar</button>
         <input type="file" id="fileInput" accept=".txt,.md,.docx,.pdf" style="display:none">
-        <button class="btn ghost" id="fileBtn" data-i18n="upload">subir archivo</button>
+        <button class="btn ghost tip" id="fileBtn" data-i18n="upload" data-i18n-tip="uploadTip" data-tip="Sube un archivo .txt, .md, .docx o .pdf y lo analiza igual que el texto pegado.">subir archivo</button>
       </div>
     </div>
   </div>

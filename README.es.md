@@ -34,12 +34,20 @@ Funciona offline, con regex y heurísticas (sin llamadas a APIs por defecto), en
 La mayoría de los "humanizadores de IA" son estafa. Cambian sinónimos al azar o agregan typos para esquivar detectores. Ese juego es deshonesto e inútil.
 
 `aismell` es lo contrario:
-- **No reescribe por ti.** Te muestra qué se lee a IA, línea por línea.
+- **El análisis no reescribe por ti.** Te muestra qué se lee a IA, línea por línea. (La web tiene una acción aparte, "quitar marcas", que sí puede reescribir si la usas explícitamente; el CLI no.)
 - **Es auditable.** Cada patrón vive en un YAML que puedes leer y contribuir.
-- **Es offline por defecto.** Tu texto no sale de tu máquina.
+- **Es offline por defecto.** El análisis de texto no sale de tu máquina. En la web, la única acción que envía texto a un servidor es "quitar marcas": se procesa en el servicio de aismell, no se guarda y no se usa para entrenar modelos.
 - **No promete burlar detectores.** Promete que tu texto no se sienta a piloto automático.
 
 El enfoque honesto es editorial, no adversario. Úsalo antes de publicar.
+
+## Web: quitar marcas
+
+En [aismell.me](https://aismell.me) hay una acción **"quitar marcas"** junto al análisis normal:
+
+- **Quita caracteres invisibles** (espacios raros, unicode de control, bidi) que se cuelan en textos copiados.
+- **Opcionalmente reescribe** el texto para que suene menos a plantilla de IA. Conserva datos, nombres y citas.
+- El texto se envía al servicio de aismell solo para procesarlo; no se guarda, no se registra y no se usa para entrenar modelos.
 
 ## Instalación
 

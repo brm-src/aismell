@@ -34,12 +34,20 @@ It runs offline, uses regex + heuristics (no API calls by default), and works on
 Most "AI text humanizers" are scams. They reshuffle synonyms or insert typos to bypass detectors. That game is dishonest and useless.
 
 `aismell` is the opposite:
-- **It does not rewrite for you.** It tells you what reads like AI, line by line.
+- **Analysis does not rewrite for you.** It tells you what reads like AI, line by line. (The web has a separate "strip marks" action that can rewrite if you explicitly use it; the CLI doesn't.)
 - **It is auditable.** Every pattern lives in a YAML file you can read and contribute to.
-- **It is offline by default.** Your text never leaves your machine.
+- **It is offline by default.** Text analysis never leaves your machine. On the web, the only action that sends text to a server is "strip marks": it is processed by the aismell service, not stored, and not used to train models.
 - **It does not promise to fool detectors.** It promises to make your text feel less like autopilot.
 
 The honest framing is editorial, not adversarial. Use it before publishing.
+
+## Web: strip marks
+
+[aismell.me](https://aismell.me) has a **"strip marks"** action next to the normal analysis:
+
+- **Removes invisible characters** (odd spaces, control unicode, bidi) that sneak into copied text.
+- **Optionally rewrites** the text so it sounds less like an AI template. It preserves data, names and citations.
+- The text is sent to the aismell service only to be processed; it is not stored, not logged, and not used to train models.
 
 ## Install
 
