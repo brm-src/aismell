@@ -134,8 +134,8 @@ Scores are normalized to a 0–100 smell percentage. Above 60 is loud AI, 30–6
 
 ## What it does *not* do
 
-- Does not call an LLM (a future `--rewrite` flag may do so, opt-in).
-- Does not rewrite your text for you.
+- Does not call an LLM (a future `--rewrite` flag may do so, opt-in). The web's "strip marks" action does use a model when you enable rewrite.
+- Does not rewrite your text for you in the CLI. The web's "strip marks" action can rewrite, only when you explicitly use it.
 - Does not claim to be a forensic AI detector. False positives are fine — humans use these phrases too. The point is making them visible so you can decide.
 
 ## Patterns are data

@@ -136,8 +136,8 @@ Los scores se normalizan a 0–100. Sobre 60 es IA fuerte, 30–60 es mezcla, ba
 
 ## Qué *no* hace
 
-- No llama a ningún LLM (en el futuro habrá flag `--rewrite` opt-in).
-- No reescribe tu texto.
+- No llama a ningún LLM (en el futuro habrá flag `--rewrite` opt-in). La acción "quitar marcas" de la web sí usa un modelo cuando activas la reescritura.
+- No reescribe tu texto en el CLI. La acción "quitar marcas" de la web puede reescribir, solo si la usas explícitamente.
 - No es un detector forense. Falsos positivos pasan — humanos también usan estas frases. El punto es hacerlas visibles para que tú decidas.
 
 ## Los patrones son datos
