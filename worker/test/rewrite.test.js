@@ -125,6 +125,12 @@ test("adds a changes entry when residue is stripped", async () => {
   assert.ok(changes.some((item) => /asteriscos|marcadores|formato/i.test(item)));
 });
 
+test("collapses double spaces left by removed phrases", async () => {
+  const { stripMarkdownResidue } = await import("../src/index.js");
+  const result = stripMarkdownResidue("Aula 8.  no es posible  calcular", []);
+  assert.equal(result, "Aula 8. no es posible calcular");
+});
+
 test("accepts the current Workers AI output message shape", async () => {
   const ai = { async run() {
     return { output: [{ type: "message", content: JSON.stringify({ text: "The report is ready.", changes: ["Removed filler"] }) }] };

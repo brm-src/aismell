@@ -78,7 +78,10 @@ function parseModelResponse(result, original) {
 export function stripMarkdownResidue(text, changes = []) {
   let stripped = text
     .replace(/\*\*([^*\n]+)\*\*/g, "$1")
-    .replace(/`([^`\n]+)`/g, "$1");
+    .replace(/`([^`\n]+)`/g, "$1")
+    .split("\n")
+    .map((line) => line.replace(/[ \t]{2,}/g, " ").trimEnd())
+    .join("\n");
   if (stripped !== text && !changes.some((item) => /marcadores|asteriscos|backticks|formato|markdown/i.test(item))) {
     changes.push("quitó marcadores de formato sobrantes (asteriscos y backticks)");
   }
