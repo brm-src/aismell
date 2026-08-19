@@ -18,6 +18,14 @@
 <meta name="twitter:image" content="https://aismell.me/og.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext y='20' font-size='22'%3E👃%3C/text%3E%3C/svg%3E">
 <style>
+  @font-face {
+    font-family: "Departure Mono";
+    src: url("fonts/departure-mono.woff2") format("woff2"),
+         url("fonts/departure-mono.woff") format("woff");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
   :root {
     --bg: #0d0d0e;
     --bg2: #161618;
@@ -33,7 +41,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { background: var(--bg); color: var(--fg); }
   body {
-    font-family: "JetBrains Mono", "Fira Code", "SF Mono", "Menlo", "Consolas", ui-monospace, monospace;
+    font-family: "Departure Mono", "JetBrains Mono", "Fira Code", "SF Mono", "Menlo", "Consolas", ui-monospace, monospace;
     font-size: 16px;
     line-height: 1.58;
     min-height: 100dvh;
@@ -1651,7 +1659,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
-<script src="app.js?v=20260819-help-mobile"></script>
+<script src="app.js?v=20260819-departure-mono"></script>
 
 </body>
 </html>
