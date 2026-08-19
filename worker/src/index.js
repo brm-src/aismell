@@ -1,10 +1,45 @@
 import { checkBibliography } from "./bibliography.js";
 import { lookupBibliography } from "./lookup.js";
+import { cleanText, inspectText } from "./unicode_strip.js";
 
 const MAX_CHARS = 3000;
 const MAX_BIBLIOGRAPHY_CHARS = 12000;
 const MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
-const VERSION = "2026-08-17-bibliography-v2";
+const VERSION = "2026-08-19-strip-marks-v1";
+
+// Layer B rewrite prompts, ported from guillaumemeyer/watermarks-remover
+// (MIT) service/scripts/rewrite_text.py PROMPTS dict.
+const WATERMARK_PROMPTS = {
+  paraphrase:
+    "Rewrite the following text so that it uses substantially different wording at the token level. Change clause order, connectors, and transition words; vary sentence boundaries and length; and replace both content words and function words where meaning allows. Preserve all facts, numbers, names, and technical identifiers. Do not add or remove claims. Output only the rewritten text.\n\n---\n{TEXT}",
+  humanize:
+    "Rewrite the following text so it reads as if a human wrote it from scratch. Vary sentence rhythm and length, replace formulaic AI-style transitions and filler with concrete natural phrasing, and use plain, varied wording. Preserve all facts, numbers, names, and technical identifiers. Do not add or remove claims. Output only the rewritten text.\n\n---\n{TEXT}",
+};
+
+// Bigram Jaccard lexical divergence, ported from rewrite_text.py.
+function tokens(text) {
+  const matches = text.toLowerCase().match(/[a-z0-9]+/g);
+  return matches || [];
+}
+function bigrams(list) {
+  const out = new Set();
+  for (let i = 0; i + 1 < list.length; i++) out.add(list[i] + "\u0000" + list[i + 1]);
+  return out;
+}
+function lexicalDivergence(original, candidate) {
+  const a = tokens(original);
+  const b = tokens(candidate);
+  if (!a.length && !b.length) return 0;
+  if (!a.length || !b.length) return 1;
+  const ba = bigrams(a);
+  const bb = bigrams(b);
+  const union = new Set([...ba, ...bb]);
+  if (!union.size) return 0;
+  let intersection = 0;
+  for (const item of ba) if (bb.has(item)) intersection++;
+  return Number((1 - intersection / union.size).toFixed(4));
+}
+
 
 function headers(origin = "") {
   return {
@@ -193,6 +228,63 @@ export async function handleRewrite(request, env) {
   }
 }
 
+export async function handleStripMarks(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "invalid-request" }, { status: 400 }, request.headers.get("Origin") || "");
+  }
+
+  const text = typeof body?.text === "string" ? body.text : "";
+  const mode = body?.mode === "inspect" ? "inspect" : "clean";
+  const strength = body?.strength === "humanize" ? "humanize" : "paraphrase";
+  const options = {
+    nfkc: !!body?.nfkc,
+    aggressiveHomoglyphs: !!body?.aggressive_homoglyphs,
+    stripBidi: !!body?.strip_bidi,
+    stripEmojiGlue: !!body?.strip_emoji_glue,
+  };
+  const origin = request.headers.get("Origin") || "";
+  if (!text.trim()) return json({ error: "empty" }, { status: 400 }, origin);
+  if (text.length > MAX_CHARS) return json({ error: "too-long" }, { status: 400 }, origin);
+
+  try {
+    if (mode === "inspect") {
+      return json({ ok: true, mode: "inspect", report: inspectText(text, { aggressive: options.aggressiveHomoglyphs, stripEmojiGlue: options.stripEmojiGlue }) }, {}, origin);
+    }
+
+    const layerA = cleanText(text, options);
+    const result = { ok: true, mode: "clean", text: layerA.text, stats: layerA.stats };
+
+    if (body?.rewrite && env?.AI?.run) {
+      const prompt = WATERMARK_PROMPTS[strength].replace("{TEXT}", layerA.text);
+      const response = await env.AI.run(MODEL, {
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 1024,
+        temperature: 0.8,
+      });
+      const rewritten = modelText(response).trim();
+      if (rewritten) {
+        result.text = rewritten;
+        result.rewrite = {
+          strength,
+          lexical_divergence: lexicalDivergence(layerA.text, rewritten),
+          original_length: layerA.text.length,
+          rewritten_length: rewritten.length,
+        };
+      }
+    } else if (body?.rewrite) {
+      result.rewrite = { error: "rewrite-unavailable" };
+    }
+
+    return json(result, {}, origin);
+  } catch (error) {
+    console.error("strip-marks failed", error?.message || "unknown");
+    return json({ error: "strip-marks-unavailable" }, { status: 503 }, origin);
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -201,6 +293,7 @@ export default {
     if (url.pathname === "/health" && request.method === "GET") return json({ ok: true, version: VERSION }, {}, origin);
     if (url.pathname === "/rewrite" && request.method === "POST") return handleRewrite(request, env);
     if (url.pathname === "/bibliography" && request.method === "POST") return handleBibliography(request, env);
+    if (url.pathname === "/strip-marks" && request.method === "POST") return handleStripMarks(request, env);
     return json({ error: "not-found" }, { status: 404 }, origin);
   },
 };
