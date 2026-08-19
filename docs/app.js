@@ -112,11 +112,26 @@ const I18N = {
     strict: "solo lo obvio",
     analyze: "analizar",
     clear: "limpiar",
+    stripMarks: "quitar marcas",
+    stripTitle: "quitar marcas de ia",
+    stripExplain: "Quita caracteres invisibles (espacios raros, unicode de control) y, si quieres, reescribe el texto para que suene menos a plantilla. El texto se envía al servicio de aismell para procesarlo y no se guarda.",
+    stripRewriteLbl: "también reescribir (quita marcas de fraseo de ia)",
+    stripRunning: "quitando marcas…",
+    stripEmpty: "pega un texto primero",
+    stripDone: "listo. Copia la versión limpia si te sirve.",
+    stripCopy: "copiar versión",
+    stripCopied: "copiado",
+    stripDiffLbl: "qué cambió",
+    stripDiffNone: "no se encontraron caracteres invisibles ni marcas de fraseo.",
+    stripDiffChars: "{n} caracteres invisibles o raros eliminados",
+    stripDiffRewrite: "versión reescrita ({pct}% de diferencia léxica)",
+    stripError: "no se pudo quitar marcas ahora. Inténtalo de nuevo en un momento.",
+    stripPrivacy: "El texto se envía solo para procesarlo; no se guarda ni se usa para entrenar modelos.",
     why: "qué hace",
     whyText: "aismell lee tu texto y te señala qué frases y decisiones de discurso suenan a plantilla de IA: muletillas, conectores raros, párrafos que no cambian de ángulo, temas sobreexplicados, cierres demasiado prolijos y ritmo parejo. Te explica qué detectó, por qué importa y por dónde editar. Si hay bibliografía, revisa si las citas existen de verdad.",
     not: "qué NO hace",
-    not1: "<strong>No reescribe tu texto.</strong> Tú decides qué cambiar.",
-    not2: "<strong>No promete burlar detectores.</strong> Ese juego es una estafa.",
+    not1: "<strong>No reescribe tu texto sin que lo pidas.</strong> La acción “quitar marcas” lo hace solo si la usas.",
+    not2: "<strong>No promete burlar detectores.</strong> Quitar marcas visibles ayuda a limpiar, no garantiza pasar ninguna prueba.",
     not3: "<strong>No acusa.</strong> Humanos también usan estas frases. Úsalo para revisar, no para juzgar.",
     cli: "también por terminal",
     cliText: "¿Trabajas con PDFs? Hay una versión CLI que anota Word y PDF con comentarios al margen. <a href=\"https://github.com/brm-src/aismell#cli\" target=\"_blank\" rel=\"noopener\">Ver en GitHub</a>.",
@@ -189,7 +204,7 @@ const I18N = {
       <p>No es un detector forense ni una prueba en juicios académicos. Los falsos positivos existen: muchas frases que marca también las usan personas reales, especialmente en textos académicos formales.</p>
 
       <h3>privacidad</h3>
-      <p>Tu texto no sale de tu navegador. Todo el análisis corre localmente con Python (Pyodide) en tu pestaña. Si activas <strong>verificar bibliografía</strong>, solo se envían los identificadores (DOIs, IDs de arXiv, títulos y autores) a CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books y OpenLibrary para confirmar si existen. El resto del texto se queda contigo.</p>
+      <p>El análisis normal corre localmente con Python (Pyodide) en tu pestaña: tu texto no sale de tu navegador. Si activas <strong>verificar bibliografía</strong>, solo se envían los identificadores (DOIs, IDs de arXiv, títulos y autores) a CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books y OpenLibrary para confirmar si existen. La única acción que envía tu texto a un servidor es <strong>quitar marcas</strong>: se procesa en el servicio de aismell, no se guarda y no se usa para entrenar modelos.</p>
 
       <h3>uso responsable</h3>
       <p>No uses aismell para acusar a nadie de hacer trampa. Úsalo para revisar tu propia escritura, detectar muletillas, y decidir qué cambiar. Las instituciones que usen aismell para penalizar estudiantes lo hacen bajo su propia responsabilidad.</p>
@@ -305,11 +320,26 @@ const I18N = {
     strict: "high confidence only",
     analyze: "analyze",
     clear: "clear",
+    stripMarks: "strip marks",
+    stripTitle: "strip ai marks",
+    stripExplain: "Removes invisible characters (odd spaces, control unicode) and, if you want, rewrites the text so it sounds less like a template. The text is sent to the aismell service for processing and is not stored.",
+    stripRewriteLbl: "also rewrite (removes ai phrasing marks)",
+    stripRunning: "stripping marks…",
+    stripEmpty: "paste some text first",
+    stripDone: "done. Copy the clean version if it helps.",
+    stripCopy: "copy version",
+    stripCopied: "copied",
+    stripDiffLbl: "what changed",
+    stripDiffNone: "no invisible characters or phrasing marks found.",
+    stripDiffChars: "{n} invisible or odd characters removed",
+    stripDiffRewrite: "rewritten version ({pct}% lexical difference)",
+    stripError: "couldn't strip marks right now. Try again in a moment.",
+    stripPrivacy: "The text is sent only to be processed; it is not stored or used to train models.",
     why: "what it does",
     whyText: "aismell reads your text and flags phrase-level and discourse-level cues: filler phrases, forced connectors, paragraphs that never change angle, over-explained themes, overly tidy endings, and flat rhythm. It explains what it found, why it matters, and where to edit. If a bibliography is detected, citations are cross-checked against public sources to confirm they exist.",
     not: "what it does NOT do",
-    not1: "<strong>Does not rewrite your text.</strong> You decide what to change.",
-    not2: "<strong>Does not promise to bypass detectors.</strong> That game is a scam.",
+    not1: "<strong>Does not rewrite your text unless you ask.</strong> The “strip marks” action only rewrites when you use it.",
+    not2: "<strong>Does not promise to bypass detectors.</strong> Stripping visible marks helps clean up text; it doesn't guarantee passing any test.",
     not3: "<strong>Not forensic.</strong> False positives happen; humans use these phrases too.",
     cli: "also a CLI",
     cliText: "Working with PDFs? There's a CLI version that annotates Word and PDF with highlights and margin comments. <a href=\"https://github.com/brm-src/aismell#cli\" target=\"_blank\" rel=\"noopener\">See on GitHub</a>.",
@@ -382,7 +412,7 @@ const I18N = {
       <p>It's not a forensic detector, and not evidence for academic misconduct cases. False positives happen: many phrases it flags are also used by real people, especially in formal academic writing.</p>
 
       <h3>privacy</h3>
-      <p>Your text never leaves your browser. All analysis runs locally with Python (Pyodide) in your tab. If you enable <strong>verify bibliography</strong>, only the identifiers (DOIs, arXiv IDs, titles and authors) are sent to CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books and OpenLibrary to confirm they exist. The rest of your text stays with you.</p>
+      <p>Normal analysis runs locally with Python (Pyodide) in your tab: your text never leaves your browser. If you enable <strong>verify bibliography</strong>, only the identifiers (DOIs, arXiv IDs, titles and authors) are sent to CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books and OpenLibrary to confirm they exist. The only action that sends your text to a server is <strong>strip marks</strong>: it is processed by the aismell service, not stored, and not used to train models.</p>
 
       <h3>responsible use</h3>
       <p>Don't use aismell to accuse anyone of cheating. Use it to review your own writing, spot fillers, and decide what to change. Institutions that use aismell to penalize students do so at their own responsibility.</p>
@@ -405,6 +435,10 @@ const els = {
   biblioSel: null,
   biblioInlineNote: null,
   analyzeBtn: document.getElementById("analyzeBtn"),
+  stripBtn: document.getElementById("stripBtn"),
+  stripPanel: document.getElementById("stripPanel"),
+  stripResult: document.getElementById("stripResult"),
+  stripRewrite: document.getElementById("stripRewrite"),
   clearBtn: document.getElementById("clearBtn"),
   fileBtn: document.getElementById("fileBtn"),
   fileInput: document.getElementById("fileInput"),
@@ -1532,6 +1566,81 @@ async function analyze(options = {}) {
 }
 
 els.analyzeBtn.addEventListener("click", () => { clearBiblio(); analyze(); });
+els.stripBtn.addEventListener("click", stripMarks);
+
+const STRIP_API = "https://aismell-rewrite.brmcl.workers.dev/strip-marks";
+
+async function stripMarks() {
+  const text = els.input.value;
+  const t = I18N[UILANG];
+  if (!text.trim()) {
+    setStatus(t.stripEmpty, true);
+    return;
+  }
+  els.stripResult.innerHTML = `<div class="scanning"><div class="label">${t.stripRunning}</div></div>`;
+  els.stripPanel.hidden = false;
+  els.stripPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  els.stripBtn.disabled = true;
+  try {
+    const r = await fetch(STRIP_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text,
+        mode: "clean",
+        rewrite: els.stripRewrite.checked,
+        strength: "humanize",
+      }),
+    });
+    const data = await r.json();
+    if (!r.ok || data?.error) throw new Error(data?.error || "http " + r.status);
+    renderStrip(data, t);
+  } catch (err) {
+    console.error(err);
+    els.stripResult.innerHTML = `<div class="strip-error">${t.stripError}</div>`;
+  } finally {
+    els.stripBtn.disabled = false;
+  }
+}
+
+function renderStrip(data, t) {
+  const changes = [];
+  const removedCount = data.stats?.removed_count || 0;
+  const replacedCount = data.stats?.replaced_count || 0;
+  if (removedCount + replacedCount > 0) {
+    changes.push(t.stripDiffChars.replace("{n}", String(removedCount + replacedCount)));
+  }
+  if (data.rewrite && typeof data.rewrite.lexical_divergence === "number") {
+    changes.push(t.stripDiffRewrite.replace("{pct}", String(Math.round(data.rewrite.lexical_divergence * 100))));
+  }
+  if (!changes.length) changes.push(t.stripDiffNone);
+
+  els.stripResult.innerHTML = `
+    <div class="strip-changes">${t.stripDiffLbl}: ${changes.join(" · ")}</div>
+    <div class="strip-output">
+      <textarea id="stripOutput" readonly spellcheck="false">${escapeHtml(data.text)}</textarea>
+      <div class="strip-copy-row">
+        <button class="btn" id="stripCopyBtn" type="button">${t.stripCopy}</button>
+        <span class="strip-privacy">${t.stripPrivacy}</span>
+      </div>
+    </div>`;
+  const copyBtn = document.getElementById("stripCopyBtn");
+  const output = document.getElementById("stripOutput");
+  copyBtn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(output.value);
+      copyBtn.textContent = t.stripCopied;
+      setTimeout(() => { copyBtn.textContent = t.stripCopy; }, 1600);
+    } catch {
+      output.focus();
+      output.select();
+      document.execCommand("copy");
+      copyBtn.textContent = t.stripCopied;
+      setTimeout(() => { copyBtn.textContent = t.stripCopy; }, 1600);
+    }
+  });
+}
+
 els.resultPanel.addEventListener("click", (e) => {
   if (e.target && e.target.matches(".intelecta-nudge .dismiss")) {
     dismissIntelectaNudge(e.target);
@@ -1546,6 +1655,7 @@ function resetToHome(opts = {}) {
   els.scanning.hidden = true;
   els.scanning.innerHTML = "";
   els.resultPanel.hidden = true;
+  if (els.stripPanel) els.stripPanel.hidden = true;
   clearBiblio();
   lastReport = null;
   document.body.classList.remove("has-text");

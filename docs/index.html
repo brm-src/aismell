@@ -1427,6 +1427,26 @@
       white-space: normal;
     }
   }
+
+  /* ---- strip marks panel ---- */
+  #stripPanel .strip-head h2 { margin: 0 0 6px; }
+  #stripPanel .strip-head p { color: var(--dim); font-size: 13px; margin: 0 0 12px; }
+  .strip-actions { margin-bottom: 12px; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .strip-changes { font-size: 13px; color: var(--dim); margin-bottom: 10px; }
+  .strip-output textarea {
+    width: 100%;
+    min-height: 160px;
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px;
+    font: inherit;
+    resize: vertical;
+  }
+  .strip-copy-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .strip-privacy { font-size: 12px; color: var(--dim); }
+  .strip-error { color: var(--red); font-size: 13px; padding: 10px 0; }
 </style>
 </head>
 <body>
@@ -1477,6 +1497,7 @@
       </label>
       <div class="right">
         <button class="btn" id="analyzeBtn" disabled data-i18n="analyze">analizar</button>
+        <button class="btn ghost" id="stripBtn" data-i18n="stripMarks">quitar marcas</button>
         <button class="btn ghost" id="clearBtn" data-i18n="clear">limpiar</button>
         <input type="file" id="fileInput" accept=".txt,.md,.docx,.pdf" style="display:none">
         <button class="btn ghost" id="fileBtn" data-i18n="upload">subir archivo</button>
@@ -1490,6 +1511,20 @@
     <div class="findings" id="findings"></div>
   </div>
 
+  <div class="panel" id="stripPanel" hidden>
+    <div class="strip-head">
+      <h2 data-i18n="stripTitle">quitar marcas de ia</h2>
+      <p data-i18n="stripExplain">Quita caracteres invisibles (espacios raros, unicode de control) y, si quieres, reescribe el texto para que suene menos a plantilla. El texto se envía al servicio de aismell para procesarlo y no se guarda.</p>
+    </div>
+    <div class="strip-actions">
+      <label>
+        <input type="checkbox" id="stripRewrite" checked>
+        <span data-i18n="stripRewriteLbl">también reescribir (quita marcas de fraseo de ia)</span>
+      </label>
+    </div>
+    <div class="strip-result" id="stripResult"></div>
+  </div>
+
   <details class="about-toggle">
     <summary data-i18n="about_toggle">qué hace, qué no hace, cli</summary>
     <div class="about">
@@ -1501,8 +1536,8 @@
       <div class="about-col">
         <h2 data-i18n="not">qué NO hace</h2>
         <ul>
-          <li data-i18n="not1"><strong>No reescribe.</strong> Tú decides qué cambiar.</li>
-          <li data-i18n="not2"><strong>No burla detectores.</strong> Ese juego es scam.</li>
+          <li data-i18n="not1"><strong>No reescribe tu texto sin que lo pidas.</strong> La acción “quitar marcas” lo hace solo si la usas.</li>
+          <li data-i18n="not2"><strong>No promete burlar detectores.</strong> Quitar marcas visibles ayuda a limpiar, no garantiza pasar ninguna prueba.</li>
           <li data-i18n="not3"><strong>No es forense.</strong> Falsos positivos pasan; humanos también escriben así.</li>
         </ul>
       </div>
@@ -1552,7 +1587,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
-<script src="app.js?v=20260703-report-ui"></script>
+<script src="app.js?v=20260819-strip-marks"></script>
 
 </body>
 </html>
