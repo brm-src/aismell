@@ -1200,6 +1200,31 @@
     .btn.tip::after { display: none; }
   }
 
+  /* Help panel: visible text explanations (mobile tap / fallback) */
+  .help-toggle { min-width: 36px; }
+  @media (min-width: 721px) {
+    .help-toggle { display: none; }
+  }
+  .help-panel .help-head h2 { margin: 0 0 10px; font-size: 16px; }
+  .help-list { display: flex; flex-direction: column; gap: 10px; }
+  .help-row {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    font-size: 13.5px;
+    line-height: 1.45;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+  .help-row .help-key {
+    flex: 0 0 auto;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .help-row .help-desc { color: var(--dim); }
+
   .biblio-link {
     color: var(--cya);
     text-decoration: underline;
@@ -1532,6 +1557,7 @@
         <button class="btn ghost tip" id="clearBtn" data-i18n="clear" data-i18n-tip="clearTip" data-tip="Borra el texto y vuelve al inicio.">limpiar</button>
         <input type="file" id="fileInput" accept=".txt,.md,.docx,.pdf" style="display:none">
         <button class="btn ghost tip" id="fileBtn" data-i18n="upload" data-i18n-tip="uploadTip" data-tip="Sube un archivo .txt, .md, .docx o .pdf y lo analiza igual que el texto pegado.">subir archivo</button>
+        <button class="btn ghost help-toggle" id="helpBtn" data-i18n="help" data-i18n-tip="helpTip" data-tip="Muestra qué hace cada botón.">?</button>
       </div>
     </div>
   </div>
@@ -1540,6 +1566,13 @@
     <div class="scanning" id="scanning" hidden></div>
     <div class="score" id="score"></div>
     <div class="findings" id="findings"></div>
+  </div>
+
+  <div class="panel help-panel" id="helpPanel" hidden>
+    <div class="help-head">
+      <h2 data-i18n="helpTitle">qué hace cada botón</h2>
+    </div>
+    <div class="help-list" id="helpList"></div>
   </div>
 
   <div class="panel" id="stripPanel" hidden>
@@ -1618,7 +1651,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
-<script src="app.js?v=20260819-strip-marks"></script>
+<script src="app.js?v=20260819-help-mobile"></script>
 
 </body>
 </html>

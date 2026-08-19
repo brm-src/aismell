@@ -117,6 +117,9 @@ const I18N = {
     analyzeTip: "Analiza el texto y te marca línea por línea qué suena a IA, además de verificar la bibliografía si hay.",
     clearTip: "Borra el texto y vuelve al inicio.",
     uploadTip: "Sube un archivo .txt, .md, .docx o .pdf y lo analiza igual que el texto pegado.",
+    help: "?",
+    helpTitle: "qué hace cada botón",
+    helpTip: "Muestra qué hace cada botón.",
     stripTitle: "quitar marcas de ia",
     stripExplain: "Quita caracteres invisibles (espacios raros, unicode de control) y, si quieres, reescribe el texto para que suene menos a plantilla. El texto se envía al servicio de aismell para procesarlo y no se guarda.",
     stripRewriteLbl: "también reescribir (quita marcas de fraseo de ia)",
@@ -329,6 +332,9 @@ const I18N = {
     analyzeTip: "Analyzes the text and flags line by line what sounds AI-written, and checks the bibliography if there is one.",
     clearTip: "Clears the text and returns to the start.",
     uploadTip: "Uploads a .txt, .md, .docx or .pdf file and analyzes it the same way as pasted text.",
+    help: "?",
+    helpTitle: "what each button does",
+    helpTip: "Shows what each button does.",
     stripTitle: "strip ai marks",
     stripExplain: "Removes invisible characters (odd spaces, control unicode) and, if you want, rewrites the text so it sounds less like a template. The text is sent to the aismell service for processing and is not stored.",
     stripRewriteLbl: "also rewrite (removes ai phrasing marks)",
@@ -447,6 +453,9 @@ const els = {
   stripPanel: document.getElementById("stripPanel"),
   stripResult: document.getElementById("stripResult"),
   stripRewrite: document.getElementById("stripRewrite"),
+  helpBtn: document.getElementById("helpBtn"),
+  helpPanel: document.getElementById("helpPanel"),
+  helpList: document.getElementById("helpList"),
   clearBtn: document.getElementById("clearBtn"),
   fileBtn: document.getElementById("fileBtn"),
   fileInput: document.getElementById("fileInput"),
@@ -1576,6 +1585,30 @@ async function analyze(options = {}) {
 els.analyzeBtn.addEventListener("click", () => { clearBiblio(); analyze(); });
 els.stripBtn.addEventListener("click", stripMarks);
 
+const HELP_ITEMS = [
+  ["analyzeBtn", "analyze", "analyzeTip"],
+  ["stripBtn", "stripMarks", "stripTip"],
+  ["clearBtn", "clear", "clearTip"],
+  ["fileBtn", "upload", "uploadTip"],
+];
+
+function renderHelp() {
+  const t = I18N[UILANG];
+  if (!els.helpList) return;
+  els.helpList.innerHTML = HELP_ITEMS.map(([id, labelKey, tipKey]) => {
+    const label = t[labelKey] || labelKey;
+    const tip = t[tipKey] || "";
+    return `<div class="help-row"><span class="help-key">${escapeHtml(label)}</span><span class="help-desc">${escapeHtml(tip)}</span></div>`;
+  }).join("");
+}
+if (els.helpBtn && els.helpPanel) {
+  els.helpBtn.addEventListener("click", () => {
+    renderHelp();
+    els.helpPanel.hidden = !els.helpPanel.hidden;
+    if (!els.helpPanel.hidden) els.helpPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+}
+
 const STRIP_API = "https://aismell-rewrite.brmcl.workers.dev/strip-marks";
 
 async function stripMarks() {
@@ -1664,6 +1697,7 @@ function resetToHome(opts = {}) {
   els.scanning.innerHTML = "";
   els.resultPanel.hidden = true;
   if (els.stripPanel) els.stripPanel.hidden = true;
+  if (els.helpPanel) els.helpPanel.hidden = true;
   clearBiblio();
   lastReport = null;
   document.body.classList.remove("has-text");
