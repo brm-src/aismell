@@ -41,6 +41,7 @@ function editorPrompt(language, findings, mode) {
     "Preserve every fact, claim, name, date, number, URL, citation, quote, code fragment, list item, and the writer's register.",
     "Do not add information, praise, apologies, headings, bullets, or explanations. Do not translate.",
     "Keep existing markdown headings and titles exactly as they are.",
+    "Strip leftover copy-paste formatting markers: remove literal markdown asterisks around bold text (like **word**), single asterisks, and backticks around code or filenames (like `file.xls`), keeping the words themselves. Remove other stray symbols only when they are clearly formatting residue, never when they are part of the meaning (URLs, citations, numbers, code).",
     `aismell detected these possible signals: ${signalList}.`,
     "Return only valid JSON with exactly this shape: {\"text\":\"edited text\",\"changes\":[\"short factual description of each edit\"]}. If nothing needs changing, return the original text and an empty changes array.",
   ].join("\n");
@@ -67,7 +68,21 @@ function parseModelResponse(result, original) {
   const changes = Array.isArray(parsed.changes)
     ? parsed.changes.filter((item) => typeof item === "string" && item.trim()).slice(0, 12)
     : [];
-  return { text: parsed.text, changes };
+  return { text: stripMarkdownResidue(parsed.text, changes), changes };
+}
+
+// Deterministic safety net: GPT/markdown copy-paste leaves literal **bold**,
+// *emphasis* and `code` markers behind (the rich formatting does not survive
+// the clipboard). The model is instructed to strip them too, but this ensures
+// the output never ships with asterisk/backtick residue even if it does not.
+export function stripMarkdownResidue(text, changes = []) {
+  let stripped = text
+    .replace(/\*\*([^*\n]+)\*\*/g, "$1")
+    .replace(/`([^`\n]+)`/g, "$1");
+  if (stripped !== text && !changes.some((item) => /marcadores|asteriscos|backticks|formato|markdown/i.test(item))) {
+    changes.push("quitó marcadores de formato sobrantes (asteriscos y backticks)");
+  }
+  return stripped;
 }
 
 async function analyzeWithAismell(env, text) {

@@ -87,6 +87,44 @@ test("clean mode preserves existing markdown headings in the rewrite instruction
   assert.match(systemPrompt, /Keep existing markdown headings and titles exactly as they are/);
 });
 
+test("rewrite prompt instructs stripping leftover asterisk and backtick markers", async () => {
+  let systemPrompt = "";
+  const ai = {
+    async run(model, request) {
+      systemPrompt = request.messages[0].content;
+      return { response: JSON.stringify({ text, changes: [] }) };
+    },
+  };
+  const response = await handleRewrite(new Request("https://api.example/rewrite", {
+    method: "POST", body: JSON.stringify({ text }),
+  }), { AI: ai, ANALYZER: analyzer() });
+
+  assert.equal(response.status, 200);
+  assert.match(systemPrompt, /Strip leftover copy-paste formatting markers/);
+  assert.match(systemPrompt, /backticks around code or filenames/);
+});
+
+test("strips bold and backtick markers from a GPT copy-paste output", async () => {
+  const { stripMarkdownResidue } = await import("../src/index.js");
+  const dirty = "**Aula 9** y `ASISTENCIA AULA 9.xls`";
+  const result = stripMarkdownResidue(dirty, []);
+  assert.equal(result, "Aula 9 y ASISTENCIA AULA 9.xls");
+});
+
+test("keeps multiplication asterisks and URLs untouched", async () => {
+  const { stripMarkdownResidue } = await import("../src/index.js");
+  const result = stripMarkdownResidue("El total es 2*3=6 y https://aismell.me/a*b", []);
+  assert.equal(result, "El total es 2*3=6 y https://aismell.me/a*b");
+});
+
+test("adds a changes entry when residue is stripped", async () => {
+  const { stripMarkdownResidue } = await import("../src/index.js");
+  const changes = [];
+  const result = stripMarkdownResidue("**hola** mundo", changes);
+  assert.equal(result, "hola mundo");
+  assert.ok(changes.some((item) => /asteriscos|marcadores|formato/i.test(item)));
+});
+
 test("accepts the current Workers AI output message shape", async () => {
   const ai = { async run() {
     return { output: [{ type: "message", content: JSON.stringify({ text: "The report is ready.", changes: ["Removed filler"] }) }] };
