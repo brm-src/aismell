@@ -128,7 +128,41 @@ test("adds a changes entry when residue is stripped", async () => {
 test("collapses double spaces left by removed phrases", async () => {
   const { stripMarkdownResidue } = await import("../src/index.js");
   const result = stripMarkdownResidue("Aula 8.  no es posible  calcular", []);
-  assert.equal(result, "Aula 8. no es posible calcular");
+  assert.equal(result, "Aula 8. No es posible calcular");
+});
+
+test("capitalizes the first letter after a sentence-ending period", async () => {
+  const { stripMarkdownResidue } = await import("../src/index.js");
+  const result = stripMarkdownResidue("Aula 8. no es posible calcular las inasistencias", []);
+  assert.equal(result, "Aula 8. No es posible calcular las inasistencias");
+});
+
+test("does not capitalize after common abbreviations", async () => {
+  const { stripMarkdownResidue } = await import("../src/index.js");
+  assert.equal(stripMarkdownResidue("Trajo libros, cuadernos, etc. y más cosas", []), "Trajo libros, cuadernos, etc. y más cosas");
+  assert.equal(stripMarkdownResidue("Lo dijo el Sr. perez ayer", []), "Lo dijo el Sr. perez ayer");
+});
+
+test("capitalizes after question and exclamation marks", async () => {
+  const { stripMarkdownResidue } = await import("../src/index.js");
+  assert.equal(stripMarkdownResidue("¿listo? vamos ya", []), "¿listo? Vamos ya");
+  assert.equal(stripMarkdownResidue("¡increíble! no lo sabía", []), "¡increíble! No lo sabía");
+});
+
+test("rewrite prompt instructs capitalizing after sentence ends", async () => {
+  let systemPrompt = "";
+  const ai = {
+    async run(model, request) {
+      systemPrompt = request.messages[0].content;
+      return { response: JSON.stringify({ text, changes: [] }) };
+    },
+  };
+  const response = await handleRewrite(new Request("https://api.example/rewrite", {
+    method: "POST", body: JSON.stringify({ text }),
+  }), { AI: ai, ANALYZER: analyzer() });
+
+  assert.equal(response.status, 200);
+  assert.match(systemPrompt, /Start every new sentence after a period/);
 });
 
 test("accepts the current Workers AI output message shape", async () => {

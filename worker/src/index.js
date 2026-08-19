@@ -42,6 +42,7 @@ function editorPrompt(language, findings, mode) {
     "Do not add information, praise, apologies, headings, bullets, or explanations. Do not translate.",
     "Keep existing markdown headings and titles exactly as they are.",
     "Strip leftover copy-paste formatting markers: remove literal markdown asterisks around bold text (like **word**), single asterisks, and backticks around code or filenames (like `file.xls`), keeping the words themselves. Remove other stray symbols only when they are clearly formatting residue, never when they are part of the meaning (URLs, citations, numbers, code).",
+    "Start every new sentence after a period, exclamation, or question mark with a capital letter.",
     `aismell detected these possible signals: ${signalList}.`,
     "Return only valid JSON with exactly this shape: {\"text\":\"edited text\",\"changes\":[\"short factual description of each edit\"]}. If nothing needs changing, return the original text and an empty changes array.",
   ].join("\n");
@@ -80,12 +81,35 @@ export function stripMarkdownResidue(text, changes = []) {
     .replace(/\*\*([^*\n]+)\*\*/g, "$1")
     .replace(/`([^`\n]+)`/g, "$1")
     .split("\n")
-    .map((line) => line.replace(/[ \t]{2,}/g, " ").trimEnd())
+    .map((line) => capitalizeAfterSentenceEnd(line.replace(/[ \t]{2,}/g, " ").trimEnd()))
     .join("\n");
   if (stripped !== text && !changes.some((item) => /marcadores|asteriscos|backticks|formato|markdown/i.test(item))) {
     changes.push("quitó marcadores de formato sobrantes (asteriscos y backticks)");
   }
   return stripped;
+}
+
+// Common abbreviations that end with a period but do NOT start a new sentence.
+// The capitalizer must leave these alone: "etc. y más", "Sr. Pérez".
+const SENTENCE_END_ABBREVIATIONS = new Set([
+  "a", "c", "d", // a. m., c. (siglo), d. (don)
+  "aprox", "art", "av", "cap", "co", "corp", "dept", "dto", "dr", "dra", "ed",
+  "eds", "ej", "etc", "fig", "gral", "inc", "ltd", "m", "mr", "mrs", "ms",
+  "no", "nro", "núm", "p", "pág", "págs", "prof", "pto", "sr", "sra", "st",
+  "tel", "ud", "uds", "vol", "vs", "univ",
+]);
+
+function capitalizeAfterSentenceEnd(line) {
+  return line.replace(/([.!?])\s+([a-záéíóúñ])/g, (match, punctuation, letter, offset) => {
+    if (punctuation !== ".") return `${punctuation} ${letter.toUpperCase()}`;
+    // Check the word right before the period: if it is a known abbreviation,
+    // this period is not a sentence end.
+    const before = line.slice(0, offset);
+    const wordMatch = before.match(/(\S+)\s*$/);
+    const word = wordMatch ? wordMatch[1].replace(/[.,;:)]+$/, "").toLowerCase() : "";
+    if (word && SENTENCE_END_ABBREVIATIONS.has(word)) return match;
+    return `${punctuation} ${letter.toUpperCase()}`;
+  });
 }
 
 async function analyzeWithAismell(env, text) {
