@@ -34,12 +34,13 @@ function editorPrompt(language, findings, mode) {
         "Prefer concrete verbs, shorter sentences, and direct natural phrasing for the reader.",
         "Keep the writer's register professional and human; do not make it slangy, casual, or sales-like.",
       ].join(" ")
-    : "Remove only high-confidence empty AI-sounding filler and leave already-direct wording alone.";
+    : "Remove only high-confidence empty filler: stock transition phrases and connectors that add no meaning (such as 'por esta razón', 'it is important to note'), ceremonial openings, redundant pairs, and empty adjectives. Leave already-direct wording alone. Do not paraphrase or restructure sentences that are fine.";
   return [
     "You are a precise line editor, not a paraphraser.",
     `Rewrite the user text in ${languageName}. ${instruction}`,
     "Preserve every fact, claim, name, date, number, URL, citation, quote, code fragment, list item, and the writer's register.",
     "Do not add information, praise, apologies, headings, bullets, or explanations. Do not translate.",
+    "Keep existing markdown headings and titles exactly as they are.",
     `aismell detected these possible signals: ${signalList}.`,
     "Return only valid JSON with exactly this shape: {\"text\":\"edited text\",\"changes\":[\"short factual description of each edit\"]}. If nothing needs changing, return the original text and an empty changes array.",
   ].join("\n");

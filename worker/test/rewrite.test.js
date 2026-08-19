@@ -53,6 +53,40 @@ test("uses a stronger humanizing prompt only in improve mode", async () => {
   assert.match(systemPrompt, /ceremonial openings and closings/);
 });
 
+test("clean mode targets stock transition phrases, not just AI-sounding filler", async () => {
+  let systemPrompt = "";
+  const ai = {
+    async run(model, request) {
+      systemPrompt = request.messages[0].content;
+      return { response: JSON.stringify({ text, changes: [] }) };
+    },
+  };
+  const response = await handleRewrite(new Request("https://api.example/rewrite", {
+    method: "POST", body: JSON.stringify({ text }),
+  }), { AI: ai, ANALYZER: analyzer() });
+
+  assert.equal(response.status, 200);
+  assert.match(systemPrompt, /stock transition phrases/);
+  assert.match(systemPrompt, /por esta razón/);
+  assert.match(systemPrompt, /Do not paraphrase or restructure sentences that are fine/);
+});
+
+test("clean mode preserves existing markdown headings in the rewrite instruction", async () => {
+  let systemPrompt = "";
+  const ai = {
+    async run(model, request) {
+      systemPrompt = request.messages[0].content;
+      return { response: JSON.stringify({ text, changes: [] }) };
+    },
+  };
+  const response = await handleRewrite(new Request("https://api.example/rewrite", {
+    method: "POST", body: JSON.stringify({ text }),
+  }), { AI: ai, ANALYZER: analyzer() });
+
+  assert.equal(response.status, 200);
+  assert.match(systemPrompt, /Keep existing markdown headings and titles exactly as they are/);
+});
+
 test("accepts the current Workers AI output message shape", async () => {
   const ai = { async run() {
     return { output: [{ type: "message", content: JSON.stringify({ text: "The report is ready.", changes: ["Removed filler"] }) }] };
