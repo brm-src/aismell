@@ -5,6 +5,9 @@ from workers import Response, WorkerEntrypoint
 from analyzer import analyze_for_rewrite
 
 
+ENGINE_VERSION = "aismell-core-statistical-2026-08-20"
+
+
 def response(payload, status=200):
     return Response(
         json.dumps(payload, ensure_ascii=False),
@@ -26,7 +29,7 @@ class Default(WorkerEntrypoint):
                 "Access-Control-Allow-Headers": "Content-Type",
             })
         if url.endswith("/health") and request.method == "GET":
-            return response({"ok": True, "engine": "aismell-core"})
+            return response({"ok": True, "engine": ENGINE_VERSION})
         if not url.endswith("/analyze") or request.method != "POST":
             return response({"error": "not-found"}, 404)
         try:

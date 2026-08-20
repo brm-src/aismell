@@ -3,7 +3,7 @@
 Public endpoints used by the `aismell quick clean` and `ai bibliography check` Omarchy plugins.
 
 - `GET /health` — service/version probe.
-- `POST /rewrite` — accepts `{ "text": "...", "mode": "clean" | "improve" }` up to 3,000 characters and returns `{ "text": "...", "changes": ["..."] }`.
+- `POST /rewrite` — accepts `{ "text": "...", "mode": "clean" | "improve" }` up to 3,000 characters and returns `{ "text": "...", "changes": ["..."], "analysis": { "score", "scoreComponents", "stats", "findingCount" } }`.
 - `POST /bibliography` — accepts a bibliography up to 12,000 characters, indexes its fields, queries Crossref and OpenAlex for up to 12 entries, and returns structural checks, catalog matches, duplicate identifiers, consistency warnings, and aismell signals from the first 3,000 characters.
 
 For entries with a DOI, the Worker performs an exact DOI lookup. For entries without a DOI, it queries both catalogs with title + author + year and ranks returned records using normalized title overlap, author overlap, and year agreement. A low score is `not-found`; the service never upgrades a weak result to a match.

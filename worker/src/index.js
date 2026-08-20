@@ -5,7 +5,7 @@ import { cleanText, inspectText } from "./unicode_strip.js";
 const MAX_CHARS = 3000;
 const MAX_BIBLIOGRAPHY_CHARS = 12000;
 const MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
-const VERSION = "2026-08-19-strip-marks-v1";
+const VERSION = "2026-08-20-guided-edit-v1";
 
 // Layer B rewrite prompts, ported from guillaumemeyer/watermarks-remover
 // (MIT) service/scripts/rewrite_text.py PROMPTS dict.
@@ -59,14 +59,21 @@ function json(data, init = {}, origin = "") {
   return new Response(JSON.stringify(data), { ...init, headers: { ...headers(origin), ...(init.headers || {}) } });
 }
 
-function editorPrompt(language, findings, mode) {
+function editorPrompt(language, findings, mode, analysis = {}) {
   const languageName = language === "es" ? "Spanish" : "English";
   const signalList = Array.isArray(findings) && findings.length ? findings.join(", ") : "none supplied";
+  const score = Number.isFinite(analysis.score) ? `${analysis.score}/100` : "not available";
+  const components = Object.entries(analysis.scoreComponents || {})
+    .filter(([key, value]) => key !== "combined" && Number(value) >= 0.06)
+    .map(([key, value]) => `${key}=${value}`)
+    .slice(0, 4)
+    .join(", ") || "none dominant";
   const instruction = mode === "improve"
     ? [
         "Make the improvement noticeable but faithful.",
         "Cut ceremonial openings and closings, institutional boilerplate, generic motivational claims, redundant pairs, abstract nouns, passive constructions, and stacked adjectives.",
         "Prefer concrete verbs, shorter sentences, and direct natural phrasing for the reader.",
+        "If the evidence mentions uniform rhythm, vary sentence lengths without making them artificially choppy. If it mentions distant narration or stacked absolutes, name the actor and qualify claims only when the source text supports it.",
         "Keep the writer's register professional and human; do not make it slangy, casual, or sales-like.",
       ].join(" ")
     : "Remove only high-confidence empty filler: stock transition phrases and connectors that add no meaning (such as 'por esta razón', 'it is important to note'), ceremonial openings, redundant pairs, and empty adjectives. Leave already-direct wording alone. Do not paraphrase or restructure sentences that are fine.";
@@ -78,6 +85,7 @@ function editorPrompt(language, findings, mode) {
     "Keep existing markdown headings and titles exactly as they are.",
     "Strip leftover copy-paste formatting markers: remove literal markdown asterisks around bold text (like **word**), single asterisks, and backticks around code or filenames (like `file.xls`), keeping the words themselves. Remove other stray symbols only when they are clearly formatting residue, never when they are part of the meaning (URLs, citations, numbers, code).",
     "Start every new sentence after a period, exclamation, or question mark with a capital letter.",
+    `aismell evidence index: ${score}. This is an editing signal, not proof of authorship. Dominant components: ${components}.`,
     `aismell detected these possible signals: ${signalList}.`,
     "Return only valid JSON with exactly this shape: {\"text\":\"edited text\",\"changes\":[\"short factual description of each edit\"]}. If nothing needs changing, return the original text and an empty changes array.",
   ].join("\n");
@@ -159,12 +167,16 @@ async function analyzeWithAismell(env, text) {
   if (!result || (result.language !== "es" && result.language !== "en") || !Array.isArray(result.findings)) {
     throw new Error("aismell analyzer returned invalid data");
   }
+  const findings = result.findings
+    .filter((finding) => typeof finding?.id === "string")
+    .map((finding) => `${finding.id}${typeof finding.matched === "string" && finding.matched ? ` (${finding.matched})` : ""}`)
+    .slice(0, 24);
   return {
     language: result.language,
-    findings: result.findings
-      .filter((finding) => typeof finding?.id === "string")
-      .map((finding) => `${finding.id}${typeof finding.matched === "string" ? ` (${finding.matched})` : ""}`)
-      .slice(0, 24),
+    findings,
+    score: Number.isFinite(result.score) ? result.score : null,
+    scoreComponents: result.scoreComponents && typeof result.scoreComponents === "object" ? result.scoreComponents : {},
+    stats: result.stats && typeof result.stats === "object" ? result.stats : {},
   };
 }
 
@@ -214,14 +226,24 @@ export async function handleRewrite(request, env) {
     const analysis = await analyzeWithAismell(env, text);
     const response = await env.AI.run(MODEL, {
       messages: [
-        { role: "system", content: editorPrompt(analysis.language, analysis.findings, mode) },
+        { role: "system", content: editorPrompt(analysis.language, analysis.findings, mode, analysis) },
         { role: "user", content: text },
       ],
       response_format: { type: "json_object" },
       max_tokens: 1024,
       temperature: 0.15,
     });
-    return json(parseModelResponse(response, text), {}, origin);
+    const edited = parseModelResponse(response, text);
+    const output = { ...edited };
+    if (analysis.score !== null || Object.keys(analysis.scoreComponents).length || Object.keys(analysis.stats).length) {
+      output.analysis = {
+        score: analysis.score,
+        scoreComponents: analysis.scoreComponents,
+        stats: analysis.stats,
+        findingCount: analysis.findings.length,
+      };
+    }
+    return json(output, {}, origin);
   } catch (error) {
     console.error("rewrite failed", error?.message || "unknown");
     return json({ error: "rewrite-unavailable" }, { status: 503 }, origin);

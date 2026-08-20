@@ -36,6 +36,36 @@ test("runs the actual aismell analyzer before rewriting a short text", async () 
   assert.match(calls[0].request.messages[0].content, /en\.important_to_note/);
 });
 
+test("passes the evidence index and statistical guidance into the editor prompt", async () => {
+  let systemPrompt = "";
+  const ai = {
+    async run(model, request) {
+      systemPrompt = request.messages[0].content;
+      return { response: JSON.stringify({ text: "The system is direct.", changes: ["Varied rhythm"] }) };
+    },
+  };
+  const response = await handleRewrite(new Request("https://api.example/rewrite", {
+    method: "POST", body: JSON.stringify({ text }),
+  }), {
+    AI: ai,
+    ANALYZER: analyzer({
+      language: "en",
+      score: 42,
+      scoreComponents: { statistical: 0.18, combined: 0.42 },
+      stats: { burstiness: 0.21, type_token_ratio: 0.44, trigram_repetition: 0.04 },
+      findings: [{ id: "statistical-uniformity", severity: 2 }],
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.analysis.score, 42);
+  assert.equal(payload.analysis.findingCount, 1);
+  assert.match(systemPrompt, /aismell evidence index: 42\/100/);
+  assert.match(systemPrompt, /statistical=0\.18/);
+  assert.match(systemPrompt, /statistical-uniformity/);
+});
+
 test("uses a stronger humanizing prompt only in improve mode", async () => {
   let systemPrompt = "";
   const ai = {

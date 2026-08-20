@@ -1327,7 +1327,7 @@ patterns:
     pattern: '(?i)\bse\s+(argumenta|sostiene|defiende|afirma|propone|plantea|concluye|aduce)\b'
     message: '"se argumenta que" — voz académica impersonal IA'
     suggestion: di quién lo argumenta, o ponlo en activa
-
+  
   - id: es.lo_que_X_es_que
     kind: regex
     severity: 3

@@ -94,6 +94,8 @@ class Report:
     era_max_year: int = 0      # largest year found in the text
     notes: list[str] = field(default_factory=list)
     segments: list[SegmentScore] = field(default_factory=list)
+    stats: dict[str, float | int] = field(default_factory=dict)
+    score_components: dict[str, float] = field(default_factory=dict)
 
     @property
     def total_findings(self) -> int:
@@ -405,10 +407,23 @@ def _check_emphasis_overload(text: str, lang: str) -> list[StructuralFinding]:
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             continue
+        is_bullet = bool(re.match(r"^[-*•]\s+", stripped))
+        leading_bold = re.match(r"^\*\*([^*]+)\*\*", stripped)
+        if leading_bold:
+            label = leading_bold.group(1).strip()
+            # README labels and numbered mini-headings are structure, not
+            # breathless emphasis. Ignore the whole line when it starts that way.
+            if is_bullet or label.endswith((":", ".")) or re.match(r"\d+\.\s+", label):
+                continue
         label_prefix = re.match(r"^(?:[-*•]\s+|\d+\.\s+)?", stripped)
         label_start = label_prefix.end() if label_prefix else 0
         for match in emphasis_rx.finditer(stripped):
             content = (match.group(1) or match.group(2) or "").strip()
+            # A single italicized word or a quoted UI label is not emphasis overload.
+            if match.group(2) and len(content.split()) == 1:
+                continue
+            if content.startswith(('"', "'", "“")) and content.endswith(('"', "'", "”")):
+                continue
             tail = stripped[match.end():].lstrip()
             span_starts_label = match.start() == label_start
             label_like = span_starts_label and (
@@ -703,6 +718,120 @@ _CONCRETE_ANCHORS = re.compile(
 
 def _word_count(text: str) -> int:
     return len(re.findall(r"\b[\wáéíóúüñÁÉÍÓÚÜÑ]+\b", text))
+
+
+def _text_stats(text: str, sentences: list[str]) -> dict[str, float | int]:
+    """Return transparent style statistics inspired by soundshuman."""
+    tokens = [m.group(0).lower() for m in re.finditer(r"\b[\wáéíóúüñÁÉÍÓÚÜÑ'-]+\b", text)]
+    lengths = [_word_count(sentence) for sentence in sentences]
+    mean = statistics.mean(lengths) if lengths else 0.0
+    deviation = statistics.pstdev(lengths) if len(lengths) > 1 else 0.0
+    burstiness = deviation / mean if mean else 0.0
+    sample = tokens[:500]
+    ttr = len(set(sample)) / len(sample) if sample else 0.0
+    trigrams: dict[tuple[str, str, str], int] = {}
+    for i in range(len(tokens) - 2):
+        key = (tokens[i], tokens[i + 1], tokens[i + 2])
+        trigrams[key] = trigrams.get(key, 0) + 1
+    repeated = sum(count - 1 for count in trigrams.values() if count > 1)
+    return {
+        "word_count": len(tokens),
+        "sentence_count": len(sentences),
+        "mean_sentence_length": round(mean, 2),
+        "burstiness": round(burstiness, 4),
+        "type_token_ratio": round(ttr, 4),
+        "trigram_repetition": round(repeated / max(len(tokens) - 2, 1), 4),
+    }
+
+
+def _check_statistical_uniformity(stats: dict[str, float | int], lang: str) -> list[StructuralFinding]:
+    """Flag a cluster of weak statistical tells, never one metric alone."""
+    if stats.get("word_count", 0) < 80 or stats.get("sentence_count", 0) < 8:
+        return []
+    signals: list[str] = []
+    burstiness = float(stats.get("burstiness", 0))
+    ttr = float(stats.get("type_token_ratio", 0))
+    trigram_repetition = float(stats.get("trigram_repetition", 0))
+    if burstiness < 0.30:
+        signals.append("ritmo parejo" if lang == "es" else "flat rhythm")
+    if ttr < 0.48:
+        signals.append("variedad léxica baja" if lang == "es" else "low lexical variety")
+    if trigram_repetition > 0.035:
+        signals.append("trigramas repetidos" if lang == "es" else "repeated trigrams")
+    if len(signals) < 2:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="statistical-uniformity",
+        severity=2,
+        message=(
+            "varias métricas de regularidad apuntan a una prosa demasiado pareja: "
+            + ", ".join(signals)
+            if lang == "es" else
+            "several regularity metrics point to unusually uniform prose: "
+            + ", ".join(signals)
+        ),
+        suggestion=(
+            "mezcla longitudes, evita repetir la misma construcción y aterriza una idea con un detalle concreto"
+            if lang == "es" else
+            "vary sentence lengths, avoid repeating the same construction, and ground one idea in a concrete detail"
+        ),
+    )]
+
+
+def _check_narrator_distance(sentences: list[str], lang: str) -> list[StructuralFinding]:
+    """Detect lecturer-from-a-distance phrasing only in a cluster."""
+    if lang == "es":
+        patterns = [
+            r"\bnadie\s+(?:diseñó|decidió|planeó|pensó)\b",
+            r"\beste\s+\w+\s+ocurre\s+porque\b",
+            r"\bla\s+gente\s+(?:tiende|suele)\s+a\b",
+            r"\blas?\s+personas\s+(?:tienden|suelen)\s+a\b",
+        ]
+        message = "narrador distante: generaliza sobre la gente en vez de nombrar al actor"
+        suggestion = "di quién actuó o qué caso concreto sostiene la afirmación"
+    else:
+        patterns = [
+            r"\bnobody\s+(?:designed|decided|planned|thought)\b",
+            r"\bthis\s+\w+\s+happens\s+because\b",
+            r"\bpeople\s+(?:tend|tends)\s+to\b",
+            r"\bpeople\s+usually\b",
+        ]
+        message = "distant narrator: it generalizes about people instead of naming the actor"
+        suggestion = "name who acted or give the concrete case supporting the claim"
+    matched = {index for index, sentence in enumerate(sentences) if any(re.search(pattern, sentence, re.I) for pattern in patterns)}
+    if len(matched) < 2:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="narrator-distance",
+        severity=2,
+        message=f"{len(matched)} señales: {message}" if lang == "es" else f"{len(matched)} signals: {message}",
+        suggestion=suggestion,
+    )]
+
+
+def _check_lazy_extremes(text: str, lang: str) -> list[StructuralFinding]:
+    """Flag stacked absolutes, not a single ordinary 'always' or 'nunca'."""
+    if lang == "es":
+        terms = ["siempre", "nunca", "todos", "todas", "nadie", "ningún", "ninguna", "jamás"]
+        message = "absolutos acumulados: autoridad sin evidencia concreta"
+        suggestion = "cambia los absolutos por una frecuencia, un grupo o un caso verificable"
+    else:
+        terms = ["always", "never", "everyone", "nobody", "no one", "every"]
+        message = "stacked absolutes: authority without concrete evidence"
+        suggestion = "replace absolutes with a frequency, a group, or a verifiable case"
+    rx = re.compile(r"\b(?:" + "|".join(re.escape(term) for term in terms) + r")\b", re.I)
+    matches = [m.group(0).lower() for m in rx.finditer(text)]
+    if len(matches) < 4 or len(set(matches)) < 3:
+        return []
+    return [StructuralFinding(
+        line=0,
+        kind="lazy-extremes",
+        severity=1,
+        message=f"{len(matches)} {message}",
+        suggestion=suggestion,
+    )]
 
 
 # ---- humanizer v2.9.1 + stop-slop gaps (2026-08) ----
@@ -1521,6 +1650,7 @@ def analyze(
     authorial_text = "\n".join(line for _, line in authorial)
     sentences = split_sentences(authorial_text)
     report = Report(sentences=len(sentences))
+    report.stats = _text_stats(authorial_text, sentences)
 
     min_severity = 2 if strict else 1
 
@@ -1597,6 +1727,9 @@ def analyze(
         report.structural.extend(_check_fragmented_headers(authorial_text, lang))
         report.structural.extend(_check_emoji_headers(authorial_text, lang))
         report.structural.extend(_check_tailing_negation(authorial_text, lang))
+        report.structural.extend(_check_statistical_uniformity(report.stats, lang))
+        report.structural.extend(_check_narrator_distance(sentences, lang))
+        report.structural.extend(_check_lazy_extremes(authorial_text, lang))
     report.sections = _score_sections(sentences, lang)
 
     # score — evidence-aware combiner.
@@ -1628,7 +1761,26 @@ def analyze(
     rhythm_kinds = {"em-dash", "ellipses", "section-headers", "emphasis-overload", "tricolon", "rhythm"}
     rhythm_d = min(0.32, 0.10 * len(rhythm_kinds & structural_kinds))
 
-    # Dimension 4: anchor starvation. Only fires when several real paragraphs lack dates,
+    # Dimension 4: soundshuman-style statistics. Two agreeing metrics are
+    # required; a single low TTR or flat cadence is not evidence by itself.
+    statistical_signals = 0
+    if float(report.stats.get("burstiness", 0)) < 0.30 and report.sentences >= 8:
+        statistical_signals += 1
+    if float(report.stats.get("type_token_ratio", 0)) < 0.48 and report.stats.get("word_count", 0) >= 80:
+        statistical_signals += 1
+    if float(report.stats.get("trigram_repetition", 0)) > 0.035 and report.stats.get("word_count", 0) >= 80:
+        statistical_signals += 1
+    statistical_d = min(0.18, 0.06 * statistical_signals) if statistical_signals >= 2 else 0.0
+
+    # Dimension 5: weak editorial-distance cues. These explain why a passage
+    # feels generic, but they are deliberately capped and never decide alone.
+    editorial_weak_d = min(
+        0.12,
+        (0.08 if "narrator-distance" in structural_kinds else 0.0)
+        + (0.04 if "lazy-extremes" in structural_kinds else 0.0),
+    )
+
+    # Dimension 6: anchor starvation. Only fires when several real paragraphs lack dates,
     # examples, citations, places, numbers, or concrete actors.
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
     anchor_starved = 0
@@ -1660,7 +1812,7 @@ def analyze(
         wiki_d = min(0.55, 0.18 * len(wiki_present))
 
     # Combine: 1 - prod(1 - d_i). Reacts when independent dimensions agree.
-    dims = [lex_d, macro_d, rhythm_d, anchor_d, wiki_d]
+    dims = [lex_d, macro_d, rhythm_d, statistical_d, editorial_weak_d, anchor_d, wiki_d]
     combined = 1.0
     for d in dims:
         combined *= (1.0 - d)
@@ -1779,6 +1931,16 @@ def analyze(
                 "'no obstante', 'en primer lugar') son del género, no de la IA."
             )
 
+    report.score_components = {
+        "lexical": round(lex_d, 4),
+        "discourse": round(macro_d, 4),
+        "rhythm_format": round(rhythm_d, 4),
+        "statistical": round(statistical_d, 4),
+        "editorial_distance": round(editorial_weak_d, 4),
+        "anchor_starvation": round(anchor_d, 4),
+        "chatbot_artifacts": round(wiki_d, 4),
+        "combined": round(combined, 4),
+    }
     report.score = min(1.0, combined)
 
     if report.score >= 0.6:
