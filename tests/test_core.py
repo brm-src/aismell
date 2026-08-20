@@ -1166,6 +1166,46 @@ def test_era_param_override():
     assert report.score <= 0.30
 
 
+def test_soundshuman_statistics_require_a_cluster_and_are_exposed():
+    """Burstiness, TTR, and trigram repetition only matter together."""
+    text = " ".join(["The system supports the team every day."] * 12)
+    report, _ = analyze(text, lang="en")
+    kinds = {finding.kind for finding in report.structural}
+    assert "statistical-uniformity" in kinds
+    assert report.stats["burstiness"] == 0
+    assert report.stats["type_token_ratio"] < 0.48
+    assert report.stats["trigram_repetition"] > 0.035
+    assert 0 < report.score_components["statistical"] <= 0.18
+
+
+def test_soundshuman_human_sample_does_not_trigger_new_statistics():
+    text = (
+        "Solar got cheap and nobody in my family believed me until the electric bill came. "
+        "My dad ran the numbers twice. The panels paid for themselves in six years, which is faster than the loan on his truck. "
+        "Storage is still the weak spot. On cloudy weeks we buy from the grid like everyone else, and the battery I priced out costs more than the panels did. "
+        "I'd still do it again. The bill in July was eleven dollars."
+    )
+    report, _ = analyze(text, lang="en")
+    kinds = {finding.kind for finding in report.structural}
+    assert "statistical-uniformity" not in kinds
+    assert report.score < 0.2
+
+
+def test_soundshuman_narrator_distance_is_clustered_and_bilingual():
+    en = "Nobody designed this. People tend to trust simple tools. This system happens because teams repeat the same choice."
+    es = "Nadie diseñó esto. La gente tiende a confiar en herramientas simples. Este sistema ocurre porque los equipos repiten la misma decisión."
+    en_report, _ = analyze(en, lang="en")
+    es_report, _ = analyze(es, lang="es")
+    assert "narrator-distance" in {finding.kind for finding in en_report.structural}
+    assert "narrator-distance" in {finding.kind for finding in es_report.structural}
+
+
+def test_soundshuman_lazy_extremes_need_multiple_distinct_absolutes():
+    text = "Everyone always agrees. Nobody never asks. Every team follows the rule. People never question it."
+    report, _ = analyze(text, lang="en")
+    assert "lazy-extremes" in {finding.kind for finding in report.structural}
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in list(globals().items()):

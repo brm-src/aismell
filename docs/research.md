@@ -91,8 +91,10 @@ The lexical taxonomy:
 - Kartik Kabadi. *no-ai-slop.* Curated source for compound corporate/AI framing phrases; imported selectively, not as a blanket blacklist. https://github.com/kartikkabadi/no-ai-slop
 - Margaret Efron. *Words and phrases that make it obvious you used ChatGPT.* https://medium.com/learning-data/words-and-phrases-that-make-it-obvious-you-used-chatgpt-2ba374033ac6
 - Walter Writes AI. *Most common ChatGPT words to avoid in 2026.* https://walterwrites.ai/most-common-chatgpt-words-to-avoid/
+- Aashaexo. *soundshuman.* Machine-readable tiered vocabulary, explainable 0-100 scoring, and statistical signals (burstiness, type-token ratio, trigram repetition). We used the methodology selectively; no code or blanket blacklist was copied. https://github.com/aashaexo/soundshuman
+- Cursor Plugins. *unslop.* Compact editorial workflow: scan, preserve meaning, add voice, self-audit. It overlaps with the existing humanizer layer and was used as a cross-check, not a second scoring engine. https://www.skills.sh/cursor/plugins/unslop
 
-The 2026-08 pass integrated the humanizer v2.9.1 additions (speculative gap-fill, aphorism formulas, conversational rhetorical openers, staccato drama, fragmented headers, en-dash clusters, uniform hyphenation) and the remaining stop-slop gaps (weasel attributions, meta-joiners, vague declaratives, filler phrases, business jargon, stacked adverbs), with EN/ES parity.
+The 2026-08 pass integrated the humanizer v2.9.1 additions (speculative gap-fill, aphorism formulas, conversational rhetorical openers, staccato drama, fragmented headers, en-dash clusters, uniform hyphenation) and the remaining stop-slop gaps (weasel attributions, meta-joiners, vague declaratives, filler phrases, business jargon, stacked adverbs), with EN/ES parity. The soundshuman follow-up adds an explainable statistical profile, a cluster-gated `statistical-uniformity` finding, and conservative `narrator-distance` / `lazy-extremes` checks. A single metric or common absolute never raises the score on its own.
 
 The sociotechnical critique (read these before trusting any AI detector for academic discipline):
 

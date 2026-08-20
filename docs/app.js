@@ -99,6 +99,7 @@ const I18N = {
       density: "{pct}% de las oraciones tienen alguna marca",
       repeats: "'{id}' aparece {n} veces — es un tic",
       structural: "{n} señales en cómo está armado el texto",
+      statistical: "ritmo, variedad de palabras y repetición apuntan a una prosa demasiado pareja",
       severe: "{n} señales fuertes",
       uniform_rhythm: "las oraciones tienen todas el mismo largo",
       length: "texto muy corto — no hay suficiente para opinar",
@@ -314,6 +315,7 @@ const I18N = {
       density: "AI-marker density: {pct}% of sentences flagged",
       repeats: "pattern \"{id}\" repeats {n} times",
       structural: "{n} shape/rhythm signals in the text",
+      statistical: "rhythm, word variety, and repetition point to unusually uniform prose",
       severe: "{n} high-severity marks",
       uniform_rhythm: "sentence rhythm suspiciously uniform",
       length: "text too short — verdict uncertain",
@@ -692,6 +694,8 @@ def run(text, lang_code, strict, era_code):
         "era": report.era,
         "era_max_year": report.era_max_year,
         "notes": report.notes,
+        "stats": report.stats,
+        "score_components": report.score_components,
         "hits": [],
         "structural": [],
         "sections": [],
@@ -1143,6 +1147,9 @@ function naturalStructuralComment(s) {
     "vague-sentence-stack": es ? "Se acumulan frases abstractas sin ejemplos ni consecuencias." : "Abstract sentences pile up without examples or consequences.",
     "low-specificity": es ? "Faltan nombres, datos o consecuencias concretas." : "The passage needs names, numbers, or concrete consequences.",
     "rhythm": es ? "Las oraciones tienen un ritmo demasiado parejo." : "The sentences keep the same rhythm for too long.",
+    "statistical-uniformity": es ? "Varias métricas apuntan a una prosa demasiado pareja." : "Several metrics point to unusually uniform prose.",
+    "narrator-distance": es ? "El texto generaliza sobre la gente en vez de nombrar al actor." : "The text generalizes about people instead of naming the actor.",
+    "lazy-extremes": es ? "Se acumulan absolutos sin evidencia concreta." : "Absolutes pile up without concrete evidence.",
     "rule-of-three": es ? "La estructura de tres elementos se repite demasiado." : "The three-part structure repeats too often.",
     "staccato-runs": es ? "Hay demasiadas frases cortas seguidas." : "There are too many short sentences in a row.",
     "em-dash": es ? "Los guiones largos se acumulan y cargan el ritmo." : "The em dashes pile up and make the rhythm feel staged.",
@@ -1217,6 +1224,9 @@ function computeVerdict(report) {
   }
   if (structural.length >= 2) {
     reasons.push(t.verdict_reasons.structural.replace("{n}", structural.length));
+  }
+  if (structural.some((item) => item.kind === "statistical-uniformity")) {
+    reasons.push(t.verdict_reasons.statistical);
   }
   if (severe >= 2 && reasons.length < 3) {
     reasons.push(t.verdict_reasons.severe.replace("{n}", severe));
