@@ -21,16 +21,16 @@ def response(payload, status=200):
 
 class Default(WorkerEntrypoint):
     async def fetch(self, request):
-        url = request.url
+        path = request.url.split("?", 1)[0].rstrip("/")
         if request.method == "OPTIONS":
             return Response(None, status=204, headers={
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Methods": "POST, OPTIONS",
                 "Access-Control-Allow-Headers": "Content-Type",
             })
-        if url.endswith("/health") and request.method == "GET":
+        if path.endswith("/health") and request.method == "GET":
             return response({"ok": True, "engine": ENGINE_VERSION})
-        if not url.endswith("/analyze") or request.method != "POST":
+        if not path.endswith("/analyze") or request.method != "POST":
             return response({"error": "not-found"}, 404)
         try:
             body = await request.json()
