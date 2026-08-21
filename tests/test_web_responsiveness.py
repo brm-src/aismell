@@ -10,3 +10,5 @@ def test_semantic_pass_runs_in_a_worker_not_on_the_main_thread():
     assert 'new Worker("./embedding-worker.js", { type: "module" })' in source
     assert "await runSemanticAnalysis(" in source
     assert 'import("./embedding-analysis.js")' not in source
+    assert "const incoming = raw <= 1 ? raw * 100 : raw;" in source
+    assert "Math.max(lastModelPct" in source

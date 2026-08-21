@@ -591,6 +591,7 @@ function startScanning(steps, opts = {}) {
 
   let cancelled = false;
   let i = -1;
+  let lastModelPct = 0;
 
   function setStep(idx) {
     if (cancelled) return;
@@ -624,17 +625,20 @@ function startScanning(steps, opts = {}) {
     },
     setModelProgress(ratio, fileName) {
       if (cancelled || !labelEl || !fillEl) return;
-      // transformers.js v3 progress_callback sends ratio as 0..100 (percentage),
-      // not 0..1. Use directly to avoid the 10000% bug.
-      const pct = Math.max(0, Math.min(100, Math.round(ratio)));
+      // Accept both transformers.js progress formats: 0..1 and 0..100.
+      const raw = Number(ratio);
+      const incoming = raw <= 1 ? raw * 100 : raw;
+      const pct = Math.max(lastModelPct, Math.min(100, Math.round(incoming)));
+      lastModelPct = pct;
       const file = fileName ? ` (${fileName})` : "";
       labelEl.textContent = (UILANG === "es"
         ? `descargando modelo semántico${file}: ${pct}%`
         : `downloading semantic model${file}: ${pct}%`);
-      // Visually wire model download to the bar between 70% and 92%.
+      // Keep the overall scan bar in the model-download portion while the
+      // visible percentage follows the actual model progress monotonically.
       const bar = 70 + Math.round((pct / 100) * 22);
       fillEl.style.width = bar + "%";
-      pctEl.textContent = bar + "%";
+      pctEl.textContent = pct + "%";
     },
     async finish() {
       cancelled = true;

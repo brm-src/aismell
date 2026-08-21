@@ -11,7 +11,15 @@ self.onmessage = async (message) => {
   const { id, text, lang } = message.data || {};
   if (!id) return;
   try {
+    self.postMessage({
+      type: "progress",
+      event: { status: "progress", progress: 0, file: "modelo semántico" },
+    });
     const result = await analyzeEmbeddings(text, lang || "es");
+    self.postMessage({
+      type: "progress",
+      event: { status: "progress", progress: 100, file: "modelo semántico" },
+    });
     self.postMessage({ type: "result", id, result });
   } catch (error) {
     self.postMessage({
