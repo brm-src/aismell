@@ -1521,11 +1521,14 @@ async function analyze(options = {}) {
     const obj = res.toJs({ dict_converter: Object.fromEntries });
     res.destroy();
 
-  // Text-file uploads use the same local analysis path as pasted text.
-  // Keep the input path responsive: semantic embeddings are opt-in for
-  // pasted text and must not make an uploaded file look frozen.
+  // The semantic embedding pass is intentionally disabled in the default
+  // browser path. It downloads ~120 MB and runs ONNX/WASM on the main thread;
+  // Chromium then shows “La página no responde” around the 8% progress mark.
+  // Keep the deterministic local engine responsive until this pass moves to a
+  // Web Worker. Uploaded files already skip it through the same guard.
+  const semanticEmbeddingsEnabled = false;
   const fileAnalysis = options.fileAnalysis === true;
-  if (!fileAnalysis) {
+  if (!fileAnalysis && semanticEmbeddingsEnabled) {
     try {
       const EMBEDDING_CHAR_LIMIT = 25000;
       if (text.length <= EMBEDDING_CHAR_LIMIT) {
