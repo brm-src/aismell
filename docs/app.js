@@ -516,6 +516,42 @@ let analyzeFn = null;
 let annotateDocxFn = null;
 let extractRefsFn = null;
 let extractDocxTextFn = null;
+let semanticWorker = null;
+let semanticRequestId = 0;
+
+function runSemanticAnalysis(text, lang, onProgress) {
+  if (!semanticWorker) {
+    semanticWorker = new Worker("./embedding-worker.js", { type: "module" });
+  }
+  const worker = semanticWorker;
+  const id = ++semanticRequestId;
+
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      worker.removeEventListener("message", handleMessage);
+      worker.removeEventListener("error", handleError);
+    };
+    const handleMessage = (event) => {
+      const data = event.data || {};
+      if (data.type === "progress") {
+        if (onProgress) onProgress(data.event);
+        return;
+      }
+      if (data.id !== id) return;
+      cleanup();
+      if (data.type === "result") resolve(data.result);
+      else reject(new Error(data.error || "semantic worker failed"));
+    };
+    const handleError = (event) => {
+      cleanup();
+      semanticWorker = null;
+      reject(event.error || new Error(event.message || "semantic worker failed"));
+    };
+    worker.addEventListener("message", handleMessage);
+    worker.addEventListener("error", handleError);
+    worker.postMessage({ id, text, lang });
+  });
+}
 
 function setStatus(msg, isError = false) {
   if (msg === null) {
@@ -1521,26 +1557,23 @@ async function analyze(options = {}) {
     const obj = res.toJs({ dict_converter: Object.fromEntries });
     res.destroy();
 
-  // The semantic embedding pass is intentionally disabled in the default
-  // browser path. It downloads ~120 MB and runs ONNX/WASM on the main thread;
-  // Chromium then shows “La página no responde” around the 8% progress mark.
-  // Keep the deterministic local engine responsive until this pass moves to a
-  // Web Worker. Uploaded files already skip it through the same guard.
-  const semanticEmbeddingsEnabled = false;
-  const fileAnalysis = options.fileAnalysis === true;
-  if (!fileAnalysis && semanticEmbeddingsEnabled) {
-    try {
-      const EMBEDDING_CHAR_LIMIT = 25000;
-      if (text.length <= EMBEDDING_CHAR_LIMIT) {
-        progress.advance(7);
-        const { analyzeEmbeddings, onModelProgress } = await import("./embedding-analysis.js");
-        const offProgress = onModelProgress((evt) => {
-          if (evt && evt.status === "progress" && typeof evt.progress === "number") {
-            progress.setModelProgress(evt.progress, evt.file || "");
-          }
-        });
-        try {
-          const semantic = await analyzeEmbeddings(text, obj.lang || "es");
+    // Carril 2 — semantic embedding analysis in a Web Worker. The model still
+    // downloads on first use, but ONNX/WASM cannot freeze the page anymore.
+    const fileAnalysis = options.fileAnalysis === true;
+    if (!fileAnalysis) {
+      try {
+        const EMBEDDING_CHAR_LIMIT = 25000;
+        if (text.length <= EMBEDDING_CHAR_LIMIT) {
+          progress.advance(7);
+          const semantic = await runSemanticAnalysis(
+            text,
+            obj.lang || "es",
+            (event) => {
+              if (event && event.status === "progress" && typeof event.progress === "number") {
+                progress.setModelProgress(event.progress, event.file || "");
+              }
+            },
+          );
           if (semantic && semantic.findings && semantic.findings.length) {
             obj.structural = (obj.structural || []).concat(
               semantic.findings.map((f) => ({
@@ -1558,14 +1591,12 @@ async function analyze(options = {}) {
               else if (obj.score >= 0.3) obj.label = obj.lang === "es" ? "moderado" : "moderate";
             }
           }
-        } finally {
-          offProgress();
         }
+      } catch (err) {
+        // Semantic analysis is best-effort; the deterministic report still renders.
+        console.warn("embedding analysis failed:", err);
       }
-    } catch (err) {
-      console.warn("embedding analysis failed:", err);
     }
-  }
 
     // Live hit count once analysis is back
     const totalHits = (obj.hits ? obj.hits.length : 0) + (obj.structural ? obj.structural.length : 0);
