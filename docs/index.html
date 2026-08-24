@@ -19,6 +19,20 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext y='20' font-size='22'%3E👃%3C/text%3E%3C/svg%3E">
 <style>
   @font-face {
+    font-family: "Noto Sans";
+    src: url("fonts/noto-sans-regular.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Noto Sans";
+    src: url("fonts/noto-sans-semibold.woff2") format("woff2");
+    font-weight: 600 800;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
     font-family: "Departure Mono";
     src: url("fonts/departure-mono.woff2") format("woff2"),
          url("fonts/departure-mono.woff") format("woff");
@@ -1512,7 +1526,68 @@
   .strip-privacy { font-size: 12px; color: var(--dim); }
   .strip-error { color: var(--red); font-size: 13px; padding: 10px 0; }
 
-  /* aismell pass: clearer hierarchy, stronger contrast, safer mobile actions */
+  /* aismell pass: reading type for prose, mono type for product chrome */
+  body {
+    font-family: "Noto Sans", system-ui, sans-serif;
+    letter-spacing: 0;
+    line-height: 1.55;
+  }
+  header h1,
+  .lang-switch,
+  .toolbar,
+  .examples-row,
+  .btn,
+  .status,
+  details.about-toggle > summary,
+  footer,
+  .verdict-label,
+  .score-card-label,
+  .plain-title,
+  .findings-summary,
+  .biblio-header,
+  .biblio-sortbar,
+  .biblio-action,
+  .score .pct,
+  .score-stat strong,
+  .score-bar .num,
+  .segment-head {
+    font-family: "Departure Mono", ui-monospace, monospace;
+  }
+  textarea,
+  .verdict-subtitle,
+  .verdict-why,
+  .plain-summary,
+  .finding .ctx,
+  .finding .meta,
+  .finding .sug,
+  .segment-card p,
+  .biblio-detail,
+  .biblio-advice,
+  .about,
+  .modal,
+  .strip-head,
+  .strip-result {
+    font-family: "Noto Sans", system-ui, sans-serif;
+  }
+  textarea { font-size: 16px; line-height: 1.6; }
+  .finding .ctx { font-size: 15px; line-height: 1.6; }
+  .verdict-subtitle { font-size: 15px; }
+  .about, .modal { font-size: 14px; }
+
+  /* aismell pass: clearer grouping and task focus */
+  .panel { border-radius: 10px; overflow: hidden; }
+  .toolbar .right { gap: 8px; padding-left: 10px; border-left: 1px solid var(--line); }
+  .toolbar .right .btn { min-width: 92px; }
+  .toolbar .right .btn:first-child { min-width: 112px; }
+  .toolbar { background: rgba(255, 255, 255, 0.012); }
+  .status[aria-busy="true"] { color: var(--hl); }
+  .status[aria-busy="true"] .spin { color: var(--hl); }
+
+  @media (max-width: 600px) {
+    .toolbar .right { padding-left: 0; border-left: 0; }
+    .toolbar .right .btn,
+    .toolbar .right .btn:first-child { min-width: 0; }
+  }
   :root {
     --dim: #8d8880;
     --line: #35312e;
@@ -1580,7 +1655,7 @@
 
 <main>
 
-  <div class="status" id="status">
+  <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true">
     <span class="spin">●</span> <span data-i18n="boot">cargando python en tu navegador (~6 MB la primera vez)…</span>
   </div>
 
@@ -1615,7 +1690,7 @@
         <span class="info" data-i18n-tip="strictTip" data-tip="Muestra solo hallazgos con severidad 3. Oculta las señales más suaves que podrían ser falsos positivos.">i</span>
       </label>
       <div class="right">
-        <button class="btn tip" id="analyzeBtn" disabled data-i18n="analyze" data-i18n-tip="analyzeTip" data-tip="Analiza el texto y te marca línea por línea qué suena a IA, además de verificar la bibliografía si hay.">analizar</button>
+        <button class="btn tip" id="analyzeBtn" disabled aria-keyshortcuts="Control+Enter Meta+Enter" data-i18n="analyze" data-i18n-tip="analyzeTip" data-tip="Analiza el texto y te marca línea por línea qué suena a IA, además de verificar la bibliografía si hay.">analizar</button>
         <button class="btn ghost tip" id="stripBtn" data-i18n="stripMarks" data-i18n-tip="stripTip" data-tip="Quita caracteres invisibles y, si quieres, reescribe el texto para que suene menos a plantilla. Solo se usa si lo pides.">quitar marcas</button>
         <button class="btn ghost tip" id="clearBtn" data-i18n="clear" data-i18n-tip="clearTip" data-tip="Borra el texto y vuelve al inicio.">limpiar</button>
         <input type="file" id="fileInput" accept=".txt,.md,.docx,.pdf" style="display:none">

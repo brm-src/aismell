@@ -2016,6 +2016,7 @@ document.querySelectorAll(".ex-chip").forEach((chip) => {
     const key = chip.dataset.example;
     if (!fillExample(key)) return;
     els.input.focus();
+    requestAnimationFrame(() => { els.input.scrollTop = 0; });
     // Tiny visual hint: flash the chip so user sees it changed
     chip.classList.add("ex-chip-flash");
     setTimeout(() => chip.classList.remove("ex-chip-flash"), 250);
