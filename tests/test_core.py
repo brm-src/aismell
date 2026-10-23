@@ -278,7 +278,7 @@ def test_stop_slop_rhetorical_prompts_and_but_reframes():
     en_text = (
         "I'm going to be honest. What if I told you the problem was not speed? "
         "Here's what I mean. It feels like a tooling issue. It's actually a trust issue. "
-        "Not a process problem. But a leadership problem. Think about it. And that's okay."
+        "Not a process problem. But a leadership problem.\nThink about it. And that's okay."
     )
     en_report, _ = analyze(en_text, lang="en")
     en_hit_ids = {h.pattern.id for h in en_report.hits}
@@ -320,6 +320,37 @@ def test_markdown_examples_do_not_count_as_author_voice():
     assert "en.hope_this_helps" not in hit_ids
     assert "en.testament" not in hit_ids
     assert report.score < 0.3
+
+
+def test_markdown_emphasis_does_not_hide_editorial_phrases():
+    for lang, phrase, pattern_id in (("en", "Delve into", "en.delve"), ("es", "Cabe mencionar", "es.cabe_mencionar")):
+        for opener, closer in (("*", "*"), ("**", "**")):
+            report, _ = analyze(f"{opener}{phrase}{closer} the details.", lang=lang, include_segments=False)
+            assert pattern_id in {hit.pattern.id for hit in report.hits}, (opener, lang)
+        for opener, closer in (("`", "`"), ('"', '"'), ("“", "”")):
+            report, _ = analyze(f"{opener}{phrase}{closer} the details.", lang=lang, include_segments=False)
+            assert pattern_id not in {hit.pattern.id for hit in report.hits}
+
+
+def test_structural_line_numbers_survive_excluded_markdown_blocks():
+    text = "```\nignored\n```\n\nA — B — C.\n\n## Performance\n\nSpeed matters.\n\nWhen users hit a slow page, they leave immediately and never come back."
+    report, _ = analyze(text, lang="en", include_segments=False)
+    by_kind = {finding.kind: finding.line for finding in report.structural}
+    assert by_kind["em-dash"] == 5
+    assert by_kind["fragmented-headers"] == 7
+
+
+def test_excluded_citations_do_not_change_academic_context():
+    text = (
+        "In this report the team wrote the final draft. Furthermore, each step has an owner. "
+        "Moreover, the file is ready. Consequently, the team can begin. "
+        "The next report will include the result. The office will keep a copy."
+    )
+    plain, _ = analyze(text, lang="en", include_segments=False)
+    for example in ("> (Smith, 2024) (Jones, 2023)", "```\n(Smith, 2024) (Jones, 2023)\n```"):
+        report, _ = analyze(text + "\n\n" + example, lang="en", include_segments=False)
+        assert report.score == plain.score
+        assert report.notes == plain.notes
 
 
 def test_markdown_documentation_shape_is_not_ai_format_by_itself():
@@ -1109,12 +1140,11 @@ def test_curated_no_ai_slop_patterns_have_unique_ids_and_valid_yaml():
             pattern.compile()
 
 
-# ===================== era detection + academic register (2026-08) =====================
+# ===================== date mentions are not document provenance =====================
 
 
-def test_pre_llm_text_capped_and_noted():
-    """A formal academic text from 2016 (pre-LLM) must not reach 'alto' — and
-    the report must explain why the register isn't an AI signal."""
+def test_cited_years_do_not_establish_document_era():
+    """Old references establish a topic's dates, not when this text was written."""
     text = (
         "En este sentido, se trata de transitar desde un currículum de verdadera raíz democrática (Asimeng-Boahene, 2007). "
         "Se sostiene que las controversias capturan el interés de los estudiantes (Carr, 2011). "
@@ -1124,16 +1154,15 @@ def test_pre_llm_text_capped_and_noted():
         "En síntesis, la propuesta se orienta a un currículum controversial (Magendzo, 2006)."
     )
     report, _ = analyze(text, lang="es")
-    assert report.era == "pre-llm", f"expected pre-llm era, got {report.era}"
+    assert report.era == "unknown"
     assert report.era_max_year == 2011
-    assert report.score <= 0.30, f"pre-LLM text scored {report.score:.2f}"
+    assert report.score <= 0.45
     assert report.severity_label != "alto"
-    assert any("antes del lanzamiento" in n for n in report.notes), "expected era note"
+    assert any("Registro académico" in n for n in report.notes)
 
 
-def test_pre_llm_connector_heavy_academic_capped():
-    """Connector-heavy academic prose from 2016 with citations must be dampened
-    by BOTH era and academic-register logic."""
+def test_connector_heavy_academic_register_is_not_an_authorship_verdict():
+    """Academic register gets context without dating the document from citations."""
     text = (
         "En este sentido, la reforma educativa enfrenta resistencias (Carr, 2011). "
         "No obstante, los docentes se forman en el diálogo (Moss, 2000). "
@@ -1141,12 +1170,12 @@ def test_pre_llm_connector_heavy_academic_capped():
         "Por lo tanto, la política debe acompañar el cambio. En síntesis, la evidencia lo respalda (Magendzo, 2006)."
     )
     report, _ = analyze(text, lang="es")
-    assert report.score <= 0.30, f"pre-LLM academic text scored {report.score:.2f}"
-    assert report.era == "pre-llm"
+    assert report.score <= 0.45
+    assert report.era == "unknown"
 
 
-def test_era_auto_detects_post_llm():
-    """A text mentioning recent years is not era-capped."""
+def test_recent_years_do_not_establish_document_era():
+    """A recent year may also be a forecast or a topic, not publication metadata."""
     text = (
         "En 2024, los modelos de lenguaje transformaron la educación (García, 2023). "
         "Los expertos afirman que el cambio es urgente. La verdadera pregunta es si los equipos pueden adaptarse. "
@@ -1154,16 +1183,40 @@ def test_era_auto_detects_post_llm():
         "Se cree que las apuestas son altas. Vamos a explorar lo que realmente importa."
     )
     report, _ = analyze(text, lang="es")
-    assert report.era == "post-llm", f"expected post-llm, got {report.era}"
+    assert report.era == "unknown"
+    assert report.era_max_year == 2024
     assert report.score >= 0.45, f"post-LLM text should not be era-capped, got {report.score:.2f}"
 
 
 def test_era_param_override():
-    """User override: forcing pre-llm caps even when no years are in the text."""
+    """User-supplied context is retained, but does not erase editorial findings."""
     text = "Los expertos afirman que el cambio es urgente. La cosa es que la atención es la moneda del liderazgo."
     report, _ = analyze(text, lang="es", era="pre-llm")
+    neutral, _ = analyze(text, lang="es", era="unknown")
     assert report.era == "pre-llm"
-    assert report.score <= 0.30
+    assert report.era_max_year == 0
+    assert report.score == neutral.score
+    assert report.hits == neutral.hits
+    assert any("no verifica" in note for note in report.notes)
+
+
+def test_date_mentions_cannot_suppress_editorial_score():
+    from aismell.core import detect_era
+
+    for year in (1970, 2020, 2021, 2022, 2024, 2099):
+        text = (
+            f"In {year}, the team met. Here's the thing: building products is hard. "
+            "Not because the technology is complex. Because people are complex. "
+            "Let that sink in. The complaint becomes a fix. "
+            "The data tells us the market rewards clarity. Mistakes were made. "
+            "The decision was reached."
+        )
+        automatic, _ = analyze(text, lang="en", include_segments=False)
+        neutral, _ = analyze(text, lang="en", era="unknown", include_segments=False)
+        assert detect_era(text) == ("unknown", year)
+        assert automatic.score == neutral.score
+        assert automatic.score >= 0.6
+    assert detect_era("No dates here.") == ("unknown", 0)
 
 
 def test_soundshuman_statistics_require_a_cluster_and_are_exposed():
@@ -1176,6 +1229,28 @@ def test_soundshuman_statistics_require_a_cluster_and_are_exposed():
     assert report.stats["type_token_ratio"] < 0.48
     assert report.stats["trigram_repetition"] > 0.035
     assert 0 < report.score_components["statistical"] <= 0.18
+
+
+def test_statistics_only_score_when_the_finding_is_reported():
+    sentence = "The school board reviewed the written report and sent the revised draft to the waiting parents."
+    for count, strict in ((5, False), (8, True)):
+        report, _ = analyze(" ".join([sentence] * count), lang="en", strict=strict, include_segments=False)
+        assert "statistical-uniformity" not in {finding.kind for finding in report.structural}
+        assert report.score_components["statistical"] == 0
+        if count == 5:
+            assert report.total_findings == 0
+            assert report.score == 0
+
+
+def test_named_actors_do_not_get_an_unreported_anchor_penalty():
+    paragraph = (
+        "Alice found the red coat outside the house and brought it back inside before rain could soak it. "
+        "Ben hung it beside the open window while Clara searched for the missing key under the stairs. "
+        "David stood near the gate with the dog."
+    )
+    report, _ = analyze("\n\n".join([paragraph] * 3), lang="en", include_segments=False)
+    assert report.score_components["anchor_starvation"] == 0
+    assert "low-specificity" not in {finding.kind for finding in report.structural}
 
 
 def test_soundshuman_human_sample_does_not_trigger_new_statistics():

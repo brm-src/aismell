@@ -40,5 +40,5 @@ class Default(WorkerEntrypoint):
         except ValueError as error:
             return response({"error": str(error)}, 400)
         except Exception as error:
-            print(f"aismell analyzer failed: {type(error).__name__}: {error}")
+            print(f"aismell analyzer failed: {type(error).__name__}")
             return response({"error": "analyze-unavailable"}, 503)

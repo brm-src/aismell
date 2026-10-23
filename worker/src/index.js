@@ -83,7 +83,7 @@ function editorPrompt(language, findings, mode, analysis = {}) {
     "Preserve every fact, claim, name, date, number, URL, citation, quote, code fragment, list item, and the writer's register.",
     "Do not add information, praise, apologies, headings, bullets, or explanations. Do not translate.",
     "Keep existing markdown headings and titles exactly as they are.",
-    "Strip leftover copy-paste formatting markers: remove literal markdown asterisks around bold text (like **word**), single asterisks, and backticks around code or filenames (like `file.xls`), keeping the words themselves. Remove other stray symbols only when they are clearly formatting residue, never when they are part of the meaning (URLs, citations, numbers, code).",
+    "Preserve code fragments exactly, including delimiters, indentation and whitespace. Keep valid markdown and URLs unchanged. Remove stray symbols only when they are unequivocally formatting residue, never when they might carry meaning. When unsure, leave the content unchanged.",
     "Start every new sentence after a period, exclamation, or question mark with a capital letter.",
     `aismell evidence index: ${score}. This is an editing signal, not proof of authorship. Dominant components: ${components}.`,
     `aismell detected these possible signals: ${signalList}.`,
@@ -115,19 +115,17 @@ function parseModelResponse(result, original) {
   return { text: stripMarkdownResidue(parsed.text, changes), changes };
 }
 
-// Deterministic safety net: GPT/markdown copy-paste leaves literal **bold**,
-// *emphasis* and `code` markers behind (the rich formatting does not survive
-// the clipboard). The model is instructed to strip them too, but this ensures
-// the output never ships with asterisk/backtick residue even if it does not.
+// ponytail: only normalize simple, single-line prose; preserve anything that
+// might be code, a URL or markup rather than guessing with a partial parser.
 export function stripMarkdownResidue(text, changes = []) {
-  let stripped = text
-    .replace(/\*\*([^*\n]+)\*\*/g, "$1")
-    .replace(/`([^`\n]+)`/g, "$1")
-    .split("\n")
-    .map((line) => capitalizeAfterSentenceEnd(line.replace(/[ \t]{2,}/g, " ").trimEnd()))
-    .join("\n");
-  if (stripped !== text && !changes.some((item) => /marcadores|asteriscos|backticks|formato|markdown/i.test(item))) {
-    changes.push("quitó marcadores de formato sobrantes (asteriscos y backticks)");
+  if (!/^[\p{L}\p{N} .,!?¿¡:;…—–-]+$/u.test(text) || /^ | {2,}$|\bwww\./i.test(text)) return text;
+  const spaced = text.replace(/ {2,}/g, " ").trimEnd();
+  const stripped = capitalizeAfterSentenceEnd(spaced);
+  if (spaced !== text && !changes.includes("normalizó espacios en la prosa")) {
+    changes.push("normalizó espacios en la prosa");
+  }
+  if (stripped !== spaced && !changes.includes("corrigió mayúsculas después de fin de oración")) {
+    changes.push("corrigió mayúsculas después de fin de oración");
   }
   return stripped;
 }
@@ -202,7 +200,7 @@ export async function handleBibliography(request, env) {
     if (error?.message === "empty" || error?.message === "too-long") {
       return json({ error: error.message }, { status: 400 }, origin);
     }
-    console.error("bibliography check failed", error?.message || "unknown");
+    console.error("bibliography check failed");
     return json({ error: "bibliography-unavailable" }, { status: 503 }, origin);
   }
 }
@@ -215,10 +213,10 @@ export async function handleRewrite(request, env) {
     return json({ error: "invalid-request" }, { status: 400 }, request.headers.get("Origin") || "");
   }
 
-  const text = typeof body?.text === "string" ? body.text.trim() : "";
+  const text = typeof body?.text === "string" ? body.text : "";
   const mode = body?.mode === "improve" ? "improve" : "clean";
   const origin = request.headers.get("Origin") || "";
-  if (!text) return json({ error: "empty" }, { status: 400 }, origin);
+  if (!text.trim()) return json({ error: "empty" }, { status: 400 }, origin);
   if (text.length > MAX_CHARS) return json({ error: "too-long" }, { status: 400 }, origin);
   if (!env?.AI?.run) return json({ error: "rewrite-unavailable" }, { status: 503 }, origin);
 
@@ -244,8 +242,8 @@ export async function handleRewrite(request, env) {
       };
     }
     return json(output, {}, origin);
-  } catch (error) {
-    console.error("rewrite failed", error?.message || "unknown");
+  } catch {
+    console.error("rewrite failed");
     return json({ error: "rewrite-unavailable" }, { status: 503 }, origin);
   }
 }
@@ -279,7 +277,7 @@ export async function handleStripMarks(request, env) {
     const layerA = cleanText(text, options);
     const result = { ok: true, mode: "clean", text: layerA.text, stats: layerA.stats };
 
-    if (body?.rewrite && env?.AI?.run) {
+    if (body?.rewrite === true && env?.AI?.run) {
       const prompt = WATERMARK_PROMPTS[strength].replace("{TEXT}", layerA.text);
       const response = await env.AI.run(MODEL, {
         messages: [{ role: "user", content: prompt }],
@@ -296,13 +294,13 @@ export async function handleStripMarks(request, env) {
           rewritten_length: rewritten.length,
         };
       }
-    } else if (body?.rewrite) {
+    } else if (body?.rewrite === true) {
       result.rewrite = { error: "rewrite-unavailable" };
     }
 
     return json(result, {}, origin);
-  } catch (error) {
-    console.error("strip-marks failed", error?.message || "unknown");
+  } catch {
+    console.error("strip-marks failed");
     return json({ error: "strip-marks-unavailable" }, { status: 503 }, origin);
   }
 }

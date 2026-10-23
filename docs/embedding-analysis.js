@@ -42,7 +42,7 @@ async function getPipeline() {
     return await transformers.pipeline("feature-extraction", MODEL_ID, {
       progress_callback: (p) => emitProgress(p),
     });
-  })();
+  })().catch((error) => { _pipelinePromise = null; throw error; });
   return _pipelinePromise;
 }
 
@@ -137,8 +137,8 @@ function splitParagraphs(text) {
 }
 
 async function embed(extractor, texts) {
-  // e5 family expects "passage: " prefix for documents.
-  const inputs = texts.map((t) => "passage: " + t);
+  // E5 model card recommends query: for non-retrieval similarity tasks.
+  const inputs = texts.map((t) => "query: " + t);
   const out = await extractor(inputs, { pooling: "mean", normalize: true });
   // out.dims = [batch, dim]
   const dim = out.dims[1];
@@ -188,66 +188,28 @@ export async function analyzeEmbeddings(text, lang = "es") {
 
   const findings = [];
 
-  // 1. Excessive paragraph cohesion: LLMs rarely change topic abruptly.
-  // Thresholds calibrated against multilingual-e5-small, which already produces
-  // high baselines. Human prose typically lands consec_mean < 0.85.
+  // ponytail: uncalibrated similarity thresholds, advisory only; validate on
+  // a representative editorial corpus before assigning scoring weight.
   if (metrics.consecMean >= 0.92) {
     findings.push({
-      kind: "semantic-cohesion-high",
-      severity: 3,
-      message:
-        lang === "es"
-          ? `cohesión semántica entre párrafos muy alta (${metrics.consecMean.toFixed(2)}) — patrón LLM`
-          : `paragraph-to-paragraph semantic cohesion very high (${metrics.consecMean.toFixed(2)}) — LLM pattern`,
-      suggestion:
-        lang === "es"
-          ? "permite que algún párrafo cambie de plano (ejemplo, anécdota, voz directa)"
-          : "let one paragraph shift register (anecdote, direct voice, tangent)",
-    });
-  } else if (metrics.consecMean >= 0.88) {
-    findings.push({
-      kind: "semantic-cohesion-mid",
-      severity: 2,
-      message:
-        lang === "es"
-          ? `cohesión semántica alta entre párrafos (${metrics.consecMean.toFixed(2)})`
-          : `high semantic cohesion between paragraphs (${metrics.consecMean.toFixed(2)})`,
-      suggestion:
-        lang === "es"
-          ? "varía el ángulo entre párrafos para que respiren"
-          : "vary angle between paragraphs",
+      kind: "semantic-cohesion-high", severity: 1,
+      message: lang === "es"
+        ? `similitud alta entre párrafos consecutivos (${metrics.consecMean.toFixed(2)})`
+        : `high similarity between consecutive paragraphs (${metrics.consecMean.toFixed(2)})`,
+      suggestion: lang === "es"
+        ? "compara si cada párrafo aporta información distinta; si cumplen funciones diferentes, conserva ambos"
+        : "check whether each paragraph adds different information; keep both if they serve different purposes",
     });
   }
-
-  // 2. Low semantic variance: LLMs orbit around a single topic uniformly.
-  if (metrics.allStdev < 0.04 && metrics.allMean > 0.85) {
-    findings.push({
-      kind: "semantic-uniformity",
-      severity: 3,
-      message:
-        lang === "es"
-          ? `varianza semántica plana (σ=${metrics.allStdev.toFixed(3)}) — texto orbita un solo tema sin desviarse`
-          : `flat semantic variance (σ=${metrics.allStdev.toFixed(3)}) — single-topic orbit`,
-      suggestion:
-        lang === "es"
-          ? "introduce digresiones, contraejemplos o un quiebre tonal"
-          : "add a digression, counter-example, or tonal break",
-    });
-  }
-
-  // 3. Open ↔ close very tight: LLMs return where they started.
   if (metrics.openClose >= 0.90) {
     findings.push({
-      kind: "semantic-loop-closed",
-      severity: 2,
-      message:
-        lang === "es"
-          ? `apertura y cierre casi idénticos semánticamente (${metrics.openClose.toFixed(2)}) — el texto vuelve al punto de partida`
-          : `opening and closing nearly identical (${metrics.openClose.toFixed(2)}) — text loops back`,
-      suggestion:
-        lang === "es"
-          ? "deja que el cierre derive — un texto humano rara vez vuelve al punto exacto"
-          : "let the closing drift — human texts rarely return to the exact start",
+      kind: "semantic-loop-closed", severity: 1,
+      message: lang === "es"
+        ? `apertura y cierre cercanos temáticamente (${metrics.openClose.toFixed(2)})`
+        : `the opening and closing are topically close (${metrics.openClose.toFixed(2)})`,
+      suggestion: lang === "es"
+        ? "comprueba si el cierre solo repite la apertura o aporta una conclusión; retomar el tema puede ser intencional"
+        : "check whether the ending only repeats the opening or adds a conclusion; returning to the theme may be intentional",
     });
   }
 

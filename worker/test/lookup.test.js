@@ -86,3 +86,34 @@ test("limits external lookups and reports skipped entries", async () => {
   assert.equal(report.results.length, 12);
   assert.equal(report.skipped, 1);
 });
+
+for (const doi of ["10.1234/dem-o", "10.1234/demo", ""]) {
+  test(`never verifies a different or missing DOI (${doi || "missing"}) using title similarity`, async () => {
+    const report = await lookupBibliography([{
+      number: 1,
+      title: "Manual de investigación",
+      authorPrefix: "García, M.",
+      year: "2024",
+      identifier: "doi:10.1234/dem.o",
+    }], async (url) => Response.json(url.includes("api.crossref.org") ? {
+      message: {
+        DOI: doi,
+        title: ["Manual de investigación"],
+        author: [{ given: "M", family: "García" }],
+        published: { "date-parts": [[2024]] },
+      },
+    } : { results: [] }));
+    assert.equal(report.results[0].status, "not-found");
+    assert.equal(report.results[0].match, null);
+  });
+}
+
+test("matches DOI resolver URLs without changing DOI punctuation", async () => {
+  const report = await lookupBibliography([{
+    number: 1, identifier: "doi:10.1234/Dem.o",
+  }], async (url) => Response.json(url.includes("api.crossref.org")
+    ? { message: { DOI: "https://doi.org/10.1234/dem.o" } }
+    : { results: [] }));
+  assert.equal(report.results[0].status, "found");
+  assert.equal(report.results[0].score, 1);
+});

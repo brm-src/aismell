@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>aismell — detector de IA + verificador de bibliografía</title>
-<meta name="description" content="Detecta texto IA línea por línea y verifica si tu bibliografía es real. Corre 100% en tu navegador. Las citas se cruzan con CrossRef, OpenAlex, Google Books y otras fuentes públicas.">
-<meta property="og:title" content="aismell — detector de IA + verificador de bibliografía">
-<meta property="og:description" content="Detecta texto IA y verifica si tus citas son reales. Bilingüe ES/EN. Corre en tu navegador.">
+<title>aismell — revisión editorial y bibliografía</title>
+<meta name="description" content="Revisa muletillas, estructura y ritmo de tu texto con sugerencias explicables. Análisis local ES/EN y verificación opcional de bibliografía.">
+<meta property="og:title" content="aismell — revisión editorial y bibliografía">
+<meta property="og:description" content="Revisión editorial local, sugerencias explicables y consulta opcional de referencias. Español e inglés.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://aismell.me/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type" content="image/png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="aismell — detector de IA + verificador de bibliografía">
-<meta name="twitter:description" content="Detecta texto IA y verifica si tus citas son reales. Bilingüe ES/EN. Corre en tu navegador.">
+<meta name="twitter:title" content="aismell — revisión editorial y bibliografía">
+<meta name="twitter:description" content="Revisión editorial local, sugerencias explicables y consulta opcional de referencias. Español e inglés.">
 <meta name="twitter:image" content="https://aismell.me/og.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext y='20' font-size='22'%3E👃%3C/text%3E%3C/svg%3E">
 <style>
@@ -1191,37 +1191,6 @@
   }
   .info:hover::after { opacity: 1; }
 
-  /* Tooltip for toolbar buttons (hover, disappears) */
-  .btn.tip { position: relative; }
-  .btn.tip::after {
-    content: attr(data-tip);
-    position: absolute;
-    bottom: calc(100% + 8px);
-    right: 0;
-    background: var(--bg);
-    color: var(--fg);
-    border: 1px solid var(--line);
-    padding: 8px 10px;
-    font-size: 11.5px;
-    line-height: 1.5;
-    width: 260px;
-    max-width: 60vw;
-    text-align: left;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.15s;
-    z-index: 10;
-    text-transform: none;
-    letter-spacing: normal;
-    font-weight: 400;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
-    border-radius: 6px;
-  }
-  .btn.tip:hover::after { opacity: 1; }
-  @media (max-width: 720px) {
-    .btn.tip::after { display: none; }
-  }
-
   /* Help panel: visible text explanations (mobile tap / fallback) */
   .help-toggle { min-width: 36px; }
   @media (min-width: 721px) {
@@ -1641,6 +1610,79 @@
     body.has-text main { padding-bottom: 78px; }
     footer { padding-bottom: 24px; }
   }
+
+  /* Editorial workbench: prose first, measurements secondary. */
+  html { color-scheme: dark; scrollbar-color: var(--dim) var(--bg); }
+  textarea { caret-color: var(--hl); }
+  .editor-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 16px 18px 0; }
+  .editor-head label { font-weight: 600; }
+  #inputCount { color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+  #input { min-height: 260px; padding-top: 12px; }
+  .editor-note { padding: 0 18px 14px; color: var(--dim); font-size: 13px; }
+  .review-options { border-top: 1px solid var(--line); padding: 0 14px; }
+  .review-options summary { cursor: pointer; min-height: 44px; padding: 12px 0; font-size: 13px; }
+  .option-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0 16px; cursor: pointer; }
+  .option-row input { margin-top: 5px; accent-color: var(--hl); }
+  .option-row strong { font-size: 14px; font-weight: 600; }
+  .option-row small { display: block; color: var(--dim); font-size: 13px; line-height: 1.55; max-width: 75ch; margin-top: 3px; }
+  .btn, .ex-chip, .toolbar select, .toolbar label, header .lang-switch button, .source-link,
+  .biblio-action, .biblio-sortbtn, footer button, .modal .close { min-height: 44px; }
+  .toolbar { align-items: center; gap: 10px; }
+  .toolbar .right { flex-wrap: wrap; padding-left: 0; border-left: 0; }
+  .help-toggle { display: inline-block; min-width: 44px; }
+  .verdict { background: transparent; padding: 24px 24px 16px; border-bottom: 0; }
+  .verdict-value { font-size: clamp(22px, 3vw, 30px); line-height: 1.25; font-weight: 600; }
+  .verdict-subtitle { max-width: 72ch; margin-top: 10px; }
+  .editorial-limit { color: var(--dim); font-size: 13px; margin-top: 10px; max-width: 75ch; }
+  .verdict-why { padding-left: 18px; margin-top: 10px; font-size: 14px; }
+  .score { padding: 0; }
+  .review-meta { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 0 24px 18px; font-size: 13px; color: var(--dim); border-bottom: 1px solid var(--line); }
+  .review-meta strong { color: var(--fg); font-variant-numeric: tabular-nums; }
+  .review-index { margin-left: auto; }
+  .next-steps { padding: 18px 24px; border-bottom: 1px solid var(--line); }
+  .next-steps h3 { font-size: 15px; margin-bottom: 8px; font-weight: 600; }
+  .next-steps ol { padding-left: 20px; font-size: 14px; line-height: 1.65; max-width: 75ch; }
+  .next-steps li + li { margin-top: 6px; }
+  .findings-summary { font-size: 12px; }
+  .finding .body { min-width: 0; overflow-wrap: anywhere; }
+  .source-link { font: inherit; font-size: 13px; padding: 8px 0; background: transparent; color: var(--cya); border: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .source-link:hover { color: var(--hl); }
+  .semantic-notes { padding: 16px 24px; border-bottom: 1px solid var(--line); }
+  .semantic-notes summary { cursor: pointer; min-height: 44px; }
+  .finding-scope { display: block; color: var(--dim); font-size: 12px; margin-top: 8px; }
+  .strip-head, .strip-actions, #stripRunBtn, .strip-result { margin: 16px 20px; }
+  .strip-actions label { display: flex; gap: 10px; align-items: flex-start; min-height: 44px; cursor: pointer; }
+  .strip-actions input { margin-top: 5px; }
+  dialog.modal-backdrop { width: 100vw; height: 100dvh; max-width: none; max-height: none; border: 0; margin: 0; color: var(--fg); background: transparent; }
+  dialog.modal-backdrop:not([open]), dialog.modal-backdrop[hidden] { display: none; }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.78); }
+  footer .links button { min-height: 44px; }
+  .modal .close { min-width: 44px; top: 6px; right: 6px; }
+  .scanning .fill.indeterminate { width: 35% !important; animation: scanning-track 1.4s ease-in-out infinite alternate; }
+  @keyframes scanning-track { to { transform: translateX(180%); } }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .btn, .ex-chip-flash, .scanning .label { transition: none; }
+    .btn:not(:disabled):hover { transform: none; }
+    .scanning .nose, .spin { animation: none; }
+    .scanning .fill.indeterminate { animation: none; width: 100% !important; opacity: 0.55; }
+  }
+  @media (max-width: 600px) {
+    .editor-head { padding-inline: 14px; }
+    .editor-note { padding-inline: 14px; }
+    .toolbar { align-items: start; }
+    .toolbar .right, body.has-text .toolbar .right { position: static; display: flex; flex-wrap: wrap; justify-content: flex-start; width: 100%; padding: 0; border: 0; box-shadow: none; }
+    .toolbar .right .btn, body.has-text .toolbar .right .btn { flex: 1 1 auto; width: auto; min-height: 44px; font-size: 12px; padding: 8px 10px; overflow-wrap: normal; }
+    body.has-text #analyzeBtn { position: fixed; left: 14px; right: 14px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 50; width: calc(100% - 28px); min-height: 48px; box-shadow: 0 -8px 24px var(--bg); }
+    body.has-text main { padding-bottom: 76px; }
+    .review-index { margin-left: 0; }
+    .verdict { padding: 20px 18px 14px; }
+    .review-meta { padding-inline: 18px; }
+    .next-steps { padding: 16px 18px; }
+    dialog.modal-backdrop { padding: 20px 14px; }
+    .modal { padding: 24px 20px; }
+    .biblio-row, .docx-download-file strong { overflow-wrap: anywhere; }
+  }
 </style>
 </head>
 <body>
@@ -1650,7 +1692,7 @@
     <button data-lang="es" class="on">ES</button><button data-lang="en">EN</button>
   </div>
   <h1 id="homeReset" class="brand-home" role="button" tabindex="0" aria-label="volver al inicio"><span class="nose" aria-hidden="true">👃</span><span data-i18n="title">aismell</span></h1>
-  <p class="tag" data-i18n="tagline">Olfatea si tu texto suena demasiado a IA. Y si trae bibliografía, revisa que no sea inventada.</p>
+  <p class="tag" data-i18n="tagline">Encuentra fórmulas, repeticiones y problemas de ritmo. Decide qué editar sin perder tu voz.</p>
 </header>
 
 <main>
@@ -1660,13 +1702,20 @@
   </div>
 
   <div class="panel">
-    <textarea id="input" placeholder="Pega tu texto, o suelta un archivo (.txt / .md / .docx / .pdf)."></textarea>
+    <div class="editor-head"><label for="input" data-i18n="editor_label">Tu texto</label><span id="inputCount"></span></div>
+    <textarea id="input" aria-describedby="privacyNote" placeholder="Pega tu texto, o suelta un archivo (.txt / .md / .docx / .pdf)."></textarea>
+    <p class="editor-note" id="privacyNote" data-i18n="privacy_local">Análisis local. Tu texto no se envía ni se guarda.</p>
     <div class="examples-row">
       <span class="examples-lbl" data-i18n="examples_lbl">probar con ejemplo:</span>
       <button type="button" class="ex-chip" data-example="ai" data-i18n="example_ai">texto IA</button>
       <button type="button" class="ex-chip" data-example="human" data-i18n="example_human">texto humano</button>
       <button type="button" class="ex-chip" data-example="fakebib" data-i18n="example_fakebib">bibliografía falsa</button>
     </div>
+    <details class="review-options">
+      <summary data-i18n="review_options">Opciones de revisión</summary>
+      <label class="option-row"><input type="checkbox" id="biblioSel" aria-describedby="biblioConsent"><span><strong data-i18n="biblio">Verificar bibliografía</strong><small id="biblioConsent" data-i18n="biblio_note_inline">Envía solo las referencias a fuentes públicas, no el documento completo.</small></span></label>
+      <label class="option-row"><input type="checkbox" id="semanticSel" aria-describedby="semanticConsent"><span><strong data-i18n="semantic_label">Revisar similitud entre párrafos</strong><small id="semanticConsent" data-i18n="semantic_note">Experimental y local. Descarga un modelo de más de 100 MB la primera vez. No modifica el índice.</small></span></label>
+    </details>
     <div class="toolbar">
       <label>
         <span data-i18n="lang">idioma</span>:
@@ -1677,25 +1726,17 @@
         </select>
       </label>
       <label>
-        <span data-i18n="era_label">¿cuándo?</span>:
-        <select id="eraSel" title="Si sabes que el texto es anterior a 2021, dímelo: el lenguaje formal de esa época no es señal de IA.">
-          <option value="auto">no sé</option>
-          <option value="post-llm">reciente</option>
-          <option value="pre-llm">antes de 2021</option>
-        </select>
-      </label>
-      <label>
         <input type="checkbox" id="strictSel">
         <span data-i18n="strict">solo alta confianza</span>
         <span class="info" data-i18n-tip="strictTip" data-tip="Muestra solo hallazgos con severidad 3. Oculta las señales más suaves que podrían ser falsos positivos.">i</span>
       </label>
       <div class="right">
         <button class="btn tip" id="analyzeBtn" disabled aria-keyshortcuts="Control+Enter Meta+Enter" data-i18n="analyze" data-i18n-tip="analyzeTip" data-tip="Analiza el texto y te marca línea por línea qué suena a IA, además de verificar la bibliografía si hay.">analizar</button>
-        <button class="btn ghost tip" id="stripBtn" data-i18n="stripMarks" data-i18n-tip="stripTip" data-tip="Quita caracteres invisibles y, si quieres, reescribe el texto para que suene menos a plantilla. Solo se usa si lo pides.">quitar marcas</button>
+        <button class="btn ghost tip" id="stripBtn" aria-controls="stripPanel" aria-expanded="false" data-i18n="stripMarks" data-i18n-tip="stripTip" data-tip="Quita caracteres invisibles y, si quieres, reescribe el texto para que suene menos a plantilla. Solo se usa si lo pides.">quitar marcas</button>
         <button class="btn ghost tip" id="clearBtn" data-i18n="clear" data-i18n-tip="clearTip" data-tip="Borra el texto y vuelve al inicio.">limpiar</button>
         <input type="file" id="fileInput" accept=".txt,.md,.docx,.pdf" style="display:none">
         <button class="btn ghost tip" id="fileBtn" data-i18n="upload" data-i18n-tip="uploadTip" data-tip="Sube un archivo .txt, .md, .docx o .pdf y lo analiza igual que el texto pegado.">subir archivo</button>
-        <button class="btn ghost help-toggle" id="helpBtn" data-i18n="help" data-i18n-tip="helpTip" data-tip="Muestra qué hace cada botón.">?</button>
+        <button class="btn ghost help-toggle" id="helpBtn" aria-controls="helpPanel" aria-expanded="false" data-i18n="help" data-i18n-tip="helpTip" data-tip="Muestra qué hace cada botón.">?</button>
       </div>
     </div>
   </div>
@@ -1720,10 +1761,11 @@
     </div>
     <div class="strip-actions">
       <label>
-        <input type="checkbox" id="stripRewrite" checked>
+        <input type="checkbox" id="stripRewrite">
         <span data-i18n="stripRewriteLbl">también reescribir (quita marcas de fraseo de ia)</span>
       </label>
     </div>
+    <button class="btn" type="button" id="stripRunBtn" data-i18n="strip_run">Enviar y procesar</button>
     <div class="strip-result" id="stripResult"></div>
   </div>
 
@@ -1772,24 +1814,24 @@
   </div>
 </footer>
 
-<div class="modal-backdrop" id="aboutModal" hidden>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+<dialog class="modal-backdrop" id="aboutModal" aria-labelledby="aboutTitle" hidden>
+  <div class="modal">
     <button type="button" class="close" aria-label="cerrar">×</button>
     <h2 id="aboutTitle" data-i18n="about_title">sobre mí y sobre el sitio</h2>
     <div data-i18n="about_body"></div>
   </div>
-</div>
+</dialog>
 
-<div class="modal-backdrop" id="disclaimerModal" hidden>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
+<dialog class="modal-backdrop" id="disclaimerModal" aria-labelledby="disclaimerTitle" hidden>
+  <div class="modal">
     <button type="button" class="close" aria-label="cerrar">×</button>
     <h2 id="disclaimerTitle" data-i18n="disc_title">descargo de responsabilidad</h2>
     <div data-i18n="disc_body"></div>
   </div>
-</div>
+</dialog>
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
-<script src="app.js?v=20260821-semantic-progress"></script>
+<script src="app.js?v=editorial-review-2"></script>
 
 </body>
 </html>

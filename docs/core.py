@@ -6,6 +6,7 @@ import json
 import re
 import statistics
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 
 try:
@@ -104,22 +105,14 @@ class Report:
 
 # ---------- loading ----------
 
-# Era detection: public LLMs (ChatGPT) launched Nov 2022. A text whose
-# largest mentioned year is <= 2020 cannot be LLM-generated. Formal
-# academic connectors in such a text are genre markers, not AI signals.
-_ERA_LLM_BOUNDARY = 2020
+# Mentioned years describe the subject, not the document's provenance.
 _YEAR_RE = re.compile(r"\b(?:19|20)\d{2}\b")
 
 
 def detect_era(text: str) -> tuple[str, int]:
-    """Return ('pre-llm'|'post-llm'|'unknown', max_year)."""
+    """Return unknown provenance and the largest mentioned year, if any."""
     years = [int(m) for m in _YEAR_RE.findall(text)]
-    if not years:
-        return "unknown", 0
-    max_year = max(years)
-    if max_year <= _ERA_LLM_BOUNDARY:
-        return "pre-llm", max_year
-    return "post-llm", max_year
+    return "unknown", max(years, default=0)
 
 
 # Discourse-connector / filler pattern families. In academic prose these are
@@ -142,6 +135,9 @@ _CITATION_RE_ACADEMIC = re.compile(
 )
 
 
+# Rules are fixed during a CLI/browser/Worker process; clear this cache after
+# editing a pattern file in a long-lived Python embedding.
+@lru_cache(maxsize=2)
 def load_patterns(lang: str) -> list[Pattern]:
     path = PATTERNS_DIR / f"{lang}.yaml"
     if not path.exists():
@@ -241,7 +237,7 @@ def _inside_spans(line: str, start: int, end: int, delimiters: list[tuple[str, s
 
 
 def _match_is_quoted_example(line: str, start: int, end: int) -> bool:
-    """Skip inline examples like *"delve into"* or `hope this helps`.
+    """Skip quoted inline examples or `hope this helps`, not mere emphasis.
 
     This keeps documentation of slop from being scored as slop.
     """
@@ -249,7 +245,6 @@ def _match_is_quoted_example(line: str, start: int, end: int) -> bool:
         ("`", "`"),
         ('"', '"'),
         ("“", "”"),
-        ("*", "*"),
     ])
 
 
@@ -1640,14 +1635,16 @@ def analyze(
 ) -> tuple[Report, str]:
     """Analyze text. Returns (report, lang_used).
 
-    era: "auto" (detect from years in text) | "pre-llm" | "post-llm" | "unknown"
+    era: "auto" | "pre-llm" | "post-llm" | "unknown".
+    Explicit era values are unverified user context, not scoring evidence.
     """
     lang = lang or detect_lang(text)
     patterns = load_patterns(lang)
 
     lines = text.splitlines()
     authorial = _authorial_lines(lines)
-    authorial_text = "\n".join(line for _, line in authorial)
+    authorial_by_line = dict(authorial)
+    authorial_text = "\n".join(authorial_by_line.get(i, "") for i in range(1, len(lines) + 1))
     sentences = split_sentences(authorial_text)
     report = Report(sentences=len(sentences))
     report.stats = _text_stats(authorial_text, sentences)
@@ -1690,7 +1687,7 @@ def analyze(
 
     # structural checks
     if not strict:
-        report.structural.extend(_check_em_dashes(authorial_text, [line for _, line in authorial]))
+        report.structural.extend(_check_em_dashes(authorial_text, authorial_text.splitlines()))
         report.structural.extend(_check_list_density(authorial_text))
         report.structural.extend(_check_ellipses(authorial_text, lang))
         report.structural.extend(_check_section_headers(authorial_text, lang))
@@ -1763,14 +1760,15 @@ def analyze(
 
     # Dimension 4: soundshuman-style statistics. Two agreeing metrics are
     # required; a single low TTR or flat cadence is not evidence by itself.
-    statistical_signals = 0
-    if float(report.stats.get("burstiness", 0)) < 0.30 and report.sentences >= 8:
-        statistical_signals += 1
-    if float(report.stats.get("type_token_ratio", 0)) < 0.48 and report.stats.get("word_count", 0) >= 80:
-        statistical_signals += 1
-    if float(report.stats.get("trigram_repetition", 0)) > 0.035 and report.stats.get("word_count", 0) >= 80:
-        statistical_signals += 1
-    statistical_d = min(0.18, 0.06 * statistical_signals) if statistical_signals >= 2 else 0.0
+    if "statistical-uniformity" in structural_kinds:
+        statistical_signals = sum((
+            float(report.stats["burstiness"]) < 0.30,
+            float(report.stats["type_token_ratio"]) < 0.48,
+            float(report.stats["trigram_repetition"]) > 0.035,
+        ))
+    else:
+        statistical_signals = 0
+    statistical_d = min(0.18, 0.06 * statistical_signals)
 
     # Dimension 5: weak editorial-distance cues. These explain why a passage
     # feels generic, but they are deliberately capped and never decide alone.
@@ -1780,20 +1778,9 @@ def analyze(
         + (0.04 if "lazy-extremes" in structural_kinds else 0.0),
     )
 
-    # Dimension 6: anchor starvation. Only fires when several real paragraphs lack dates,
-    # examples, citations, places, numbers, or concrete actors.
-    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
-    anchor_starved = 0
-    for p in paragraphs:
-        if _word_count(p) >= 40 and len(_CONCRETE_ANCHORS.findall(p)) == 0:
-            anchor_starved += 1
+    # A digit/pronoun regex cannot establish an absence of names, places or
+    # concrete actors. Retain the public component key, not the unsupported penalty.
     anchor_d = 0.0
-    if len(paragraphs) >= 3 and anchor_starved >= 3:
-        ratio = anchor_starved / len(paragraphs)
-        if ratio >= 0.7:
-            anchor_d = 0.35
-        elif ratio >= 0.5:
-            anchor_d = 0.22
 
     # Dimension 5: Wikipedia-sourced signals (negative parallelism, challenges template,
     # media notability padding, chatbot artifact markup, rule-of-three overuse).
@@ -1896,25 +1883,24 @@ def analyze(
     short_cap = min(1.0, 0.40 + 0.045 * report.sentences)
     combined = min(combined, short_cap)
 
-    # Era detection: a text whose largest mentioned year is <= 2020 predates
-    # public LLMs. Its formal register is not an AI signal — cap hard and say so.
-    if era == "auto":
-        era_used, era_year = detect_era(text)
-    else:
-        era_used, era_year = era, (0 if era != "pre-llm" else _ERA_LLM_BOUNDARY)
-    report.era = era_used
+    # Keep the public fields without inferring publication dates from citations
+    # or letting a declared date erase editorial issues in the prose.
+    era_detected, era_year = detect_era(text)
+    report.era = era_detected if era == "auto" else era
     report.era_max_year = era_year
-    if era_used == "pre-llm":
-        combined = min(combined, 0.30)
+    if report.era == "pre-llm":
         report.notes.append(
-            f"El texto menciona años hasta {era_year}, antes del lanzamiento público de "
-            "los LLM (2022). El registro formal no puede ser generado por IA."
+            "Época anterior a los LLM indicada por el usuario; el análisis no verifica "
+            "la fecha ni la autoría y conserva las observaciones editoriales."
+            if lang == "es" else
+            "Pre-LLM era supplied by the user; this analysis does not verify the date "
+            "or authorship and retains editorial findings."
         )
 
     # Academic-register dampener: formal academic prose is full of connectors
     # and impersonal voice. If the text has real citations and most hits are
     # connector-class, cap the score — the connector tics are genre markers.
-    citation_hits = _CITATION_RE_ACADEMIC.findall(text)
+    citation_hits = _CITATION_RE_ACADEMIC.findall(authorial_text)
     if len(citation_hits) >= 2 and report.hits:
         connector_hits = [
             h for h in report.hits

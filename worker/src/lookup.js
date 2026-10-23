@@ -21,7 +21,7 @@ function overlap(left, right) {
 }
 
 function canonicalDoi(value) {
-  return normalize(value).replace(/^doi\s*:??\s*/u, "").replace(/^https?\s+doi\s+org\s*/u, "").replace(/\s+/gu, "");
+  return String(value || "").trim().toLowerCase().replace(/^(?:doi:\s*|https?:\/\/doi\.org\/)/u, "");
 }
 
 function yearFromCrossref(item) {
@@ -68,8 +68,9 @@ function queryFor(entry) {
 }
 
 function scoreCandidate(entry, candidate) {
-  if (entry.identifier?.startsWith("doi:") && candidate.doi
-      && canonicalDoi(entry.identifier.slice(4)) === canonicalDoi(candidate.doi)) return 1;
+  if (entry.identifier?.startsWith("doi:")) {
+    return candidate.doi && canonicalDoi(entry.identifier.slice(4)) === canonicalDoi(candidate.doi) ? 1 : 0;
+  }
   const titleScore = overlap(tokens(entry.title), tokens(candidate.title));
   const authorScore = overlap(tokens(entry.authorPrefix), tokens(candidate.author));
   const yearScore = entry.year && candidate.year && String(entry.year).slice(0, 4) === String(candidate.year) ? 1 : 0;

@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
-# Sync the core.py and patterns/ from the package into docs/ so the
-# Pyodide build can fetch them with relative paths. Run before committing
-# changes to either the package or the web app.
+# Canonical Python/pattern source: aismell/. Consumers: Pyodide and Worker.
+# Run from any cwd before shipping either consumer. Bash + coreutils only.
 set -euo pipefail
 cd "$(dirname "$0")"
-cp ../aismell/core.py core.py
+for target in . ../worker/analyzer/src/aismell; do
+    mkdir -p "$target/patterns"
+    cp ../aismell/core.py "$target/core.py"
+    cp ../aismell/patterns/*.yaml "$target/patterns/"
+done
 cp ../aismell/docx.py docx.py
 cp ../aismell/biblio.py biblio.py
-mkdir -p patterns
-cp ../aismell/patterns/*.yaml patterns/
-echo "synced docs/core.py, docs/docx.py, docs/biblio.py and docs/patterns/ from aismell/"
+# Keep the legacy public YAML URLs in sync too.
+cp ../aismell/patterns/*.yaml .
+cp ../worker/src/unicode_strip.js unicode_strip.js
+echo "synced docs/ and worker/analyzer core/patterns; docs Unicode cleaner"

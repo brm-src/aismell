@@ -4,11 +4,17 @@
 const I18N = {
   es: {
     title: "aismell",
-    tagline: "Olfatea si tu texto suena demasiado a IA. Y si trae bibliografía, revisa que no sea inventada.",
+    editor_label: "Tu texto",
+    privacy_local: "Análisis local. Tu texto no se envía ni se guarda.",
+    review_options: "Opciones de revisión",
+    semantic_label: "Revisar similitud entre párrafos",
+    semantic_note: "Experimental y local. Descarga un modelo de más de 100 MB la primera vez. No modifica el índice.",
+    strip_run: "Limpiar caracteres localmente",
+    tagline: "Encuentra fórmulas, repeticiones y problemas de ritmo. Decide qué editar sin perder tu voz.",
     examples_lbl: "probar con ejemplo:",
-    example_ai: "texto IA",
-    example_human: "texto humano",
-    example_fakebib: "bibliografía falsa",
+    example_ai: "ensayo genérico",
+    example_human: "relato",
+    example_fakebib: "referencias de prueba",
     about_toggle: "qué hace, qué no hace, cli",
     tagline_biblio: "Las citas viajan a CrossRef, OpenAlex, Google Books y otras fuentes públicas. El resto del texto se queda contigo.",
     how_title: "cómo funciona",
@@ -51,7 +57,7 @@ const I18N = {
     biblio_progress_checking: "olfateando: {title}",
     biblio_progress_done: "listo. cruzando datos…",
     biblio_sum_total: "{n} referencias detectadas",
-    biblio_sum_verified: "verificadas",
+    biblio_sum_verified: "con coincidencia",
     biblio_sum_not_found: "sin coincidencia",
     biblio_sum_unverifiable: "sin DOI/ID",
     biblio_sum_error: "error de red",
@@ -63,17 +69,17 @@ const I18N = {
     biblio_rep_print: "imprimir / guardar PDF",
     biblio_rep_detail_title: "detalle por referencia",
     biblio_rep_footer: "todo corre en tu navegador",
-    biblio_rep_verdict_high: "bibliografía sospechosa",
+    biblio_rep_verdict_high: "referencias sin coincidencia",
     biblio_rep_verdict_mid: "revisar a mano",
-    biblio_rep_verdict_clean: "todas las citas verificadas",
-    biblio_rep_reason_high: "{n} de {total} referencias no se encontraron en ninguna fuente. Revisa una por una antes de entregar el texto: la IA suele inventar citas con apariencia académica.",
+    biblio_rep_verdict_clean: "todas con coincidencia de catálogo",
+    biblio_rep_reason_high: "{n} de {total} referencias no tienen coincidencia en las fuentes disponibles. No demuestra que sean inventadas: verifica los datos y consulta la publicación original.",
     biblio_rep_reason_mid: "{n} de {total} sin coincidencia. No equivale a inventadas (libros, tesis y publicaciones locales pueden no estar indexadas), pero merecen revisión manual.",
-    biblio_rep_reason_clean: "Todas las referencias detectadas se confirmaron en CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books u OpenLibrary.",
+    biblio_rep_reason_clean: "Se encontró un registro para cada referencia o identificador. Compara autor, año, título y edición: una coincidencia no confirma todos los datos ni que la fuente respalde tu argumento.",
     biblio_disclaimer: "\"sin coincidencia\" significa que no se encontró en ninguna fuente (CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books, OpenLibrary). Igual pueden ser fuentes legítimas no indexadas (tesis, capítulos, ediciones locales). Revisa a mano antes de concluir nada. \"sin DOI/ID\" no es problema: muchas citas válidas no tienen identificador.",
     verdict_label: "veredicto",
-    verdict_ai: "suena a IA",
-    verdict_mixed: "puede ser",
-    verdict_human: "suena humano",
+    verdict_ai: "varios patrones para revisar",
+    verdict_mixed: "hay fórmulas que conviene revisar",
+    verdict_human: "retoques puntuales",
     verdict_clean: "limpio",
     verdict_pre_llm: "anterior a la IA",
     verdict_confidence: "seguridad del detector",
@@ -110,20 +116,20 @@ const I18N = {
     bad_format: "formato no soportado. Usa .txt, .md, .docx o .pdf.",
     lang: "idioma",
     era_label: "¿cuándo?",
-    strict: "solo lo obvio",
+    strict: "solo prioridad alta",
     analyze: "analizar",
-    clear: "limpiar",
-    stripMarks: "quitar marcas",
+    clear: "vaciar texto",
+    stripMarks: "limpiar caracteres",
     stripTip: "Quita caracteres invisibles y, si quieres, reescribe el texto para que suene menos a plantilla. Solo se usa si lo pides.",
-    analyzeTip: "Analiza el texto y te marca línea por línea qué suena a IA, además de verificar la bibliografía si hay.",
+    analyzeTip: "Revisa patrones editoriales localmente y muestra dónde editar. Solo consulta referencias si activas la opción.",
     clearTip: "Borra el texto y vuelve al inicio.",
     uploadTip: "Sube un archivo .txt, .md, .docx o .pdf y lo analiza igual que el texto pegado.",
     help: "?",
     helpTitle: "qué hace cada botón",
     helpTip: "Muestra qué hace cada botón.",
-    stripTitle: "quitar marcas de ia",
-    stripExplain: "Quita caracteres invisibles (espacios raros, unicode de control) y, si quieres, reescribe el texto para que suene menos a plantilla. El texto se envía al servicio de aismell para procesarlo y no se guarda.",
-    stripRewriteLbl: "también reescribir (quita marcas de fraseo de ia)",
+    stripTitle: "Limpiar caracteres o reescribir",
+    stripExplain: "La limpieza de caracteres funciona aquí, sin enviar texto. Solo si activas reescritura se envía el texto a aismell en Cloudflare Workers AI (máximo 3.000 caracteres). Compara la versión con el original: un modelo puede alterar datos o citas.",
+    stripRewriteLbl: "Enviar a Cloudflare Workers AI para reescribir (opcional)",
     stripRunning: "quitando marcas…",
     stripEmpty: "pega un texto primero",
     stripDone: "listo. Copia la versión limpia si te sirve.",
@@ -134,7 +140,7 @@ const I18N = {
     stripDiffChars: "{n} caracteres invisibles o raros eliminados",
     stripDiffRewrite: "versión reescrita ({pct}% de diferencia léxica)",
     stripError: "no se pudo quitar marcas ahora. Inténtalo de nuevo en un momento.",
-    stripPrivacy: "El texto se envía solo para procesarlo; no se guarda ni se usa para entrenar modelos.",
+    stripPrivacy: "Procesado por Cloudflare Workers AI. El servicio de aismell no añade almacenamiento del texto. Revisa la versión antes de usarla.",
     why: "qué hace",
     whyText: "aismell lee tu texto y te señala qué frases y decisiones de discurso suenan a plantilla de IA: muletillas, conectores raros, párrafos que no cambian de ángulo, temas sobreexplicados, cierres demasiado prolijos y ritmo parejo. Te explica qué detectó, por qué importa y por dónde editar. Si hay bibliografía, revisa si las citas existen de verdad.",
     not: "qué NO hace",
@@ -144,7 +150,7 @@ const I18N = {
     cli: "también por terminal",
     cliText: "¿Trabajas con PDFs? Hay una versión CLI que anota Word y PDF con comentarios al margen. <a href=\"https://github.com/brm-src/aismell#cli\" target=\"_blank\" rel=\"noopener\">Ver en GitHub</a>.",
     donate: "☕ donar",
-    donateNote: "Si te sirvió, considera donarme. Lo mantengo solo, sin rastreo, cobros ni APIs.",
+    donateNote: "Si te sirvió, considera donarme. Lo mantengo solo, sin rastreo ni cobros.",
     placeholder: "Pega tu texto aquí, o suelta un archivo (.txt / .md / .docx / .pdf).",
     sentences: "oraciones",
     smell: "índice",
@@ -179,7 +185,7 @@ const I18N = {
     pdf_no_text: "El PDF no tiene capa de texto (probablemente escaneado). Sin OCR no puedo leerlo. Para PDFs escaneados usa el CLI con OCR.",
     biblio: "verificar bibliografía",
     biblioTip: "Busca las referencias del texto (DOIs, papers, libros, citas) y verifica si existen en CrossRef, OpenAlex, Google Books y otras fuentes. La IA suele inventar bibliografía.",
-    strictTip: "Filtra los avisos dudosos. Solo te muestra lo que casi seguro es IA.",
+    strictTip: "Muestra solo hallazgos de severidad 3. Es prioridad editorial, no certeza de autoría.",
     biblio_header: "BIBLIOGRAFÍA — {n} REFERENCIAS",
     biblio_privacy: "Solo se envían los identificadores (DOI / título / autor / arXiv ID) a CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books y OpenLibrary. Tu texto no sale.",
     biblio_none: "no se detectaron referencias parseables",
@@ -201,7 +207,7 @@ const I18N = {
 
       <p>aismell no reescribe tu texto. Marca lo que no suena humano y te da algo concreto sobre lo que trabajar. La voz sigue siendo tuya.</p>
 
-      <p class="about-foot">Si te sirvió, <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener">considera donarme</a> ☕<br>Escríbeme a <code>[tu@correo]</code></p>
+      <p class="about-foot">Si te sirvió, <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener">considera donarme</a> ☕</p>
     `,
     disc_title: "descargo de responsabilidad",
     disc_body: `
@@ -212,7 +218,7 @@ const I18N = {
       <p>No es un detector forense ni una prueba en juicios académicos. Los falsos positivos existen: muchas frases que marca también las usan personas reales, especialmente en textos académicos formales.</p>
 
       <h3>privacidad</h3>
-      <p>El análisis normal corre localmente con Python (Pyodide) en tu pestaña: tu texto no sale de tu navegador. Si activas <strong>verificar bibliografía</strong>, solo se envían los identificadores (DOIs, IDs de arXiv, títulos y autores) a CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books y OpenLibrary para confirmar si existen. La única acción que envía tu texto a un servidor es <strong>quitar marcas</strong>: se procesa en el servicio de aismell, no se guarda y no se usa para entrenar modelos.</p>
+      <p>El análisis normal corre localmente con Python (Pyodide) en tu pestaña: tu texto no sale de tu navegador. Si activas <strong>verificar bibliografía</strong>, solo se envían los identificadores (DOIs, IDs de arXiv, títulos y autores) a CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books y OpenLibrary para confirmar si existen. La limpieza de caracteres también es local. Solo una <strong>reescritura</strong> autorizada envía el texto completo a aismell en Cloudflare Workers AI. La aplicación no añade almacenamiento persistente del texto; esto no es una garantía sobre la infraestructura de terceros.</p>
 
       <h3>uso responsable</h3>
       <p>No uses aismell para acusar a nadie de hacer trampa. Úsalo para revisar tu propia escritura, detectar muletillas, y decidir qué cambiar. Las instituciones que usen aismell para penalizar estudiantes lo hacen bajo su propia responsabilidad.</p>
@@ -226,10 +232,16 @@ const I18N = {
   },
   en: {
     title: "aismell",
-    tagline: "Sniffs whether your text sounds too AI. And if it has a bibliography, checks that it isn't made up.",
+    editor_label: "Your text",
+    privacy_local: "Local analysis. Your text is not sent or saved.",
+    review_options: "Review options",
+    semantic_label: "Review paragraph similarity",
+    semantic_note: "Experimental and local. Downloads a model over 100 MB on first use. Does not change the index.",
+    strip_run: "Clean characters locally",
+    tagline: "Find formulas, repetition and rhythm problems. Decide what to edit without losing your voice.",
     examples_lbl: "try with sample:",
-    example_ai: "ai text",
-    example_human: "human text",
+    example_ai: "generic essay",
+    example_human: "narrative",
     example_fakebib: "fake bibliography",
     about_toggle: "what it does, what it doesn't, cli",
     tagline_biblio: "Citations travel to CrossRef, OpenAlex, Google Books and other public sources. The rest of your text stays with you.",
@@ -273,7 +285,7 @@ const I18N = {
     biblio_progress_checking: "sniffing: {title}",
     biblio_progress_done: "done. crunching data…",
     biblio_sum_total: "{n} references detected",
-    biblio_sum_verified: "verified",
+    biblio_sum_verified: "catalogue matches",
     biblio_sum_not_found: "no match",
     biblio_sum_unverifiable: "no DOI/ID",
     biblio_sum_error: "network error",
@@ -285,17 +297,17 @@ const I18N = {
     biblio_rep_print: "print / save as PDF",
     biblio_rep_detail_title: "per-reference detail",
     biblio_rep_footer: "runs entirely in your browser",
-    biblio_rep_verdict_high: "suspicious bibliography",
+    biblio_rep_verdict_high: "references without a match",
     biblio_rep_verdict_mid: "manual check needed",
-    biblio_rep_verdict_clean: "all citations verified",
-    biblio_rep_reason_high: "{n} of {total} references couldn't be matched in any source. Review them one by one before submitting: AI often invents citations that look academically plausible.",
+    biblio_rep_verdict_clean: "all have catalogue matches",
+    biblio_rep_reason_high: "{n} of {total} references have no match in the available sources. This does not prove fabrication: check the metadata and consult the original publication.",
     biblio_rep_reason_mid: "{n} of {total} with no match. This doesn't mean they're fake (books, theses, local publications may not be indexed), but they deserve a manual check.",
-    biblio_rep_reason_clean: "All detected references were confirmed in CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books or OpenLibrary.",
+    biblio_rep_reason_clean: "A catalogue record was found for each reference or identifier. Compare author, year, title and edition: a match does not validate all metadata or establish that a source supports your argument.",
     biblio_disclaimer: "\"no match\" means it wasn't found in any source (CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books, OpenLibrary). It may still be a legitimate non-indexed source (theses, chapters, regional editions). Check by hand before drawing conclusions. \"no DOI/ID\" is fine: lots of valid citations don't have one.",
     verdict_label: "verdict",
-    verdict_ai: "likely AI",
-    verdict_mixed: "mixed / assisted",
-    verdict_human: "smells human",
+    verdict_ai: "several patterns worth reviewing",
+    verdict_mixed: "some formulas worth reviewing",
+    verdict_human: "a few targeted edits",
     verdict_clean: "clean",
     verdict_pre_llm: "pre-AI",
     verdict_confidence: "confidence",
@@ -326,20 +338,20 @@ const I18N = {
     bad_format: "unsupported format. Use .txt, .md, .docx, or .pdf.",
     lang: "language",
     era_label: "when?",
-    strict: "high confidence only",
+    strict: "high priority only",
     analyze: "analyze",
     clear: "clear",
-    stripMarks: "strip marks",
+    stripMarks: "clean characters",
     stripTip: "Removes invisible characters and, if you want, rewrites the text so it sounds less like a template. Only runs when you ask for it.",
-    analyzeTip: "Analyzes the text and flags line by line what sounds AI-written, and checks the bibliography if there is one.",
+    analyzeTip: "Reviews editorial patterns locally and shows where to edit. Looks up references only when you enable the option.",
     clearTip: "Clears the text and returns to the start.",
     uploadTip: "Uploads a .txt, .md, .docx or .pdf file and analyzes it the same way as pasted text.",
     help: "?",
     helpTitle: "what each button does",
     helpTip: "Shows what each button does.",
-    stripTitle: "strip ai marks",
-    stripExplain: "Removes invisible characters (odd spaces, control unicode) and, if you want, rewrites the text so it sounds less like a template. The text is sent to the aismell service for processing and is not stored.",
-    stripRewriteLbl: "also rewrite (removes ai phrasing marks)",
+    stripTitle: "Clean characters or rewrite",
+    stripExplain: "Character cleanup runs here without sending text. Only enabling rewrite sends your text to aismell on Cloudflare Workers AI (up to 3,000 characters). Compare it with your original: a model can alter facts or citations.",
+    stripRewriteLbl: "Send to Cloudflare Workers AI to rewrite (optional)",
     stripRunning: "stripping marks…",
     stripEmpty: "paste some text first",
     stripDone: "done. Copy the clean version if it helps.",
@@ -350,7 +362,7 @@ const I18N = {
     stripDiffChars: "{n} invisible or odd characters removed",
     stripDiffRewrite: "rewritten version ({pct}% lexical difference)",
     stripError: "couldn't strip marks right now. Try again in a moment.",
-    stripPrivacy: "The text is sent only to be processed; it is not stored or used to train models.",
+    stripPrivacy: "Processed by Cloudflare Workers AI. The aismell service does not add text storage. Review the version before using it.",
     why: "what it does",
     whyText: "aismell reads your text and flags phrase-level and discourse-level cues: filler phrases, forced connectors, paragraphs that never change angle, over-explained themes, overly tidy endings, and flat rhythm. It explains what it found, why it matters, and where to edit. If a bibliography is detected, citations are cross-checked against public sources to confirm they exist.",
     not: "what it does NOT do",
@@ -360,7 +372,7 @@ const I18N = {
     cli: "also a CLI",
     cliText: "Working with PDFs? There's a CLI version that annotates Word and PDF with highlights and margin comments. <a href=\"https://github.com/brm-src/aismell#cli\" target=\"_blank\" rel=\"noopener\">See on GitHub</a>.",
     donate: "☕ donate",
-    donateNote: "If it helped, consider donating. I maintain it solo — no tracking, no fees, no APIs.",
+    donateNote: "If it helped, consider donating. I maintain it solo, without tracking or fees.",
     placeholder: "Paste text, or drop a file (.txt / .md / .docx / .pdf).",
     sentences: "sentences",
     smell: "index",
@@ -395,7 +407,7 @@ const I18N = {
     pdf_no_text: "This PDF has no text layer (probably scanned). Without OCR I can't read it. Use the CLI with OCR for scanned PDFs.",
     biblio: "verify bibliography",
     biblioTip: "Finds the references in the text (DOIs, papers, books, citations) and checks them against CrossRef, OpenAlex, Google Books and other sources. AI often invents bibliography.",
-    strictTip: "Filters out the noisy hits. Only shows you what's almost certainly AI.",
+    strictTip: "Shows only severity 3 findings. This is editorial priority, not authorship certainty.",
     biblio_header: "BIBLIOGRAPHY — {n} REFERENCES",
     biblio_privacy: "Only the identifiers (DOI / title / author / arXiv ID) are sent to CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books and OpenLibrary. Your text stays local.",
     biblio_none: "no parseable references found",
@@ -417,7 +429,7 @@ const I18N = {
 
       <p>aismell doesn't rewrite your text. It flags what doesn't sound human and gives you something concrete to work on. The voice is still yours.</p>
 
-      <p class="about-foot">If it helped, <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener">consider donating</a> ☕<br>Write to me at <code>[your@email]</code></p>
+      <p class="about-foot">If it helped, <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener">consider donating</a> ☕</p>
     `,
     disc_title: "disclaimer",
     disc_body: `
@@ -428,7 +440,7 @@ const I18N = {
       <p>It's not a forensic detector, and not evidence for academic misconduct cases. False positives happen: many phrases it flags are also used by real people, especially in formal academic writing.</p>
 
       <h3>privacy</h3>
-      <p>Normal analysis runs locally with Python (Pyodide) in your tab: your text never leaves your browser. If you enable <strong>verify bibliography</strong>, only the identifiers (DOIs, arXiv IDs, titles and authors) are sent to CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books and OpenLibrary to confirm they exist. The only action that sends your text to a server is <strong>strip marks</strong>: it is processed by the aismell service, not stored, and not used to train models.</p>
+      <p>Normal analysis runs locally with Python (Pyodide) in your tab: your text never leaves your browser. If you enable <strong>verify bibliography</strong>, only the identifiers (DOIs, arXiv IDs, titles and authors) are sent to CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books and OpenLibrary to confirm they exist. Character cleanup is also local. Only an explicit <strong>rewrite</strong> sends the full text to aismell on Cloudflare Workers AI. The application adds no persistent text storage; this is not a guarantee about third-party infrastructure.</p>
 
       <h3>responsible use</h3>
       <p>Don't use aismell to accuse anyone of cheating. Use it to review your own writing, spot fillers, and decide what to change. Institutions that use aismell to penalize students do so at their own responsibility.</p>
@@ -448,13 +460,14 @@ const els = {
   langSel: document.getElementById("langSel"),
   eraSel: document.getElementById("eraSel"),
   strictSel: document.getElementById("strictSel"),
-  biblioSel: null,
-  biblioInlineNote: null,
+  biblioSel: document.getElementById("biblioSel"),
+  semanticSel: document.getElementById("semanticSel"),
   analyzeBtn: document.getElementById("analyzeBtn"),
   stripBtn: document.getElementById("stripBtn"),
   stripPanel: document.getElementById("stripPanel"),
   stripResult: document.getElementById("stripResult"),
   stripRewrite: document.getElementById("stripRewrite"),
+  stripRunBtn: document.getElementById("stripRunBtn"),
   helpBtn: document.getElementById("helpBtn"),
   helpPanel: document.getElementById("helpPanel"),
   helpList: document.getElementById("helpList"),
@@ -472,6 +485,31 @@ const els = {
 // ---------- i18n ----------
 let UILANG = (navigator.language || "es").startsWith("en") ? "en" : "es";
 let lastReport = null;
+let busy = false;
+function setBusy(value) {
+  busy = value;
+  els.input.readOnly = value;
+  for (const control of document.querySelectorAll(".toolbar button, .toolbar select, .toolbar input, .review-options input, .ex-chip, #langSwitch button, #stripRunBtn, #stripRewrite")) {
+    control.disabled = value;
+  }
+  els.analyzeBtn.disabled = value || !analyzeFn;
+  els.resultPanel.setAttribute("aria-busy", String(value));
+}
+
+function invalidateResults() {
+  lastReport = null;
+  els.resultPanel.hidden = true;
+  els.stripPanel.hidden = true;
+  els.stripBtn.setAttribute("aria-expanded", "false");
+  clearBiblio();
+  updateInputCount();
+}
+
+function updateInputCount() {
+  const words = els.input.value.trim().match(/\S+/g)?.length || 0;
+  document.getElementById("inputCount").textContent = `${words} ${UILANG === "es" ? "palabras" : "words"}`;
+  document.body.classList.toggle("has-text", words > 0);
+}
 function applyI18n() {
   const t = I18N[UILANG];
   for (const el of document.querySelectorAll("[data-i18n]")) {
@@ -480,12 +518,16 @@ function applyI18n() {
   }
   for (const el of document.querySelectorAll("[data-i18n-tip]")) {
     const k = el.getAttribute("data-i18n-tip");
-    if (t[k] !== undefined) el.setAttribute("data-tip", t[k]);
+    if (t[k] !== undefined) { el.setAttribute("data-tip", t[k]); el.setAttribute("aria-description", t[k]); }
   }
   els.input.placeholder = t.placeholder;
+  updateInputCount();
+  els.helpBtn.setAttribute("aria-label", t.helpTitle);
+  updateStripAction();
   document.documentElement.lang = UILANG;
   for (const b of els.langSwitch.querySelectorAll("button")) {
     b.classList.toggle("on", b.dataset.lang === UILANG);
+    b.setAttribute("aria-pressed", String(b.dataset.lang === UILANG));
   }
 }
 els.langSwitch.addEventListener("click", (e) => {
@@ -505,10 +547,6 @@ els.langSwitch.addEventListener("click", (e) => {
 });
 applyI18n();
 
-// Biblio checkbox removed (now always-on); leave dead handler block as no-op
-if (els.biblioSel && els.biblioInlineNote) {
-  // intentionally empty — checkbox no longer exists
-}
 
 // ---------- Pyodide ----------
 let pyodide = null;
@@ -527,7 +565,14 @@ function runSemanticAnalysis(text, lang, onProgress) {
   const id = ++semanticRequestId;
 
   return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      cleanup();
+      worker.terminate();
+      if (semanticWorker === worker) semanticWorker = null;
+      reject(new Error("semantic-timeout"));
+    }, 90000);
     const cleanup = () => {
+      clearTimeout(timeout);
       worker.removeEventListener("message", handleMessage);
       worker.removeEventListener("error", handleError);
     };
@@ -544,6 +589,7 @@ function runSemanticAnalysis(text, lang, onProgress) {
     };
     const handleError = (event) => {
       cleanup();
+      worker.terminate();
       semanticWorker = null;
       reject(event.error || new Error(event.message || "semantic worker failed"));
     };
@@ -559,7 +605,7 @@ function setStatus(msg, isError = false) {
     els.status.classList.remove("err");
     return;
   }
-  els.status.innerHTML = msg;
+  els.status.textContent = msg;
   els.status.classList.toggle("err", isError);
 }
 
@@ -609,15 +655,12 @@ function startScanning(steps, opts = {}) {
   }
 
   setStep(0);
-  let next = 1;
-  const ticker = setInterval(() => {
-    if (cancelled) return;
-    if (next >= steps.length - 1) return;
-    setStep(next++);
-  }, stepMs);
+  pctEl.textContent = "";
+  fillEl.classList.add("indeterminate");
+  const ticker = null;
 
   return {
-    advance(idx) { setStep(Math.min(idx, steps.length - 1)); },
+    advance(idx) { setStep(Math.min(idx, steps.length - 1)); pctEl.textContent = ""; },
     setHits(n) {
       if (cancelled || !hitsEl) return;
       hitsEl.textContent = (t.scan_hits || "señales").replace("{n}", String(n));
@@ -626,6 +669,7 @@ function startScanning(steps, opts = {}) {
     setModelProgress(ratio, fileName) {
       if (cancelled || !labelEl || !fillEl) return;
       // Accept both transformers.js progress formats: 0..1 and 0..100.
+      fillEl.classList.remove("indeterminate");
       const raw = Number(ratio);
       const incoming = raw <= 1 ? raw * 100 : raw;
       const pct = Math.max(lastModelPct, Math.min(100, Math.round(incoming)));
@@ -648,7 +692,7 @@ function startScanning(steps, opts = {}) {
       fillEl.classList.add("done");
       fillEl.style.width = "100%";
       pctEl.textContent = "100%";
-      await new Promise((r) => setTimeout(r, 320));
+      // No artificial wait: the result is ready.
       els.scanning.hidden = true;
       els.scanning.innerHTML = "";
     },
@@ -679,7 +723,7 @@ async function bootPyodide() {
   const barEl = document.createElement("div");
   barEl.className = "track";
   barEl.style.cssText = "max-width:320px;margin:6px 0 0;";
-  barEl.innerHTML = '<div class="fill" style="width:0%;transition:width 0.3s linear"></div>';
+  barEl.innerHTML = '<div class="fill" style="width:0%"></div>';
   els.status.appendChild(barEl);
   const fillEl = barEl.querySelector(".fill");
 
@@ -835,7 +879,7 @@ def extract_docx_text(input_bytes):
     extractDocxTextFn = pyodide.globals.get("extract_docx_text");
     setBootPhase(3);
     setStatus(I18N[UILANG].ready);
-    els.analyzeBtn.disabled = false;
+    setBusy(false);
     // Embedding model is now lazy: only loaded when the user runs an analysis
     // on a short/medium text, not on boot. Saves ~120 MB download for users
     // who just want a quick check.
@@ -880,6 +924,29 @@ async function loadSources() {
 }
 
 // ---------- analyze + render ----------
+async function addSemanticNotes(report, text, progress) {
+  if (!els.semanticSel.checked) return;
+  const es = UILANG === "es";
+  if (text.length > 25000) {
+    report.notes.push(es ? "La revisión semántica se omitió: límite de 25.000 caracteres. El análisis editorial está completo."
+      : "Semantic review skipped: 25,000-character limit. The editorial analysis is complete.");
+    return;
+  }
+  try {
+    progress.advance(7);
+    const result = await runSemanticAnalysis(text, report.lang || "es", (event) => {
+      if (event?.status === "progress" && typeof event.progress === "number") progress.setModelProgress(event.progress, event.file || "");
+    });
+    report.semantic = (result?.findings || []).filter((item) => !els.strictSel.checked || item.severity >= 3);
+    if (result?.skipped) report.notes.push(es ? "La revisión semántica necesita al menos cuatro párrafos de 15 palabras."
+      : "Semantic review needs at least four paragraphs of 15 words.");
+  } catch (error) {
+    report.notes.push(es ? "La revisión semántica no estuvo disponible. El índice y los hallazgos editoriales están completos; puedes reintentar."
+      : "Semantic review was unavailable. The editorial index and findings are complete; you can retry.");
+    console.warn("semantic review unavailable");
+  }
+}
+
 function severityClass(score) {
   if (score >= 0.6) return "s-high";
   if (score >= 0.3) return "s-mod";
@@ -915,10 +982,12 @@ function dismissIntelectaNudge(btn) {
 }
 
 function escapeHtml(s) {
-  return s
+  return String(s ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 const FINDING_LABELS = {
@@ -1142,13 +1211,14 @@ function naturalHitComment(hit) {
 function renderHit(hit, t) {
   // Compact context: ±60 chars around the match (was: whole paragraph).
   const CTX = 60;
+  const chars = Array.from(hit.text);
   const start = Math.max(0, hit.col - CTX);
-  const end = Math.min(hit.text.length, hit.end + CTX);
+  const end = Math.min(chars.length, hit.end + CTX);
   const lead = start > 0 ? "… " : "";
-  const tail = end < hit.text.length ? " …" : "";
-  const before = escapeHtml(hit.text.slice(start, hit.col));
-  const matched = escapeHtml(hit.text.slice(hit.col, hit.end));
-  const after = escapeHtml(hit.text.slice(hit.end, end));
+  const tail = end < chars.length ? " …" : "";
+  const before = escapeHtml(chars.slice(start, hit.col).join(""));
+  const matched = escapeHtml(chars.slice(hit.col, hit.end).join(""));
+  const after = escapeHtml(chars.slice(hit.end, end).join(""));
   let glyph = ".";
   if (hit.severity === 3) glyph = "X";
   else if (hit.severity === 2) glyph = "!";
@@ -1158,11 +1228,13 @@ function renderHit(hit, t) {
       <div class="body">
         <div class="ctx">${lead}${before}<span class="match">${matched}</span>${after}${tail}</div>
         <div class="meta">${escapeHtml(naturalHitComment(hit))}</div>
+        <button type="button" class="source-link" data-source-line="${hit.line}" data-source-col="${hit.col}" data-source-end="${hit.end}">${UILANG === "es" ? "Editar en línea" : "Edit at line"} ${hit.line}</button>
       </div>
     </div>`;
 }
 
 function naturalStructuralComment(s) {
+  if (String(s.kind).startsWith("semantic-")) return `${s.message} · ${s.suggestion}`;
   const es = UILANG === "es";
   const kind = s.kind || "";
   const advice = naturalAdvice(plainSuggestion(s), es);
@@ -1211,113 +1283,28 @@ function renderStructural(s, t) {
       <div class="glyph s-${s.severity}">${glyph}</div>
       <div class="body">
         <div class="ctx" style="color: var(--fg);">${escapeHtml(naturalStructuralComment(s))}</div>
+        ${s.line ? `<button type="button" class="source-link" data-source-line="${s.line}">${UILANG === "es" ? "Revisar línea" : "Review line"} ${s.line}</button>` : `<span class="finding-scope">${UILANG === "es" ? "Observación global" : "Document-wide observation"}</span>`}
       </div>
     </div>`;
 }
 
 function computeVerdict(report) {
   const t = I18N[UILANG];
-  const reasons = [];
-  const sentences = report.sentences || 0;
   const hits = report.hits || [];
   const structural = report.structural || [];
-
-  // Density by sentence count (more reliable than by line — pasted text may be single-line).
-  // hits-per-sentence ratio, capped at 100%.
-  const denPct = sentences ? Math.min(100, ((hits.length + structural.length) / sentences) * 100) : 0;
-
-  // Severe count
-  let severe = 0;
-  for (const h of hits) if (h.severity === 3) severe++;
-  for (const s of structural) if (s.severity === 3) severe++;
-
-  // Repeated patterns (any id seen 3+ times = a tic)
-  const counts = {};
-  for (const h of hits) counts[h.id] = (counts[h.id] || 0) + 1;
-  const repeats = Object.entries(counts)
-    .filter(([, n]) => n >= 3)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 2);
-
-  // Heuristic score (0..1)
-  let h = 0;
-  // Density: 0% -> 0, 30% -> 0.45, 60%+ -> 0.85
-  h += Math.min(0.85, denPct / 70);
-  // Repeats (each tic adds up to 0.15)
-  h += Math.min(0.30, repeats.length * 0.15);
-  // Severe marks
-  h += Math.min(0.25, severe * 0.05);
-  // Structural signals
-  h += Math.min(0.20, structural.length * 0.05);
-  // Blend with rule-based score
-  h = h * 0.55 + report.score * 0.45;
-  if (sentences >= 120 && denPct < 5) h = Math.min(h, 0.28);
-  else if (sentences >= 80 && denPct < 8) h = Math.min(h, 0.40);
-  h = Math.max(0, Math.min(1, h));
-
-  // Build reasons
-  if (denPct >= 15 && hits.length >= 3) {
-    reasons.push(t.verdict_reasons.density.replace("{pct}", Math.round(denPct)));
-  }
-  for (const [id, n] of repeats) {
-    reasons.push(t.verdict_reasons.repeats.replace("{id}", findingLabel(id)).replace("{n}", n));
-  }
-  if (structural.length >= 2) {
-    reasons.push(t.verdict_reasons.structural.replace("{n}", structural.length));
-  }
-  if (structural.some((item) => item.kind === "statistical-uniformity")) {
-    reasons.push(t.verdict_reasons.statistical);
-  }
-  if (severe >= 2 && reasons.length < 3) {
-    reasons.push(t.verdict_reasons.severe.replace("{n}", severe));
+  const h = report.score;
+  const reasons = [];
+  const counts = new Map();
+  for (const hit of hits) counts.set(hit.id, (counts.get(hit.id) || 0) + 1);
+  for (const [id, n] of [...counts].sort((a, b) => b[1] - a[1]).slice(0, 2)) {
+    if (n >= 3) reasons.push(t.verdict_reasons.repeats.replace("{id}", findingLabel(id)).replace("{n}", n));
   }
 
-  // Verdict label + confidence
-  let label, klass, conf, confKey;
-  // Pre-LLM text: the verdict is about the ERA, not authorship. A text whose
-  // largest year is <= 2020 predates public LLMs — its formal register is not
-  // an AI signal. This overrides any "puede ser" from connector patterns.
-  if (report.era === "pre-llm") {
-    label = t.verdict_pre_llm;
-    klass = "v-clean";
-    conf = t.verdict_conf_high;
-    confKey = "high";
-    reasons.length = 0;
-    reasons.push(t.verdict_reasons.pre_llm.replace("{year}", report.era_max_year || 2020));
-  } else if (sentences < 3) {
-    label = t.verdict_human;
-    klass = "v-low";
-    conf = t.verdict_conf_low;
-    confKey = "low";
-    reasons.length = 0;
-    reasons.push(t.verdict_reasons.length);
-  } else if (h >= 0.55) {
-    label = t.verdict_ai;
-    klass = "v-high";
-    if (h >= 0.72 && reasons.length >= 2) { conf = t.verdict_conf_high; confKey = "high"; }
-    else if (h >= 0.65) { conf = t.verdict_conf_med; confKey = "med"; }
-    else { conf = t.verdict_conf_low; confKey = "low"; }
-  } else if (h >= 0.28) {
-    label = t.verdict_mixed;
-    klass = "v-mid";
-    conf = reasons.length >= 2 ? t.verdict_conf_med : t.verdict_conf_low;
-    confKey = reasons.length >= 2 ? "med" : "low";
-  } else if (hits.length === 0 && structural.length === 0) {
-    label = t.verdict_clean;
-    klass = "v-clean";
-    conf = t.verdict_conf_med;
-    confKey = "med";
-    reasons.length = 0;
-    reasons.push(t.verdict_reasons.clean);
-  } else {
-    label = t.verdict_human;
-    klass = "v-low";
-    conf = t.verdict_conf_med;
-    confKey = "med";
-    if (reasons.length === 0) reasons.push(t.verdict_reasons.clean);
-  }
-
-  return { label, klass, conf, confKey, reasons: reasons.slice(0, 3), heur: h };
+  if (report.sentences < 3) reasons.push(t.verdict_reasons.length);
+  const key = h >= 0.6 ? "ai" : h >= 0.3 ? "mixed" : hits.length || structural.length ? "human" : "clean";
+  const label = {ai: t.verdict_ai, mixed: t.verdict_mixed, human: t.verdict_human, clean: t.verdict_clean}[key];
+  const klass = {ai: "v-high", mixed: "v-mid", human: "v-low", clean: "v-clean"}[key];
+  return { label, klass, reasons: reasons.slice(0, 3), heur: h, key };
 }
 
 function segmentCopy(segment, es) {
@@ -1349,7 +1336,7 @@ function renderSegments(report) {
         <strong>${es ? `Tramo ${segment.index}` : `Segment ${segment.index}`}</strong>
         <span>${es ? `oraciones ${segment.start_sentence}–${segment.end_sentence}` : `sentences ${segment.start_sentence}–${segment.end_sentence}`}</span>
       </div>
-      <div class="segment-score"><strong>${pct}%</strong><span>${escapeHtml(copy.verdict)}</span><em>${es ? "seguridad" : "confidence"}: ${escapeHtml(copy.confidence)}</em></div>
+      <div class="segment-score"><strong>${pct}/100</strong><span>${escapeHtml(copy.verdict)}</span></div>
       <p>${escapeHtml(excerpt)}</p>
     </article>`;
   }).join("");
@@ -1395,62 +1382,26 @@ function renderActionSummary(report) {
   }
 
   if (!priority.length) return "";
-  return `
-    <div class="plain-summary">
-      <section class="plain-block plain-number">
-        <div class="plain-title">${es ? "qué quiere decir este número" : "what this number means"}</div>
-        <p>${es
-          ? `El ${Math.round(report.score * 100)}% no dice quién escribió el texto. Es un índice de señales editoriales: mientras más señales aparecen juntas, más conviene revisar.`
-          : `The ${Math.round(report.score * 100)}% does not say who wrote the text. It is an editorial-signal index: the more signals appear together, the more the text needs review.`}</p>
-      </section>
-      <section class="plain-block plain-next">
-        <div class="plain-title">${es ? "por dónde empezar" : "where to start"}</div>
-        <ol>${priority.slice(0, 3).map((p) => `<li>${escapeHtml(p)}</li>`).join("")}</ol>
-      </section>
-    </div>`;
+  return `<section class="next-steps">
+    <h3>${es ? "Por dónde empezar" : "Where to start"}</h3>
+    <ol>${priority.slice(0, 3).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol>
+  </section>`;
 }
 
 function renderVerdict(report) {
   const t = I18N[UILANG];
   const v = computeVerdict(report);
-  const es = UILANG === "es";
-
-  // Document-type adaptation: detect if this reads like a technical report
-  // (sections, acronyms, numbered headers, table-like structure).
-  const hasSections = report.sentences >= 20 && report.structural &&
-    report.structural.some(s => s.kind === "nominalization_density");
-
-  const docLabel = hasSections && report.score >= 0.25
-    ? (es ? "Este texto tiene pinta de informe técnico o documento de trabajo. Eso ajusta cómo se leen las señales: " : "This reads like a technical report or working document. That shifts how signals are read: ")
-    : "";
-
-  const subKey = v.klass === "v-high" ? "ai" : v.klass === "v-mid" ? "mixed" : v.klass === "v-clean" ? "clean" : "human";
-  const subtitle = (t.verdict_subtitle || {})[UILANG]?.[subKey] || "";
-
-  const reasonsHtml = v.reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join("");
-  const notesHtml = (report.notes && report.notes.length)
-    ? `<div class="verdict-notes">${report.notes.map((n) => `<div>${escapeHtml(n)}</div>`).join("")}</div>`
-    : "";
-  return `
-    <div class="verdict ${v.klass}">
-      <div class="verdict-label">${t.verdict_label}</div>
-      <div class="verdict-main">
-        <div class="verdict-copy">
-          <div class="verdict-value">${escapeHtml(v.label)}</div>
-          ${subtitle ? `<div class="verdict-subtitle">${escapeHtml(subtitle)}</div>` : ""}
-        </div>
-        <div class="verdict-conf-card">
-          <span>${t.verdict_confidence}</span>
-          <strong>${escapeHtml(v.conf)}</strong>
-        </div>
-      </div>
-      ${docLabel ? `<div class="verdict-doc-type">${escapeHtml(docLabel)}</div>` : ""}
-      ${notesHtml}
-      <div class="verdict-why">
-        <div class="verdict-why-label">${t.verdict_summary_label}</div>
-        <ul>${reasonsHtml}</ul>
-      </div>
-    </div>`;
+  const subtitle = t.verdict_subtitle[UILANG][v.key];
+  const notes = (report.notes || []).map((note) => `<p>${escapeHtml(note)}</p>`).join("");
+  return `<div class="verdict ${v.klass}">
+    <h2 class="verdict-value">${escapeHtml(v.label)}</h2>
+    <p class="verdict-subtitle">${escapeHtml(subtitle)}</p>
+    <p class="editorial-limit">${UILANG === "es"
+      ? "Señales editoriales, no una prueba de autoría. Conserva lo que tenga sentido en tu texto."
+      : "Editorial signals, not evidence of authorship. Keep what makes sense in your text."}</p>
+    ${v.reasons.length ? `<ul class="verdict-why">${v.reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}</ul>` : ""}
+    ${notes ? `<div class="verdict-notes">${notes}</div>` : ""}
+  </div>`;
 }
 
 function render(report) {
@@ -1461,24 +1412,19 @@ function render(report) {
 
   const totalFindings = report.hits.length + report.structural.length;
 
-  let scoreHtml = renderVerdict(report) + `
-    <div class="score-top">
-      <div class="score-card score-index">
-        <div class="score-card-label">${UILANG === "es" ? "índice de señales" : "signal index"}</div>
-        <div class="pct-row">
-          <div class="pct ${sev}">${pct}%</div>
-          <div class="pct-label">${severityLabel(report.score)}</div>
-        </div>
-        <div class="score-note">${UILANG === "es" ? "no es probabilidad de autoría" : "not an authorship probability"}</div>
-      </div>
-      <div class="score-card score-stats" aria-label="${UILANG === "es" ? "resumen del análisis" : "analysis summary"}">
-        <div class="score-stat"><strong>${report.sentences}</strong><span>${t.sentences}</span></div>
-        <div class="score-stat"><strong>${totalFindings}</strong><span>${t.findings}</span></div>
-      </div>
-    </div>`;
+  let scoreHtml = renderVerdict(report) + `<div class="review-meta">
+    <span><strong>${report.sentences}</strong> ${t.sentences}</span>
+    <span><strong>${totalFindings}</strong> ${t.findings}</span>
+    <span class="review-index">${UILANG === "es" ? "Índice editorial" : "Editorial index"}: <strong class="${sev}">${pct}/100</strong> · ${severityLabel(report.score)}</span>
+  </div>`;
 
   scoreHtml += renderActionSummary(report);
   scoreHtml += renderSegments(report);
+  if (report.semantic?.length) {
+    scoreHtml += `<details class="semantic-notes"><summary>${UILANG === "es" ? "Similitud entre párrafos · experimental" : "Paragraph similarity · experimental"}</summary>
+      <p class="editorial-limit">${UILANG === "es" ? "La similitud temática no demuestra repetición ni autoría. Estas observaciones no modifican el índice." : "Topical similarity does not prove repetition or authorship. These observations do not change the index."}</p>
+      ${report.semantic.map((finding) => renderStructural(finding, t)).join("")}</details>`;
+  }
 
   // Sections (apertura/cuerpo/cierre) intentionally removed —
   // their per-section scorer was inconsistent with the global one
@@ -1522,7 +1468,7 @@ function render(report) {
       <span class="fs-sev s-mod">${sevMod} ${t.sev_mod}</span>
       <span class="fs-sev s-low">${sevLow} ${t.sev_low}</span>
     </div>
-    <details class="findings-more">
+    <details class="findings-more" ${totalFindings <= 12 ? "open" : ""}>
       <summary>
         <span class="more-show">${detailLbl}</span>
         <span class="more-hide">${detailHide}</span>
@@ -1536,18 +1482,18 @@ function render(report) {
 }
 
 async function analyze(options = {}) {
-  if (!analyzeFn) return;
+  if (!analyzeFn || busy) return;
   const text = els.input.value;
   if (!text.trim()) {
     setStatus(I18N[UILANG].empty);
     return;
   }
-  els.analyzeBtn.disabled = true;
+  setBusy(true);
 
   // Big in-panel scanner — visible budget scales with text length.
   // Short text: ~3s. Long text: up to 8s for the multi-step UX.
   const steps = I18N[UILANG].analyzing_steps || [I18N[UILANG].analyzing];
-  const minMs = text.length > 5000 ? 4000 : 1500;
+  const minMs = 0;
   const targetMs = Math.min(8000, 2500 + text.length / 8);
   const progress = startScanning(steps, { expectedMs: targetMs });
   setStatus(null);
@@ -1561,46 +1507,7 @@ async function analyze(options = {}) {
     const obj = res.toJs({ dict_converter: Object.fromEntries });
     res.destroy();
 
-    // Carril 2 — semantic embedding analysis in a Web Worker. The model still
-    // downloads on first use, but ONNX/WASM cannot freeze the page anymore.
-    const fileAnalysis = options.fileAnalysis === true;
-    if (!fileAnalysis) {
-      try {
-        const EMBEDDING_CHAR_LIMIT = 25000;
-        if (text.length <= EMBEDDING_CHAR_LIMIT) {
-          progress.advance(7);
-          const semantic = await runSemanticAnalysis(
-            text,
-            obj.lang || "es",
-            (event) => {
-              if (event && event.status === "progress" && typeof event.progress === "number") {
-                progress.setModelProgress(event.progress, event.file || "");
-              }
-            },
-          );
-          if (semantic && semantic.findings && semantic.findings.length) {
-            obj.structural = (obj.structural || []).concat(
-              semantic.findings.map((f) => ({
-                line: 0,
-                kind: f.kind,
-                severity: f.severity,
-                message: f.message,
-                suggestion: f.suggestion,
-              })),
-            );
-            const strongSemantic = semantic.findings.some((f) => f.severity >= 3);
-            if (strongSemantic && obj.score < 0.55) {
-              obj.score = Math.max(obj.score, 0.55);
-              if (obj.score >= 0.6) obj.label = obj.lang === "es" ? "alto" : "high";
-              else if (obj.score >= 0.3) obj.label = obj.lang === "es" ? "moderado" : "moderate";
-            }
-          }
-        }
-      } catch (err) {
-        // Semantic analysis is best-effort; the deterministic report still renders.
-        console.warn("embedding analysis failed:", err);
-      }
-    }
+    await addSemanticNotes(obj, text, progress);
 
     // Live hit count once analysis is back
     const totalHits = (obj.hits ? obj.hits.length : 0) + (obj.structural ? obj.structural.length : 0);
@@ -1613,9 +1520,8 @@ async function analyze(options = {}) {
 
     render(obj);
 
-    // Auto-run bibliography verification on every analysis (no opt-in needed).
-    // verifyBibliography skips itself if no references are detected.
-    if (extractRefsFn) {
+    // Explicit opt-in: references can disclose unpublished research.
+    if (extractRefsFn && els.biblioSel.checked) {
       await verifyBibliography(text);
     }
 
@@ -1626,12 +1532,22 @@ async function analyze(options = {}) {
     setStatus(`${I18N[UILANG].error} ${err.message}`, true);
     console.error(err);
   } finally {
-    els.analyzeBtn.disabled = false;
+    setBusy(false);
   }
 }
 
 els.analyzeBtn.addEventListener("click", () => { clearBiblio(); analyze(); });
-els.stripBtn.addEventListener("click", stripMarks);
+els.stripBtn.addEventListener("click", () => {
+  els.stripPanel.hidden = !els.stripPanel.hidden;
+  els.stripBtn.setAttribute("aria-expanded", String(!els.stripPanel.hidden));
+  if (!els.stripPanel.hidden) els.stripPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+});
+els.stripRunBtn.addEventListener("click", stripMarks);
+function updateStripAction() {
+  els.stripRunBtn.textContent = els.stripRewrite.checked
+    ? (UILANG === "es" ? "Enviar y reescribir" : "Send and rewrite") : I18N[UILANG].strip_run;
+}
+els.stripRewrite.addEventListener("change", updateStripAction);
 
 const HELP_ITEMS = [
   ["analyzeBtn", "analyze", "analyzeTip"],
@@ -1653,6 +1569,7 @@ if (els.helpBtn && els.helpPanel) {
   els.helpBtn.addEventListener("click", () => {
     renderHelp();
     els.helpPanel.hidden = !els.helpPanel.hidden;
+    els.helpBtn.setAttribute("aria-expanded", String(!els.helpPanel.hidden));
     if (!els.helpPanel.hidden) els.helpPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
   });
 }
@@ -1660,6 +1577,7 @@ if (els.helpBtn && els.helpPanel) {
 const STRIP_API = "https://aismell-rewrite.brmcl.workers.dev/strip-marks";
 
 async function stripMarks() {
+  if (busy) return;
   const text = els.input.value;
   const t = I18N[UILANG];
   if (!text.trim()) {
@@ -1669,11 +1587,23 @@ async function stripMarks() {
   els.stripResult.innerHTML = `<div class="scanning"><div class="label">${t.stripRunning}</div></div>`;
   els.stripPanel.hidden = false;
   els.stripPanel.scrollIntoView({ behavior: "smooth", block: "start" });
-  els.stripBtn.disabled = true;
+  setBusy(true);
   try {
+    if (!els.stripRewrite.checked) {
+      const { cleanText } = await import("./unicode_strip.js");
+      renderStrip(cleanText(text), t);
+      return;
+    }
+    if (text.length > 3000) {
+      els.stripResult.textContent = UILANG === "es"
+        ? "La reescritura admite hasta 3.000 caracteres. Tu original no se modificó; la limpieza local no tiene ese límite."
+        : "Rewriting supports up to 3,000 characters. Your original is unchanged; local cleanup has no such limit.";
+      return;
+    }
     const r = await fetch(STRIP_API, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(45000),
       body: JSON.stringify({
         text,
         mode: "clean",
@@ -1688,7 +1618,7 @@ async function stripMarks() {
     console.error(err);
     els.stripResult.innerHTML = `<div class="strip-error">${t.stripError}</div>`;
   } finally {
-    els.stripBtn.disabled = false;
+    setBusy(false);
   }
 }
 
@@ -1699,6 +1629,7 @@ function renderStrip(data, t) {
   if (removedCount + replacedCount > 0) {
     changes.push(t.stripDiffChars.replace("{n}", String(removedCount + replacedCount)));
   }
+  if (data.rewrite?.error) changes.push(UILANG === "es" ? "La reescritura no estuvo disponible; solo se limpiaron caracteres." : "Rewriting was unavailable; only characters were cleaned.");
   if (data.rewrite && typeof data.rewrite.lexical_divergence === "number") {
     changes.push(t.stripDiffRewrite.replace("{pct}", String(Math.round(data.rewrite.lexical_divergence * 100))));
   }
@@ -1707,10 +1638,10 @@ function renderStrip(data, t) {
   els.stripResult.innerHTML = `
     <div class="strip-changes">${t.stripDiffLbl}: ${changes.join(" · ")}</div>
     <div class="strip-output">
-      <textarea id="stripOutput" readonly spellcheck="false">${escapeHtml(data.text)}</textarea>
+      <textarea id="stripOutput" aria-label="${UILANG === "es" ? "Versión para comparar con tu original" : "Version to compare with your original"}" readonly spellcheck="false">${escapeHtml(data.text)}</textarea>
       <div class="strip-copy-row">
         <button class="btn" id="stripCopyBtn" type="button">${t.stripCopy}</button>
-        <span class="strip-privacy">${t.stripPrivacy}</span>
+        <span class="strip-privacy">${els.stripRewrite.checked ? t.stripPrivacy : t.privacy_local}</span>
       </div>
     </div>`;
   const copyBtn = document.getElementById("stripCopyBtn");
@@ -1731,11 +1662,26 @@ function renderStrip(data, t) {
 }
 
 els.resultPanel.addEventListener("click", (e) => {
+  const source = e.target.closest("[data-source-line]");
+  if (source && !busy) {
+    const lines = els.input.value.split("\n");
+    const index = Number(source.dataset.sourceLine) - 1;
+    if (index < 0 || index >= lines.length) return;
+    const line = Array.from(lines[index]);
+    const base = lines.slice(0, index).reduce((sum, text) => sum + text.length + 1, 0);
+    const start = base + line.slice(0, Number(source.dataset.sourceCol || 0)).join("").length;
+    const end = source.dataset.sourceEnd === undefined ? base + lines[index].length
+      : base + line.slice(0, Number(source.dataset.sourceEnd)).join("").length;
+    els.input.focus();
+    els.input.setSelectionRange(start, end);
+    els.input.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
   if (e.target && e.target.matches(".intelecta-nudge .dismiss")) {
     dismissIntelectaNudge(e.target);
   }
 });
 function resetToHome(opts = {}) {
+  if (busy) return;
   const focusInput = opts.focusInput === true;
   els.input.value = "";
   els.input.scrollTop = 0;
@@ -1748,7 +1694,10 @@ function resetToHome(opts = {}) {
   if (els.helpPanel) els.helpPanel.hidden = true;
   clearBiblio();
   lastReport = null;
+  els.stripBtn.setAttribute("aria-expanded", "false");
+  els.helpBtn.setAttribute("aria-expanded", "false");
   document.body.classList.remove("has-text");
+  updateInputCount();
   setStatus(analyzeFn ? I18N[UILANG].ready : I18N[UILANG].booting);
   if (focusInput) els.input.focus();
   else els.input.blur();
@@ -1767,9 +1716,11 @@ if (els.homeReset) {
 }
 
 // Toggle "has-text" class for mobile sticky button
-els.input.addEventListener("input", () => {
-  document.body.classList.toggle("has-text", els.input.value.trim().length > 0);
-});
+els.input.addEventListener("input", invalidateResults);
+for (const control of [els.langSel, els.eraSel, els.strictSel, els.biblioSel, els.semanticSel].filter(Boolean)) {
+  control.addEventListener("change", invalidateResults);
+}
+updateInputCount();
 
 // Example chips — pools of variants. Each click cycles to the next one.
 const EXAMPLES = {
@@ -1985,12 +1936,14 @@ function findExampleMatch(text, lang) {
 }
 
 function fillExample(key, idx = null) {
+  if (busy) return false;
   const pool = getExamplePool(UILANG, key);
   if (!pool || !pool.length) return false;
   const cursor = _exampleCursor[UILANG] || _exampleCursor.es;
   const sampleIndex = idx === null ? cursor[key] % pool.length : Math.min(idx, pool.length - 1);
   cursor[key] = sampleIndex + 1;
   els.input.value = pool[sampleIndex];
+  updateInputCount();
   document.body.classList.add("has-text");
   els.input.scrollTop = 0;
   els.resultPanel.hidden = true;
@@ -2027,8 +1980,7 @@ document.querySelectorAll(".ex-chip").forEach((chip) => {
 els.input.addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
     e.preventDefault();
-    clearBiblio();
-    analyze();
+    if (!busy) { clearBiblio(); analyze(); }
   }
 });
 
@@ -2046,7 +1998,13 @@ function appendBiblio(html) {
   panel.insertAdjacentHTML("beforeend", html);
 }
 
+let bibliographyController = null;
+let bibliographyReportUrl = null;
 function clearBiblio() {
+  bibliographyController?.abort();
+  bibliographyController = null;
+  if (bibliographyReportUrl) URL.revokeObjectURL(bibliographyReportUrl);
+  bibliographyReportUrl = null;
   const panel = document.getElementById("biblioPanel");
   if (panel) panel.remove();
 }
@@ -2063,6 +2021,13 @@ function buildSearchUrl(title, author, kind) {
   return `https://www.google.com/search?q=${enc}`;
 }
 
+function safeExternalUrl(value) {
+  try {
+    const url = new URL(value);
+    return ["https:", "http:"].includes(url.protocol) ? url.href : "";
+  } catch { return ""; }
+}
+
 function renderBiblioRow(ref, res) {
   const t = I18N[UILANG];
   const icon = { exists: "✓", not_found: "✗", error: "?", unverifiable: "·" }[res.status] || "·";
@@ -2070,8 +2035,9 @@ function renderBiblioRow(ref, res) {
   const ident = ref.identifier || (ref.title ? ref.title.slice(0, 80) : ref.raw.slice(0, 80));
   const identSafe = escapeHtml(ident);
   // If verified and has URL, make the title clickable.
-  const identHtml = (res.status === "exists" && res.url)
-    ? `<a href="${escapeHtml(res.url)}" target="_blank" rel="noopener" class="biblio-link">${identSafe} ↗</a>`
+  const safeUrl = safeExternalUrl(res.url);
+  const identHtml = (res.status === "exists" && safeUrl)
+    ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener" class="biblio-link">${identSafe} ↗</a>`
     : identSafe;
   const detail = res.detail ? `<div class="biblio-detail">${escapeHtml(res.detail)}</div>` : "";
 
@@ -2152,6 +2118,8 @@ async function verifyBibliography(text) {
   // verify 80. The loop below is async, low-concurrency, and yields between
   // batches, so the browser stays responsive without silently skipping refs.
   const totalRefs = refs.length;
+  bibliographyController = new AbortController();
+  const signal = bibliographyController.signal;
 
   // Header + privacy note (always shown when refs are detected)
   appendBiblio(`<div class="biblio-header"><span class="biblio-emoji">📚</span> ${t.biblio_summary_label} — ${t.biblio_sum_total.replace("{n}", totalRefs)}</div>`);
@@ -2167,6 +2135,11 @@ async function verifyBibliography(text) {
         <span class="biblio-progress-current">${t.biblio_progress_starting}</span>
       </div>
     </div>`);
+  appendBiblio(`<button class="btn ghost" type="button" id="cancelBiblioBtn">${UILANG === "es" ? "Cancelar consultas" : "Cancel lookups"}</button>`);
+  document.getElementById("cancelBiblioBtn").addEventListener("click", () => {
+    clearBiblio();
+    setStatus(UILANG === "es" ? "Consultas canceladas. El análisis local sigue disponible." : "Lookups cancelled. Local analysis is still available.");
+  });
   const box = document.getElementById(progressId);
   const fill = box && box.querySelector(".biblio-progress-fill");
   const countEl = box && box.querySelector(".biblio-progress-count");
@@ -2199,11 +2172,13 @@ async function verifyBibliography(text) {
   };
   const CONCURRENCY = 2;   // 2 parallel → gentle on APIs, fewer rate-limit errors
   for (let i = 0; i < refs.length; i += CONCURRENCY) {
+    if (signal.aborted) return;
     const batch = refs.slice(i, i + CONCURRENCY);
     // Show the title of the first ref of the current batch as preview
     const preview = (batch[0].title || batch[0].identifier || batch[0].raw || "").slice(0, 60);
     updateProgress(i, t.biblio_progress_checking.replace("{title}", preview || "…"));
     const done = await Promise.all(batch.map(verifyOne));
+    if (signal.aborted) return;
     results.push(...done);
     updateProgress(Math.min(i + batch.length, refs.length), preview ? t.biblio_progress_checking.replace("{title}", preview) : "");
     await sleep(300);  // 300ms between batches → less pressure on rate-limited APIs
@@ -2211,7 +2186,13 @@ async function verifyBibliography(text) {
   updateProgress(refs.length, t.biblio_progress_done);
   // Brief pause so the user sees the bar fill, then collapse
   await sleep(400);
-  if (box) box.remove();
+  if (signal.aborted) return;
+  renderBiblioResults(results, t);
+}
+
+function renderBiblioResults(results, t) {
+  clearBiblio();
+  appendBiblio(`<div class="biblio-header">${t.biblio_sum_total.replace("{n}", results.length)}</div>`);
 
   // Summary stats
   const counts = { exists: 0, not_found: 0, unverifiable: 0, error: 0 };
@@ -2285,7 +2266,8 @@ async function verifyBibliography(text) {
   }
 
   // Retry buttons for errored entries
-  document.querySelectorAll("#biblio-detail-box .biblio-retry").forEach(btn => {
+  const errors = results.filter((entry) => entry.res.status === "error");
+  document.querySelectorAll("#biblio-detail-box .biblio-retry").forEach((btn, errorIndex) => {
     btn.addEventListener("click", async function() {
       const origText = this.textContent;
       this.textContent = "...";
@@ -2309,18 +2291,9 @@ async function verifyBibliography(text) {
       } catch (e) {
         newRes = { status: "error", detail: e.message };
       }
-      // Replace this row in-place
-      const row = this.closest(".biblio-row");
-      if (row && ref.kind) {
-        const newRowHtml = renderBiblioRow(ref, newRes);
-        const temp = document.createElement("div");
-        temp.innerHTML = newRowHtml;
-        const newRow = temp.firstElementChild;
-        row.replaceWith(newRow);
-      } else {
-        this.textContent = origText;
-        this.disabled = false;
-      }
+      if (!this.isConnected) return;
+      errors[errorIndex].res = newRes;
+      renderBiblioResults(results, t);
     });
   });
 
@@ -2328,6 +2301,7 @@ async function verifyBibliography(text) {
   const reportHtml = buildBiblioReportHtml(results, t);
   const reportBlob = new Blob([reportHtml], { type: "text/html;charset=utf-8" });
   const reportUrl = URL.createObjectURL(reportBlob);
+  bibliographyReportUrl = reportUrl;
   appendBiblio(`
     <div class="biblio-download">
       <a class="btn ghost" href="${reportUrl}" target="_blank" rel="noopener">📄 ${t.biblio_view_btn}</a>
@@ -2347,10 +2321,12 @@ function buildBiblioReportHtml(results, t) {
     verdictLabel = t.biblio_rep_verdict_high;
     verdictClass = "v-high";
     verdictReason = t.biblio_rep_reason_high.replace("{n}", stats.not_found).replace("{total}", total);
-  } else if (stats.not_found > 0) {
-    verdictLabel = t.biblio_rep_verdict_mid;
+  } else if (stats.not_found > 0 || stats.error > 0 || stats.unverifiable > 0 || total === 0) {
+    verdictLabel = UILANG === "es" ? "verificación incompleta" : "incomplete verification";
     verdictClass = "v-mid";
-    verdictReason = t.biblio_rep_reason_mid.replace("{n}", stats.not_found).replace("{total}", total);
+    verdictReason = UILANG === "es"
+      ? `${stats.exists} de ${total} referencias con coincidencia de catálogo. Las demás requieren revisión; un error de red no demuestra falsedad.`
+      : `${stats.exists} of ${total} references have a catalogue match. The others need review; a network error does not establish fabrication.`;
   } else {
     verdictLabel = t.biblio_rep_verdict_clean;
     verdictClass = "v-clean";
@@ -2453,7 +2429,7 @@ function buildBiblioReportHtml(results, t) {
     margin-bottom: 24px;
   }
   .stat {
-    border-left: 3px solid var(--line);
+    border-left: 1px solid var(--line);
     padding: 6px 0 6px 12px;
   }
   .stat.ok   { border-color: var(--grn); }
@@ -2576,7 +2552,7 @@ function buildBiblioReportHtml(results, t) {
 async function verifyDoiJs(doi) {
   const url = `https://api.crossref.org/works/${encodeURIComponent(doi)}`;
   try {
-    const r = await fetch(url, { headers: { Accept: "application/json" } });
+    const r = await fetchWithTimeout(url, { headers: { Accept: "application/json" } });
     if (r.status === 404) return { status: "not_found", detail: "CrossRef: not found" };
     if (!r.ok) return { status: "error", detail: `HTTP ${r.status}` };
     const d = await r.json();
@@ -2592,8 +2568,8 @@ async function verifyDoiJs(doi) {
     }
     let detail = title;
     if (author) detail = year ? `${author} (${year}) ${title}` : `${author}: ${title}`;
-    const url = m.URL || `https://doi.org/${doi}`;
-    return { status: "exists", detail, url };
+    const publicUrl = m.URL || `https://doi.org/${doi}`;
+    return { status: "exists", detail, url: publicUrl };
   } catch (e) {
     return { status: "error", detail: e.message };
   }
@@ -2603,7 +2579,7 @@ async function verifyArxivJs(id) {
   const url = `https://export.arxiv.org/api/query?id_list=${encodeURIComponent(id)}`;
   const publicUrl = `https://arxiv.org/abs/${encodeURIComponent(id)}`;
   try {
-    const r = await fetch(url);
+    const r = await fetchWithTimeout(url);
     if (!r.ok) return { status: "error", detail: `HTTP ${r.status}` };
     const text = await r.text();
     if (!text.includes("<entry>")) return { status: "not_found", detail: "arXiv: not found" };
@@ -2627,7 +2603,9 @@ async function fetchWithTimeout(url, opts = {}, ms = 15000, retries = 1) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), ms);
     try {
-      const r = await fetch(url, { ...opts, signal: ctrl.signal });
+      const signals = [ctrl.signal];
+      if (bibliographyController) signals.push(bibliographyController.signal);
+      const r = await fetch(url, { ...opts, signal: AbortSignal.any(signals) });
       clearTimeout(t);
       // 429 = rate-limited. Back off harder and retry (up to retries).
       if (r.status === 429 && attempt < retries) {
@@ -2638,6 +2616,7 @@ async function fetchWithTimeout(url, opts = {}, ms = 15000, retries = 1) {
     } catch (e) {
       clearTimeout(t);
       lastErr = e;
+      if (bibliographyController?.signal.aborted || !document.getElementById("biblioPanel")) throw e;
       if (attempt < retries) {
         await new Promise(r => setTimeout(r, 1500));
       }
@@ -2783,16 +2762,17 @@ async function verifyCitationJs(ref) {
 }
 
 function titleSimilar(a, b) {
-  const norm = (s) => (s || "").toLowerCase().replace(/\W+/g, "");
-  const na = norm(a), nb = norm(b);
-  if (!na || !nb) return false;
-  if (na.includes(nb) || nb.includes(na)) return true;
-  const toksA = new Set((a || "").toLowerCase().match(/\w+/g)?.filter((x) => x.length > 3) || []);
-  const toksB = new Set((b || "").toLowerCase().match(/\w+/g)?.filter((x) => x.length > 3) || []);
-  if (!toksA.size) return false;
-  let overlap = 0;
-  for (const x of toksA) if (toksB.has(x)) overlap++;
-  return overlap / toksA.size >= 0.75;
+  const norm = (value) => String(value || "").toLowerCase().normalize("NFKD")
+    .replace(/[\u0300-\u036f]/gu, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const left = norm(a), right = norm(b);
+  if (!left || !right) return false;
+  if (left === right) return true;
+  const ta = new Set(left.split(/\s+/).filter((word) => word.length > 2));
+  const tb = new Set(right.split(/\s+/).filter((word) => word.length > 2));
+  if (Math.min(ta.size, tb.size) < 3) return false;
+  let common = 0;
+  for (const word of ta) if (tb.has(word)) common++;
+  return common / Math.max(ta.size, tb.size) >= 0.8;
 }
 
 async function verifyOpenAlexJs(ref) {
@@ -2877,7 +2857,7 @@ async function verifyIsbnJs(isbn) {
   const clean = String(isbn || "").replace(/[^0-9Xx]/g, "");
   if (!clean) return { status: "unverifiable", detail: "ISBN vacío" };
   try {
-    const r = await fetch(`https://openlibrary.org/isbn/${encodeURIComponent(clean)}.json`, { headers: { Accept: "application/json" } });
+    const r = await fetchWithTimeout(`https://openlibrary.org/isbn/${encodeURIComponent(clean)}.json`, { headers: { Accept: "application/json" } });
     if (r.status === 404) return { status: "not_found", detail: "OpenLibrary: not found" };
     if (!r.ok) return { status: "error", detail: `OpenLibrary HTTP ${r.status}` };
     const d = await r.json();
@@ -2909,7 +2889,13 @@ function setupDnd() {
 }
 
 async function handleFile(file) {
+  if (busy) return;
   const t = I18N[UILANG];
+  if (!analyzeFn) { setStatus(t.booting, true); return; }
+  if (file.size > 25 * 1024 * 1024) {
+    setStatus(UILANG === "es" ? "Archivo demasiado grande: máximo 25 MB en el navegador. Usa el CLI para documentos mayores." : "File too large: browser limit is 25 MB. Use the CLI for larger documents.", true);
+    return;
+  }
   const name = file.name.toLowerCase();
   if (name.endsWith(".docx")) {
     return await annotateDocx(file);
@@ -2917,8 +2903,7 @@ async function handleFile(file) {
   if (name.endsWith(".pdf")) {
     return await handlePdf(file);
   }
-  const isText = ["text/plain", "text/markdown", ""].includes(file.type) ||
-                 /\.(txt|md|markdown)$/i.test(file.name);
+  const isText = /\.(txt|md|markdown)$/i.test(file.name);
   if (!isText) {
     const msg = t.bad_format
       ? t.bad_format.replace("{name}", file.name)
@@ -2926,9 +2911,13 @@ async function handleFile(file) {
     setStatus(msg, true);
     return;
   }
-  const text = await file.text();
+  let text;
+  setBusy(true);
+  try { text = await file.text(); }
+  catch { setStatus(UILANG === "es" ? "No pude leer el archivo. Tu texto anterior sigue intacto." : "Could not read the file. Your previous text is unchanged.", true); return; }
+  finally { setBusy(false); }
   els.input.value = text;
-  document.body.classList.add("has-text");
+  invalidateResults();
   await analyze({ fileAnalysis: true });
 }
 
@@ -2988,6 +2977,8 @@ async function extractPdfText(file, opts = {}) {
 }
 
 async function handlePdf(file) {
+  if (busy) return;
+  setBusy(true);
   const t = I18N[UILANG];
   setStatus(t.pdf_extracting || "extrayendo texto del PDF…");
   try {
@@ -3003,26 +2994,28 @@ async function handlePdf(file) {
       return;
     }
     els.input.value = text;
-    document.body.classList.add("has-text");
+    invalidateResults();
+    setBusy(false);
     setStatus(null);
     await analyze({ fileAnalysis: true });
   } catch (err) {
     console.error("pdf extract failed", err);
     setStatus(`${t.error} PDF: ${err.message}`, true);
-  }
+  } finally { setBusy(false); }
 }
 
 async function annotateDocx(file) {
+  if (busy) return;
   const t = I18N[UILANG];
   if (!annotateDocxFn || !analyzeFn) {
     setStatus(t.booting, true);
     return;
   }
-  els.analyzeBtn.disabled = true;
+  setBusy(true);
 
   // Big in-panel scanner — same animation as paste-text flow
   const steps = t.analyzing_steps || [t.analyzing];
-  const minMs = 4500;
+  const minMs = 0;
   const targetMs = 9000;
   const progress = startScanning(steps, { expectedMs: targetMs });
   setStatus(null);
@@ -3052,6 +3045,7 @@ async function annotateDocx(file) {
       res.destroy();
       const totalHits = (report.hits ? report.hits.length : 0) + (report.structural ? report.structural.length : 0);
       progress.setHits(totalHits);
+      await addSemanticNotes(report, extractedText, progress);
     }
 
     // 3) Annotate the .docx (highlights + comments)
@@ -3076,6 +3070,7 @@ async function annotateDocx(file) {
     if (report) {
       // Stash the input text so the bibliography toggle works on .docx too.
       els.input.value = extractedText;
+      updateInputCount();
       render(report);
     } else {
       // Fallback: no extracted text — show minimal score panel
@@ -3131,7 +3126,7 @@ async function annotateDocx(file) {
     setStatus(null);
 
     // Optional: bibliography verification on the extracted text
-    if (extractedText.trim() && extractRefsFn) {
+    if (extractedText.trim() && extractRefsFn && els.biblioSel.checked) {
       await verifyBibliography(extractedText);
     }
 
@@ -3142,7 +3137,7 @@ async function annotateDocx(file) {
     console.error(err);
     setStatus(`${t.error} ${err.message}`, true);
   } finally {
-    els.analyzeBtn.disabled = false;
+    setBusy(false);
   }
 }
 
@@ -3156,34 +3151,21 @@ els.fileInput.addEventListener("change", async (e) => {
   e.target.value = ""; // allow re-picking the same file
 });
 
-// ---------- Disclaimer modal ----------
-const disclaimerModal = document.getElementById("disclaimerModal");
-const disclaimerBtn = document.getElementById("disclaimerBtn");
-function openDisclaimer() { disclaimerModal.hidden = false; document.body.style.overflow = "hidden"; }
-function closeDisclaimer() { disclaimerModal.hidden = true; document.body.style.overflow = ""; }
-if (disclaimerBtn) disclaimerBtn.addEventListener("click", openDisclaimer);
-disclaimerModal.querySelector(".close").addEventListener("click", closeDisclaimer);
-disclaimerModal.addEventListener("click", (e) => {
-  if (e.target === disclaimerModal) closeDisclaimer();
-});
-
-// ---------- About modal ----------
-const aboutModal = document.getElementById("aboutModal");
-const aboutBtn = document.getElementById("aboutBtn");
-function openAbout() { aboutModal.hidden = false; document.body.style.overflow = "hidden"; }
-function closeAbout() { aboutModal.hidden = true; document.body.style.overflow = ""; }
-if (aboutBtn) aboutBtn.addEventListener("click", openAbout);
-if (aboutModal) {
-  aboutModal.querySelector(".close").addEventListener("click", closeAbout);
-  aboutModal.addEventListener("click", (e) => {
-    if (e.target === aboutModal) closeAbout();
+// Native dialogs own focus, Escape and keyboard containment.
+for (const [modalId, buttonId] of [["disclaimerModal", "disclaimerBtn"], ["aboutModal", "aboutBtn"]]) {
+  const modal = document.getElementById(modalId);
+  document.getElementById(buttonId).addEventListener("click", () => {
+    modal.hidden = false;
+    modal.showModal();
+    document.body.style.overflow = "hidden";
+  });
+  modal.querySelector(".close").addEventListener("click", () => modal.close());
+  modal.addEventListener("click", (event) => { if (event.target === modal) modal.close(); });
+  modal.addEventListener("close", () => {
+    modal.hidden = true;
+    document.body.style.overflow = "";
   });
 }
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !disclaimerModal.hidden) closeDisclaimer();
-  if (e.key === "Escape" && aboutModal && !aboutModal.hidden) closeAbout();
-});
 
 // ---------- Donation nudge (non-invasive) ----------
 // Shows after the user has run analyze 3+ times, only once, and never again

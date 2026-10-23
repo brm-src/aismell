@@ -36,7 +36,7 @@ La mayoría de los "humanizadores de IA" son estafa. Cambian sinónimos al azar 
 `aismell` es lo contrario:
 - **El análisis no reescribe por ti.** Te muestra qué se lee a IA, línea por línea. (La web tiene una acción aparte, "quitar marcas", que sí puede reescribir si la usas explícitamente; el CLI no.)
 - **Es auditable.** Cada patrón vive en un YAML que puedes leer y contribuir.
-- **Es offline por defecto.** El análisis de texto no sale de tu máquina. En la web, la única acción que envía texto a un servidor es "quitar marcas": se procesa en el servicio de aismell, no se guarda y no se usa para entrenar modelos.
+- **Es local por defecto.** El análisis editorial y la limpieza Unicode funcionan en tu navegador sin enviar el texto. La consulta de bibliografía requiere activarla y envía solo las referencias extraídas a catálogos públicos. Solo una reescritura autorizada envía el texto completo a aismell en Cloudflare Workers AI. La aplicación no añade almacenamiento persistente del texto; esto no es una garantía sobre la infraestructura de terceros.
 - **No promete burlar detectores.** Promete que tu texto no se sienta a piloto automático.
 
 El enfoque honesto es editorial, no adversario. Úsalo antes de publicar.
@@ -45,9 +45,11 @@ El enfoque honesto es editorial, no adversario. Úsalo antes de publicar.
 
 En [aismell.me](https://aismell.me) hay una acción **"quitar marcas"** junto al análisis normal:
 
-- **Quita caracteres invisibles** (espacios raros, unicode de control, bidi) que se cuelan en textos copiados.
-- **Opcionalmente reescribe** el texto para que suene menos a plantilla de IA. Conserva datos, nombres y citas.
-- El texto se envía al servicio de aismell solo para procesarlo; no se guarda, no se registra y no se usa para entrenar modelos.
+- **Limpia Unicode localmente**, con la misma implementación del servicio. Conserva por defecto los caracteres necesarios para emojis y otras escrituras.
+- **Reescribe solo después del consentimiento**: abre el panel, activa la reescritura y pulsa “Enviar y reescribir”. El límite es 3.000 caracteres. El original nunca se reemplaza automáticamente.
+- La reescritura usa Cloudflare Workers AI y puede alterar datos, nombres o citas pese a sus instrucciones. Compara ambas versiones antes de usarla.
+- La consulta de referencias y la revisión experimental de similitud entre párrafos están desactivadas por defecto. La segunda descarga un modelo local grande y no modifica el índice editorial.
+- Los hallazgos llevan al fragmento exacto para editarlo; editar invalida el informe anterior. Los archivos Word conservan la descarga comentada.
 
 ## Instalación
 
@@ -132,7 +134,7 @@ Tres capas.
 
 **3. Ritmo, forma y discurso.** Varianza de largo de oración, densidad de em-dashes, ratio de bullets, frecuencia de regla de tres, **simetría de largo de párrafos** (los LLMs producen párrafos de longitud sospechosamente parecida), **densidad de conectores de apertura** (la investigación de Pangram muestra que varios párrafos arrancando con conectores explícitos es la señal más fuerte de IA), y pistas inspiradas en StoryScope: temas sobreexplicados y cierres narrativos demasiado prolijos.
 
-Los scores se normalizan a 0–100. Sobre 60 es IA fuerte, 30–60 es mezcla, bajo 30 está mayormente limpio.
+El resultado es un índice editorial heurístico de 0 a 100, no un porcentaje de texto generado ni una probabilidad de autoría. Un valor más alto orienta la prioridad de revisión. La web usa el mismo índice que el CLI, sin otro clasificador ni una confianza inventada. Las fechas mencionadas no datan el documento. No se afirma una precisión validada con un benchmark independiente.
 
 ## Qué *no* hace
 
@@ -147,13 +149,13 @@ Cada regla vive en `patterns/es.yaml` o `patterns/en.yaml`. Formato:
 ```yaml
 - id: es.vale_pena_destacar
   kind: phrase            # phrase | regex
-  severity: 3             # 1 (sospecha) | 2 (probable) | 3 (casi seguro)
+  severity: 3             # prioridad editorial: 1 (baja) | 2 (media) | 3 (alta)
   pattern: vale la pena destacar
   message: muletilla AI clásica
   suggestion: solo destácalo
 ```
 
-Agrega un patrón, abre un PR. No necesitas tocar código para reglas nuevas.
+Agrega un patrón, abre un PR. No necesitas tocar código para reglas nuevas. Ejecuta `bash docs/sync.sh` para actualizar todas las copias web/Worker. Las reglas se guardan en caché por proceso: reinícialo después de editarlas, o llama a `load_patterns.cache_clear()` si integras Python en un proceso persistente.
 
 ## Roadmap
 

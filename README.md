@@ -36,7 +36,7 @@ Most "AI text humanizers" are scams. They reshuffle synonyms or insert typos to 
 `aismell` is the opposite:
 - **Analysis does not rewrite for you.** It tells you what reads like AI, line by line. (The web has a separate "strip marks" action that can rewrite if you explicitly use it; the CLI doesn't.)
 - **It is auditable.** Every pattern lives in a YAML file you can read and contribute to.
-- **It is offline by default.** Text analysis never leaves your machine. On the web, the only action that sends text to a server is "strip marks": it is processed by the aismell service, not stored, and not used to train models.
+- **It is local by default.** Editorial analysis and Unicode cleanup run in your browser without sending your text. Bibliography lookup is opt-in and sends only parsed references to public catalogues. Only an explicitly enabled rewrite sends the full text to aismell on Cloudflare Workers AI. The application adds no persistent text storage; that is not a guarantee about third-party infrastructure.
 - **It does not promise to fool detectors.** It promises to make your text feel less like autopilot.
 
 The honest framing is editorial, not adversarial. Use it before publishing.
@@ -45,9 +45,11 @@ The honest framing is editorial, not adversarial. Use it before publishing.
 
 [aismell.me](https://aismell.me) has a **"strip marks"** action next to the normal analysis:
 
-- **Removes invisible characters** (odd spaces, control unicode, bidi) that sneak into copied text.
-- **Optionally rewrites** the text so it sounds less like an AI template. It preserves data, names and citations.
-- The text is sent to the aismell service only to be processed; it is not stored, not logged, and not used to train models.
+- **Cleans Unicode locally**, using the same implementation as the service. Preserves meaningful emoji joiners and script characters by default.
+- **Rewrites only after consent**: open the panel, enable rewrite, then select “Send and rewrite”. The limit is 3,000 characters. The original is never replaced automatically.
+- A rewrite uses Cloudflare Workers AI and can alter facts, names or citations despite its instructions. Compare both versions before using it.
+- Bibliography and experimental paragraph-similarity review are off by default. Similarity downloads a large local model; it does not modify the editorial index.
+- Findings link to the exact source span for editing; editing invalidates the old report. Word uploads retain commented downloads.
 
 ## Install
 
@@ -130,7 +132,7 @@ Three layers of detection.
 
 **3. Rhythm, shape, and discourse.** Sentence-length variance, em-dash density, list ratio, rule-of-three frequency, **paragraph-length symmetry** (LLMs produce paragraphs of suspiciously similar length), **opening-connector density** (Pangram research shows multiple paragraphs starting with explicit connectors is the single strongest AI tell), and StoryScope-inspired cues such as over-explained themes and too-neat narrative closure.
 
-Scores are normalized to a 0–100 smell percentage. Above 60 is loud AI, 30–60 is mixed, below 30 is mostly clean.
+Scores are a heuristic editorial index from 0 to 100, not a percentage of generated text or a probability of authorship. Higher values prioritize review; the web uses the same index as the CLI without a second classifier or invented confidence. Mentioned dates do not establish document provenance. No independent accuracy benchmark is claimed.
 
 ## What it does *not* do
 
@@ -145,13 +147,13 @@ Every detection rule lives in `patterns/es.yaml` or `patterns/en.yaml`. Format:
 ```yaml
 - id: en.delve
   kind: phrase            # phrase | regex
-  severity: 3             # 1 (suspect) | 2 (probable) | 3 (almost certain)
+  severity: 3             # editorial priority: 1 (low) | 2 (medium) | 3 (high)
   pattern: delve into
   message: the most flagged AI word of 2024
   suggestion: use "explore", "look at", or just dig in
 ```
 
-Add a pattern, open a PR. No code changes needed for new rules.
+Add a pattern, open a PR. No code changes needed for new rules. Run `bash docs/sync.sh` to update every web/Worker copy. Rules are cached per process; restart after editing them, or call `load_patterns.cache_clear()` in a long-lived Python embedding.
 
 ## Roadmap
 

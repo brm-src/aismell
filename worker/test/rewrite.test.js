@@ -117,7 +117,7 @@ test("clean mode preserves existing markdown headings in the rewrite instruction
   assert.match(systemPrompt, /Keep existing markdown headings and titles exactly as they are/);
 });
 
-test("rewrite prompt instructs stripping leftover asterisk and backtick markers", async () => {
+test("rewrite prompt preserves code delimiters, whitespace and valid markup", async () => {
   let systemPrompt = "";
   const ai = {
     async run(model, request) {
@@ -130,15 +130,39 @@ test("rewrite prompt instructs stripping leftover asterisk and backtick markers"
   }), { AI: ai, ANALYZER: analyzer() });
 
   assert.equal(response.status, 200);
-  assert.match(systemPrompt, /Strip leftover copy-paste formatting markers/);
-  assert.match(systemPrompt, /backticks around code or filenames/);
+  assert.match(systemPrompt, /Preserve code fragments exactly, including delimiters, indentation and whitespace/);
+  assert.match(systemPrompt, /Keep valid markdown and URLs unchanged/);
+  assert.match(systemPrompt, /When unsure, leave the content unchanged/);
+  assert.doesNotMatch(systemPrompt, /remove literal markdown asterisks|backticks around code or filenames/);
 });
 
-test("strips bold and backtick markers from a GPT copy-paste output", async () => {
+test("preserves valid markup rather than guessing that it is copy-paste residue", async () => {
   const { stripMarkdownResidue } = await import("../src/index.js");
-  const dirty = "**Aula 9** y `ASISTENCIA AULA 9.xls`";
-  const result = stripMarkdownResidue(dirty, []);
-  assert.equal(result, "Aula 9 y ASISTENCIA AULA 9.xls");
+  const text = "**Aula 9** y `ASISTENCIA AULA 9.xls`";
+  assert.equal(stripMarkdownResidue(text, []), text);
+});
+
+test("postprocessing leaves technical or formatted content byte-for-byte intact", async () => {
+  const { stripMarkdownResidue } = await import("../src/index.js");
+  for (const text of [
+    "a**2 + b**2",
+    "Usa `x =  a**2; print('hola. mundo')  ` y después revisa.",
+    "Usa ``x = `a` +  b``.",
+    "Antes. después\n```js\n  const x =  a**2;  \n  console.log('hola. mundo');\n```\nFin.",
+    "~~~python\n  x =  a**2  \n  print('hola. mundo')\n~~~",
+    "```js\n  x =  a**2;  \n// fence sin cerrar",
+    "    print('hola. mundo')  ",
+    "\tprint('hola. mundo')  ",
+    "Visita https://example.org/a**2?x=`a`&b=3. después vuelve.",
+    "www.example.org/a**b**c",
+    "# Título\n\n**hola. mundo**  \n*énfasis* y [enlace](https://example.org)",
+    "<pre>  hola. mundo  </pre>",
+    "const x =  a + b;",
+  ]) {
+    const changes = [];
+    assert.equal(stripMarkdownResidue(text, changes), text, text);
+    assert.deepEqual(changes, [], text);
+  }
 });
 
 test("keeps multiplication asterisks and URLs untouched", async () => {
@@ -147,12 +171,27 @@ test("keeps multiplication asterisks and URLs untouched", async () => {
   assert.equal(result, "El total es 2*3=6 y https://aismell.me/a*b");
 });
 
-test("adds a changes entry when residue is stripped", async () => {
+test("does not claim a formatting edit for preserved markdown", async () => {
   const { stripMarkdownResidue } = await import("../src/index.js");
   const changes = [];
-  const result = stripMarkdownResidue("**hola** mundo", changes);
-  assert.equal(result, "hola mundo");
-  assert.ok(changes.some((item) => /asteriscos|marcadores|formato/i.test(item)));
+  assert.equal(stripMarkdownResidue("**hola** mundo", changes), "**hola** mundo");
+  assert.deepEqual(changes, []);
+});
+
+test("reports only the whitespace and capitalization edits actually made", async () => {
+  const { stripMarkdownResidue } = await import("../src/index.js");
+  for (const [input, output, expected] of [
+    ["hola  mundo ", "hola mundo", ["normalizó espacios en la prosa"]],
+    ["Listo. seguimos", "Listo. Seguimos", ["corrigió mayúsculas después de fin de oración"]],
+    ["Listo.  seguimos", "Listo. Seguimos", ["normalizó espacios en la prosa", "corrigió mayúsculas después de fin de oración"]],
+    ["Trajo libros, etc. y más", "Trajo libros, etc. y más", []],
+  ]) {
+    const changes = ["Revisó el formato del título"];
+    assert.equal(stripMarkdownResidue(input, changes), output);
+    assert.deepEqual(changes, ["Revisó el formato del título", ...expected]);
+    assert.equal(stripMarkdownResidue(output, changes), output);
+    assert.deepEqual(changes, ["Revisó el formato del título", ...expected]);
+  }
 });
 
 test("collapses double spaces left by removed phrases", async () => {
@@ -205,6 +244,33 @@ test("accepts the current Workers AI output message shape", async () => {
 
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { text: "The report is ready.", changes: ["Removed filler"] });
+});
+
+test("rewrite preserves significant input whitespace through the full response path", async () => {
+  for (const source of [
+    "    print('hola. mundo')  ",
+    "\n```python\n  x =  a**2 + b**2  \n```\n",
+    "Usa `x =  a**2` en **Aula 9**: https://example.org/a**b**c",
+  ]) {
+    let analyzed;
+    let sent;
+    const response = await handleRewrite(new Request("https://api.example/rewrite", {
+      method: "POST", body: JSON.stringify({ text: source }),
+    }), {
+      ANALYZER: { async fetch(url, init) {
+        analyzed = JSON.parse(init.body).text;
+        return new Response(JSON.stringify({ language: "es", findings: [] }));
+      } },
+      AI: { async run(model, request) {
+        sent = request.messages[1].content;
+        return { response: "```json\n" + JSON.stringify({ text: sent, changes: [] }) + "\n```" };
+      } },
+    });
+    assert.equal(response.status, 200);
+    assert.equal(analyzed, source);
+    assert.equal(sent, source);
+    assert.deepEqual(await response.json(), { text: source, changes: [] });
+  }
 });
 
 test("rejects text over the plugin limit before invoking any downstream service", async () => {
