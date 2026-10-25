@@ -1324,3 +1324,28 @@ def test_unaccented_relative_que_como_are_not_wh_starters():
     text = "Que la luna es una piedra. Como la mancha de una ampolleta. Que no duele nada. Como si nada."
     report, _ = analyze(text, lang="es")
     assert "wh-starters" not in {f.kind for f in report.structural}
+
+
+def test_template_slots_flag_chatbot_letters_but_not_markdown_links():
+    letter = ("Estimada señora [Apellido]:\n\nMi nombre es [Su nombre] y me desempeño como [cargo]. "
+              "Quedo atento/a a su respuesta y agradezco su tiempo. ") * 2
+    kinds = {f.kind for f in analyze(letter, lang="es")[0].structural}
+    assert "template-placeholders" in kinds
+    readme = "See [Léeme en español](README.es.md) and [Install](#install) for details. " * 4
+    assert "template-placeholders" not in {f.kind for f in analyze(readme, lang="en")[0].structural}
+
+
+def test_listicle_blog_template_is_structural():
+    tips = "\n\n".join(f"{n}. Consejo número {n}\n\nUn párrafo con una explicación breve del consejo y un ejemplo." for n in range(1, 6))
+    report, _ = analyze(f"7 consejos para cocinar\n\n{tips}\n\nConclusión\n\nCocinar es un proceso, no una meta.", lang="es")
+    assert "listicle-scaffold" in {f.kind for f in report.structural}
+
+
+def test_single_expanded_form_is_not_a_contraction_deficit():
+    text = ("I can't say it is not strange. We're used to it, and it's fine. " * 30)
+    assert "contraction-deficit" not in {f.kind for f in analyze(text, lang="en")[0].structural}
+
+
+def test_ordinary_words_do_not_trip_motivational_cliche():
+    report, _ = analyze("El camino al pueblo era largo y el viaje duró dos días.", lang="es")
+    assert "es.viaje_excelencia" not in {h.pattern.id for h in report.hits}

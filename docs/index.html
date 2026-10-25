@@ -1731,6 +1731,35 @@
   .finding-scope { margin-top: 6px; }
   .findings-summary { padding: 12px 24px; gap: 10px 14px; }
   .findings-more > summary { padding: 14px 24px; }
+  .rates-panel { padding: 14px 24px; border-bottom: 1px solid var(--line); }
+  .rates-panel > summary { cursor: pointer; min-height: 44px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 10px 0; }
+  .rates-panel > summary span { font-weight: 600; }
+  .rates-panel > summary small { color: var(--dim); font-size: 12px; }
+  .rates-legend { display: flex; gap: 18px; font-size: 12px; color: var(--dim); margin: 2px 0 10px; }
+  .rates-legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .rates-legend .rate-tick { position: static; display: inline-block; transform: none; }
+  .rate-row { display: grid; grid-template-columns: minmax(150px, 1.2fr) 86px minmax(140px, 2fr); gap: 12px; align-items: center; padding: 7px 0; font-size: 13.5px; border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+  .rate-value { font-family: "Departure Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; text-align: right; }
+  .rate-value small { color: var(--dim); font-size: 11px; }
+  .rate-value.s-high strong { color: var(--red); }
+  .rate-value.s-mod strong { color: var(--hl); }
+  .rate-bar { position: relative; height: 8px; border-radius: 4px; background: var(--line); }
+  .rate-fill { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--grn); }
+  .rate-fill.s-mod { background: var(--hl); }
+  .rate-fill.s-high { background: var(--red); }
+  .rate-tick { position: absolute; top: -4px; width: 2px; height: 16px; transform: translateX(-1px); background: var(--fg); border-radius: 1px; }
+  .rate-tick.ai { background: var(--cya); width: 3px; }
+  .rates-note { color: var(--dim); font-size: 12px; margin-top: 10px; max-width: 75ch; }
+  .heat-strip { grid-column: 1 / -1; display: flex; gap: 3px; }
+  .heat { flex: 1 1 0; height: 10px; border-radius: 2px; background: var(--line); min-width: 4px; }
+  .heat.s-low { background: color-mix(in srgb, var(--grn) 55%, var(--line)); }
+  .heat.s-mod { background: var(--hl); }
+  .heat.s-high { background: var(--red); }
+  @media (max-width: 600px) {
+    .rates-panel { padding-inline: 16px; }
+    .rate-row { grid-template-columns: 1fr auto; }
+    .rate-bar { grid-column: 1 / -1; }
+  }
   .next-steps ol li::marker { color: var(--hl); font-family: "Departure Mono", ui-monospace, monospace; }
 
   @media (max-width: 600px) {
@@ -1888,7 +1917,7 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
-<script src="app.js?v=editorial-review-3"></script>
+<script src="app.js?v=editorial-review-4"></script>
 
 </body>
 </html>

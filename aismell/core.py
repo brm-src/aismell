@@ -98,6 +98,7 @@ class Report:
     segments: list[SegmentScore] = field(default_factory=list)
     stats: dict[str, float | int] = field(default_factory=dict)
     score_components: dict[str, float] = field(default_factory=dict)
+    rates: dict[str, dict[str, float]] = field(default_factory=dict)
 
     @property
     def total_findings(self) -> int:
@@ -604,21 +605,26 @@ def _check_wh_starters(sentences: list[str], lang: str) -> list[StructuralFindin
         rx = re.compile(r"^(what|why|how|when|where|which|who)\b", re.IGNORECASE)
         msg = "repeated Wh- starters — AI explainer template"
         suggestion = "turn rhetorical prompts into claims: subject + action + consequence; keep only one real organizing question"
-    hits = sum(1 for s in sentences if rx.search(s.strip()))
-    if hits >= 2:
+    # Pseudo-cleft statements ("What makes this hard is trust.") are the tell;
+    # real questions belong to dialogue and to rhetorical-qa.
+    hits = sum(1 for s in sentences if rx.search(s.strip()) and not s.rstrip().endswith("?"))
+    # Narrators say "What I saw was…" now and then; a template repeats it.
+    if hits >= max(2, sum(len(s.split()) for s in sentences) // 400):
         return [StructuralFinding(line=0, kind="wh-starters", severity=2, message=f"{hits} casos: {msg}", suggestion=suggestion)]
     return []
 
 
 _PARAGRAPH_CONNECTORS_ES = re.compile(
-    r"^(además|adicionalmente|por otra parte|por otro lado|en consecuencia|"
+    r"^(además|adicionalmente|por otra parte|por otro lado|por un lado|en consecuencia|"
     r"asimismo|posteriormente|en primer lugar|en segundo lugar|finalmente|"
-    r"en conclusión|en resumen)[,\s]",
+    r"no obstante|sin embargo|otro aspecto|ante este panorama|en definitiva|"
+    r"en síntesis|en suma|en conclusión|en resumen)[,\s]",
     re.IGNORECASE | re.MULTILINE,
 )
 _PARAGRAPH_CONNECTORS_EN = re.compile(
     r"^(furthermore|moreover|additionally|consequently|hence|"
-    r"subsequently|firstly|secondly|finally|in conclusion|"
+    r"subsequently|firstly|secondly|finally|in conclusion|that said|"
+    r"on the other hand|on one hand|ultimately|overall|in short|"
     r"nonetheless|nevertheless|in summary)[,\s]",
     re.IGNORECASE | re.MULTILINE,
 )
@@ -632,7 +638,8 @@ def _check_paragraph_connectors(text: str, lang: str) -> list[StructuralFinding]
         return []
     rx = _PARAGRAPH_CONNECTORS_ES if lang == "es" else _PARAGRAPH_CONNECTORS_EN
     hits = sum(1 for p in paragraphs if rx.match(p.lstrip()))
-    if hits >= 2:
+    # Two signposted paragraphs in a long human essay are normal; a third of them is a template.
+    if hits >= 2 and hits / len(paragraphs) >= 0.3:
         msg_es = (
             f"{hits}/{len(paragraphs)} párrafos abren con conector formal — "
             "firma fuerte de IA (Pangram)"
@@ -644,7 +651,7 @@ def _check_paragraph_connectors(text: str, lang: str) -> list[StructuralFinding]
         return [StructuralFinding(
             line=0,
             kind="paragraph-connectors",
-            severity=3,
+            severity=3 if hits >= 3 else 2,
             message=msg_es if lang == "es" else msg_en,
             suggestion=(
                 "borra los conectores de apertura, deja que la lógica fluya"
@@ -1386,6 +1393,148 @@ def _check_staccato_runs(sentences: list[str], lang: str) -> list[StructuralFind
     )]
 
 
+# ---- Pangram per-10k-word rates ----
+# Human vs AI occurrences per 10,000 words measured by Pangram
+# (pangram.com/signs-of-ai-writing, English corpus). Display context only:
+# the index already scores these signals through its own findings.
+PANGRAM_BASELINES = {
+    "markdown": (8, 90),
+    "ai_phrases": (3, 30),
+    "em_dashes": (2, 17),
+    "bullets": (3, 28),
+    "triads": (5, 19),
+    "not_just": (1, 3),
+    "unicode": (28, 71),
+}
+_MARKDOWN_RX = re.compile(r"\*\*[^*\n]+\*\*|(?<![*\w])\*[^*\s][^*\n]*\*(?![*\w])|^#{1,6}\s", re.M)
+_TRIAD_RX = re.compile(r"\b\w[\w'-]+,\s+\w[\w'-]+,?\s+(?:and|or|y|e|o|ni)\s+\w[\w'-]+\b", re.I)
+_NOT_JUST_RX = re.compile(
+    r"\bnot (?:only|just|merely|simply)\b.{1,100}?\bbut\b|\bno (?:solo|sólo|solamente|únicamente|simplemente)\b.{1,100}?\bsino\b", re.I,
+)
+# Typographic symbols and invisible characters people rarely type by hand.
+_UNUSUAL_UNICODE_RX = re.compile("[\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff\u00a0\u2009\u202f≈→←↔⇒✓✔✗★•≥≤×]")
+
+
+def _pangram_rates(text: str, lexical_hits: int) -> dict[str, dict[str, float]]:
+    words = _word_count(text)
+    if words < 50:
+        return {}
+    narration = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith(("—", "–")))
+    counts = {
+        "markdown": len(_MARKDOWN_RX.findall(text)),
+        "ai_phrases": lexical_hits,
+        "em_dashes": narration.count("—"),
+        "bullets": sum(1 for ln in text.splitlines() if re.match(r"\s*(?:[-*•]|\d+[.)])\s+\S", ln)),
+        "triads": len(_TRIAD_RX.findall(text)),
+        "not_just": len(_NOT_JUST_RX.findall(text)),
+        "unicode": len(_UNUSUAL_UNICODE_RX.findall(text)),
+    }
+    out = {}
+    for key, count in counts.items():
+        human, ai = PANGRAM_BASELINES[key]
+        out[key] = {"count": count, "per10k": round(count * 10000 / words, 1), "human": human, "ai": ai}
+    return out
+
+
+_EXPANDED_RX = re.compile(r"\b(?:do not|does not|did not|is not|are not|was not|cannot|would not|will not|have not|it is|i am|you are|we are|they are)\b", re.I)
+_CONTRACTION_RX = re.compile(r"\b\w+(?:n't|'re|'s|'m|'ll|'ve|'d|n’t|’re|’s|’m|’ll|’ve|’d)\b", re.I)
+
+
+def _check_contraction_deficit(text: str, lang: str) -> list[StructuralFinding]:
+    """Modern English prose mixes contractions in; default AI register avoids them.
+
+    A single "is not" means nothing, so this is a ratio over the whole text.
+    """
+    if lang != "en" or _word_count(text) < 250:
+        return []
+    expanded = len(_EXPANDED_RX.findall(text))
+    contracted = len(_CONTRACTION_RX.findall(text))
+    if expanded < 6 or contracted > expanded * 0.15:
+        return []
+    return [StructuralFinding(
+        line=0, kind="contraction-deficit", severity=1,
+        message=f"{expanded} expanded forms (do not, it is…) and {contracted} contractions — uniformly formal register",
+        suggestion="use the contractions you would say aloud, unless the genre is formal on purpose",
+        count=expanded,
+    )]
+
+
+_LISTICLE_ITEM_RX = re.compile(r"^\s*(?:#{1,4}\s*)?\d{1,2}[.)]\s+\S[^\n]{2,70}[^.!?:;,\s]\s*$", re.M)
+_LISTICLE_TITLE_RX = re.compile(
+    r"\b\d{1,2} (?:consejos|claves|pasos|formas|maneras|razones|ideas|trucos|tips|errores|tips|ways|steps|reasons|ideas|tricks|mistakes|secrets|lessons)\b", re.I,
+)
+_CLOSING_HEADING_RX = re.compile(
+    r"^\s*(?:#{1,4}\s*)?(?:conclusión|conclusiones|en resumen|reflexión final|palabras finales|bonus|extra|"
+    r"conclusion|final thoughts|in summary|key takeaways|the bottom line|wrapping up|bonus tip)\s*:?\s*$", re.I | re.M,
+)
+
+
+def _check_listicle_scaffold(text: str, lang: str) -> list[StructuralFinding]:
+    """Blog-post template: numbered tip headings, a number in the title, a 'Final Thoughts' heading."""
+    items = list(_LISTICLE_ITEM_RX.finditer(text))
+    if len(items) < 4:
+        return []
+    first_line = next((ln for ln in text.splitlines() if ln.strip()), "")
+    extras = bool(_LISTICLE_TITLE_RX.search(first_line)) + bool(_CLOSING_HEADING_RX.search(text))
+    es = lang == "es"
+    return [StructuralFinding(
+        line=_line_of(text, items[0].start()), kind="listicle-scaffold", severity=3 if extras else 2,
+        message=(f"{len(items)} subtítulos numerados{' con número en el título y cierre «Conclusión»' if extras == 2 else ''}: plantilla de post de blog IA («{items[0].group(0).strip()[:50]}»)"
+                 if es else f"{len(items)} numbered tip headings{' plus a numbered title and a closing heading' if extras == 2 else ''}: AI blog-post template («{items[0].group(0).strip()[:50]}»)"),
+        suggestion=("quédate con los tres consejos que de verdad usas y cuéntalos con un caso propio" if es
+                    else "keep the three tips you actually use and tell them through your own case"),
+        count=len(items),
+    )]
+
+
+# Chatbot templates leave fill-in slots: "[Your Name]", "[Nombre completo]", "atento/a".
+_PLACEHOLDER_RX = re.compile(r"\[(?:[A-ZÁÉÍÓÚÑ][\w'’ÁÉÍÓÚÑáéíóúñ.,:/-]*(?: [\w'’ÁÉÍÓÚÑáéíóúñ.,:/()-]+){0,12})\](?![(\[:])")
+_GENDER_SLASH_RX = re.compile(r"\b\w{3,}[oe]/a\b")
+
+
+def _check_template_placeholders(text: str, lang: str) -> list[StructuralFinding]:
+    slots = [m for m in _PLACEHOLDER_RX.finditer(text) if not re.match(r"\[\d+\]", m.group(0))]
+    slashes = _GENDER_SLASH_RX.findall(text)
+    if len(slots) < 2:
+        return []
+    first = slots[0]
+    es = lang == "es"
+    return [StructuralFinding(
+        line=_line_of(text, first.start()), kind="template-placeholders", severity=3,
+        message=(f"{len(slots)} huecos de plantilla sin llenar{f' y {len(slashes)} formas «o/a»' if slashes else ''} («{first.group(0)[:50]}»)"
+                 if es else f"{len(slots)} unfilled template slots («{first.group(0)[:50]}»)"),
+        suggestion=("rellena o borra cada hueco: una plantilla de chatbot se reconoce por ellos" if es
+                    else "fill in or delete every slot: chatbot templates are recognizable by them"),
+        count=len(slots),
+    )]
+
+
+# Pangram: 60-70% of names in ChatGPT/Claude stories are Emily or Sarah.
+# One name proves nothing; two defaults in one short text is the pattern.
+_DEFAULT_NAMES = {
+    "en": r"Emily|Sarah|Elara|Lyra|Clara|Eleanor|Elias|Evelyn|Maya|Mira|Kael|Seraphina|Thorne|Margaret",
+    "es": r"Elena|Clara|Lucía|Sofía|Elara|Lyra|Mateo|Valeria|Isabel|Tomás|Gabriel|Martina",
+}
+
+
+def _check_default_names(text: str, lang: str) -> list[StructuralFinding]:
+    if lang not in _DEFAULT_NAMES:
+        return []
+    matches = list(re.finditer(r"\b(" + _DEFAULT_NAMES[lang] + r")\b", text))
+    names = sorted({m.group(1) for m in matches})
+    if len(names) < 2:
+        return []
+    es = lang == "es"
+    return [StructuralFinding(
+        line=_line_of(text, matches[0].start()), kind="default-names", severity=1,
+        message=(f"nombres frecuentes en ficción generada: {', '.join(names)} («{matches[0].group(1)}»)" if es
+                 else f"names common in generated fiction: {', '.join(names)} («{matches[0].group(1)}»)"),
+        suggestion=("elige nombres que digan algo del lugar, la época o la familia" if es
+                    else "choose names that say something about place, era or family"),
+        count=len(names),
+    )]
+
+
 # ---- narrative fiction tells ----
 # Generated short fiction rarely uses essay tics; it repeats a different kit:
 # "No es que X. Es que Y", anaphoric fragment ladders, "como si" similes,
@@ -1396,13 +1545,16 @@ _NARRATIVE_RX = {
     "es": {
         "pivot": re.compile(
             r"\bno\s+(?:es|era|fue)\s+que\b[^.!?\n]{1,140}[.!?]\s+(?:es|era|fue)\s+que\b"
-            r"|\bno\s+(?:era|es)\s+(?:un|una|el|la)\s+\w+[.!?]\s+(?:era|es)\s+(?:un|una|el|la)\b",
+            r"|\bno\s+(?:era|es)\s+(?:un|una|el|la)\s+\w+[.!?]\s+(?:era|es)\s+(?:un|una|el|la)\b"
+            r"|\bno\s+se\s+trata\s+de\b[^.!?\n]{1,140}[.!?;]\s+se\s+trata\s+de\b",
             re.I,
         ),
         "inline": re.compile(
             r"\b(?P<w>\w{2,})\b[^.!?,;\n]{1,40},\s+(?P=w)\b[^.!?,;\n]{1,40},\s+(?:y\s+)?(?P=w)\b", re.I,
         ),
-        "ladder": re.compile(r"\b\w+,\s+luego\s+[^,.;\n]{1,25},\s+luego\b", re.I),
+        "ladder": re.compile(
+            r"\b\w+,\s+luego\s+[^,.;\n]{1,25},\s+luego\b|\b(?:luego|después)\s+(?:el|la)\s+(?:segund[oa]|tercer[oa])\b", re.I,
+        ),
         "simile": re.compile(r"\bcomo\s+(?:si|quien|cuando)\b|\bde\s+quien\s+\w+", re.I),
         "aphorism": re.compile(
             r"\bhay\s+\w+\s+que\s+uno\b"
@@ -1414,13 +1566,16 @@ _NARRATIVE_RX = {
     "en": {
         "pivot": re.compile(
             r"\b(?:it['’]?s|it\s+is|it\s+was|this\s+is)\s+not\s+that\b[^.!?\n]{1,140}[.!?]\s+(?:it['’]?s|it\s+is|it\s+was)\s+that\b"
-            r"|\bit\s+(?:wasn['’]?t|isn['’]?t)\s+(?:a|an|the)\s+\w+[.!?]\s+it\s+(?:was|is)\s+(?:a|an|the)\b",
+            r"|\bit\s+(?:wasn['’]?t|isn['’]?t)\s+(?:a|an|the)\s+\w+[.!?]\s+it\s+(?:was|is)\s+(?:a|an|the)\b"
+            r"|\bit\s+(?:isn['’]?t|is\s+not|wasn['’]?t)\s+about\b[^.!?\n]{1,140}[.!?;]\s+it['’]?s\s+about\b",
             re.I,
         ),
         "inline": re.compile(
             r"\b(?P<w>\w{2,})\b[^.!?,;\n]{1,40},\s+(?P=w)\b[^.!?,;\n]{1,40},\s+(?:and\s+)?(?P=w)\b", re.I,
         ),
-        "ladder": re.compile(r"\b\w+,\s+then\s+[^,.;\n]{1,25},\s+then\b", re.I),
+        "ladder": re.compile(
+            r"\b\w+,\s+then\s+[^,.;\n]{1,25},\s+then\b|\bthen\s+(?:the\s+)?(?:second|third|two|three)\b[.,]", re.I,
+        ),
         "simile": re.compile(r"\bas\s+(?:if|though)\b|\blike\s+someone\b|\bthe\s+way\s+someone\b", re.I),
         "aphorism": re.compile(
             r"\bthere\s+are\s+\w+\s+(?:that|which)\s+(?:you|one)\b"
@@ -1437,7 +1592,7 @@ _ANAPHORA_IGNORE = {
 }
 NARRATIVE_KINDS = {
     "narrative-pivot", "narrative-cadence", "narrative-simile",
-    "narrative-aphorism", "punchline-paragraphs",
+    "narrative-aphorism", "punchline-paragraphs", "narrative-closing-image",
 }
 
 
@@ -1496,7 +1651,8 @@ def _check_narrative_tics(text: str, sentences: list[str], lang: str) -> list[St
                 cadence.append((pos, " ".join(sentences[run_start:i])))
         run_start, run = i, 1
     cadence.sort()
-    if len(cadence) >= 3:
+    # Lyrical prose uses anaphora too (Bécquer's "ora… ora…"); the tell is density.
+    if len(cadence) >= 3 and len(cadence) / (_word_count(text) / 1000) >= 2.5:
         found("narrative-cadence", cadence, 2,
               "anáforas y gradaciones en serie (repite la misma entrada o «luego… luego»)" if es else
               "serial anaphora and ladders (same opening, “then… then”)",
@@ -1517,6 +1673,26 @@ def _check_narrative_tics(text: str, sentences: list[str], lang: str) -> list[St
               "narrator aphorisms (“there are things that you…”, “X is never X”)",
               "cambia la sentencia general por lo que el personaje percibe en ese momento" if es else
               "replace the general maxim with what the character perceives right then")
+
+    # Generated stories end on a far-off image: "Afuera, por fin, los perros…".
+    closing_rx = (
+        r"^(?:y\s+)?(?:afuera|allá afuera|fuera|a lo lejos|en algún lugar|desde algún lugar|arriba|desde entonces)\b"
+        r"|\bpor primera vez en (?:\w+ )?(?:años|décadas|siglos)\b|\b(?:débil|tenue),? pero inconfundible\b"
+        if es else
+        r"^(?:and\s+)?(?:from\s+)?(?:outside|somewhere|far away|in the distance|above|ever since)\b"
+        r"|\bfor the first time in (?:\w+ )?(?:years|decades|centuries)\b|\bfaint but unmistakable\b"
+    )
+    blocks = [(m.start(), m.group(0).strip()) for m in re.finditer(r"[^\n]+(?:\n(?!\s*\n)[^\n]+)*", text) if m.group(0).strip()]
+    tail = [b for b in blocks[-2:] if re.search(closing_rx, b[1], re.I | re.M)] if len(blocks) >= 6 else []
+    if tail:
+        pos, last = tail[-1]
+        out.append(StructuralFinding(
+            line=_line_of(text, pos), kind="narrative-closing-image", severity=2,
+            message=(f"cierre con imagen lejana o «por primera vez en años», remate típico de relato generado («{last[:60]}»)"
+                     if es else f"ending on a distant image or “for the first time in years”, a stock generated-story close (“{last[:60]}”)"),
+            suggestion=("termina en la última acción que importa, sin el plano general de afuera" if es
+                        else "end on the last action that matters, without the wide shot outside"),
+        ))
 
     # One-sentence paragraphs used as drumbeats, excluding dialogue and headings.
     paragraphs = [(m.start(), m.group(0).strip()) for m in re.finditer(r"[^\n]+(?:\n(?!\s*\n)[^\n]+)*", text)]
@@ -1892,6 +2068,10 @@ def analyze(
         # humanizer v2.9.1 + stop-slop gaps (2026-08)
         report.structural.extend(_check_staccato_runs(sentences, lang))
         report.structural.extend(_check_narrative_tics(authorial_text, sentences, lang))
+        report.structural.extend(_check_template_placeholders(authorial_text, lang))
+        report.structural.extend(_check_listicle_scaffold(authorial_text, lang))
+        report.structural.extend(_check_contraction_deficit(authorial_text, lang))
+        report.structural.extend(_check_default_names(authorial_text, lang))
         report.structural.extend(_check_hyphenated_pairs(authorial_text, lang))
         report.structural.extend(_check_adverb_density(authorial_text, lang))
         report.structural.extend(_check_fragmented_headers(authorial_text, lang))
@@ -1915,6 +2095,12 @@ def analyze(
     distinct_sev3_ids = len({h.pattern.id for h in report.hits if h.pattern.severity >= 3})
     distinct_ids = len({h.pattern.id for h in report.hits})
     lex_d = min(0.72, distinct_sev3_ids * 0.12 + distinct_ids * 0.025 + sev3_hits * 0.025 + sev2_hits * 0.012)
+    # Pangram's measure is a rate: AI phrases appear ~3 per 10k words in human
+    # text and ~30 in AI text. Grouped rules hide repetition from the
+    # distinct-id count, so a dense text also scores by phrases per 10k words.
+    phrase_rate = (sev3_hits + 0.7 * sev2_hits + 0.3 * sev1_hits) * 10000 / max(_word_count(authorial_text), 1)
+    if len(report.hits) >= 3:
+        lex_d = max(lex_d, min(0.55, max(0.0, phrase_rate - 6) / 100))
 
     # Dimension 2: structural macro-signals (essay scaffold, low specificity, symmetry, etc.)
     macro_kinds = {
@@ -1922,7 +2108,7 @@ def analyze(
         "vague-sentence-stack", "paragraph-connectors", "paragraph-symmetry",
         "rhetorical-qa", "binary-reframe", "negative-listing", "false-agency",
         "passive-voice", "wh-starters", "discourse-overexplained-theme",
-        "discourse-tidy-resolution",
+        "discourse-tidy-resolution", "listicle-scaffold",
     }
     macro_present = macro_kinds & structural_kinds
     macro_d = min(0.70, 0.18 * len(macro_present) + 0.08 * severe_structural)
@@ -1948,7 +2134,8 @@ def analyze(
     editorial_weak_d = min(
         0.12,
         (0.08 if "narrator-distance" in structural_kinds else 0.0)
-        + (0.04 if "lazy-extremes" in structural_kinds else 0.0),
+        + (0.04 if "lazy-extremes" in structural_kinds else 0.0)
+        + (0.05 if "default-names" in structural_kinds else 0.0),
     )
 
     # A digit/pronoun regex cannot establish an absence of names, places or
@@ -1968,6 +2155,8 @@ def analyze(
     wiki_d = 0.0
     if "ai-artifact-markup" in structural_kinds:
         wiki_d = 0.80  # chatbot markup is near-certain AI
+    elif "template-placeholders" in structural_kinds:
+        wiki_d = 0.60  # unfilled chatbot slots; a human form letter can have them too
     elif wiki_present:
         wiki_d = min(0.55, 0.18 * len(wiki_present))
 
@@ -2119,6 +2308,8 @@ def analyze(
         report.severity_label = "bajo" if lang == "es" else "low"
     else:
         report.severity_label = "limpio" if lang == "es" else "clean"
+
+    report.rates = _pangram_rates(authorial_text, len(report.hits))
 
     if include_segments:
         report.segments = _score_segments(sentences, lang, strict, era)

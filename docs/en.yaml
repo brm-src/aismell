@@ -482,7 +482,7 @@ patterns:
   - id: en.not_but_direct
     kind: regex
     severity: 3
-    pattern: '(?i)\b(is |are |was |were )?(not |never )\b.{1,60}\b(but |rather |instead )\b.{1,60}\b(it|they|this)\b'
+    pattern: '(?i)\b(is |are |was |were )?(not |never )\b[^.!?\n]{1,60}\b(but |rather |instead )\b[^.!?\n]{1,60}\b(it|they|this)\b'
     message: '"not X but Y" — Wikipedia-confirmed AI contrast device'
     suggestion: state Y directly without denying X first
 
@@ -1010,7 +1010,7 @@ patterns:
   - id: en.not_x_but_y_direct
     kind: regex
     severity: 3
-    pattern: "(?i)\\bnot (just |merely |simply |only )?.{1,60}\\bbut (also |rather |instead )?\\b|\\bisn'?t about .{1,60}\\bit'?s about\\b"
+    pattern: "(?i)\\bnot (just |merely |simply |only )?[^.!?\\n]{1,60}\\bbut (also |rather |instead )?\\b|\\bisn'?t about [^.!?\\n]{1,60}\\bit'?s about\\b"
     message: '"not X, but Y" — overused construction'
     suggestion: choose the stronger statement and say it directly
 
@@ -1185,14 +1185,6 @@ patterns:
 
   # ==== DEEP TECHNICAL ANALYSIS (June 2026) — frontier model hedging, contraction deficit, humanizer artifacts ====
 
-  # -- Syntactic contraction deficit (strong structural signal, regex-accessible) --
-  - id: en_structural.contraction_deficit
-    kind: regex
-    severity: 3
-    pattern: '\b(do not|is not|cannot|would not|will not|have not)\b'
-    message: 'syntactic contraction deficit — strong indicator of formal machine-generated English (frontier models average 0.00 contractions/chunk)'
-    suggestion: integrate natural contractions ("don't", "isn't", "can't") to vary sentence rhythm
-
   # -- Post-2024 frontier model hedging (replaced legacy "delve into" / "tapestry") --
   - id: en_hedging.worth_noting
     kind: regex
@@ -1207,14 +1199,6 @@ patterns:
     pattern: '\bit\s+is\s+important\s+to\s+note\b'
     message: '"it is important to note" — passive-aggressive introductory hedging typical of high-alignment model filters'
     suggestion: remove the introductory phrase and lead directly with the core claim
-
-  # -- Adjective-to-adverb POS imbalance (regex proxy) --
-  - id: en_structural.adj_adv_imbalance
-    kind: regex
-    severity: 3
-    pattern: '\b[a-zA-Z]+ed\s+and\s+[a-zA-Z]+ed\s+[a-zA-Z]+\b'
-    message: 'overly dense parallel adjective groupings with low adverbial support — machine POS signature'
-    suggestion: introduce active verbs and descriptive adverbs to balance part-of-speech distributions
 
   # -- Adversarial humanizer artifacts (Tier 3 humanizers: Undetectable AI, WriteHuman.ai) --
   - id: en_humanizer.cgsize
@@ -1649,3 +1633,262 @@ patterns:
     pattern: '(?i)\bno-brainer\b'
     message: '"no-brainer" — casual certainty used as a shortcut'
     suggestion: give the reason instead
+
+  # ---- Pangram (pangram.com/signs-of-ai-writing, comprehensive guide): measured overuse ----
+  - id: en.pangram_complex_multifaceted
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bcomplex and multifaceted\b|\bmultifaceted and complex\b'
+    message: '"complex and multifaceted" — Pangram measures ~700x more often in AI text'
+    suggestion: name the two or three concrete sides instead
+  - id: en.pangram_intricate_interplay
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bintricate (interplay|dance|web|tapestry)\b'
+    message: '"intricate interplay" — Pangram measures ~100x more often in AI text'
+    suggestion: say which things affect each other and how
+  - id: en.pangram_crucial_role
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bplay(ed|s|ing)? an? (crucial|pivotal|vital|key) role\b'
+    message: '"played a crucial role" — Pangram measures ~70x more often in AI text'
+    suggestion: say what it actually did
+  - id: en.pangram_crucial_to_note
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bit(''| i)?s (crucial|essential|vital) to (note|remember|understand) that\b'
+    message: '"it''s crucial to note that" — Pangram measures ~22x; meta-announcement'
+    suggestion: delete the announcement and state the point
+  - id: en.pangram_fast_paced
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bin (today''s|this) fast-paced (world|environment|landscape)\b'
+    message: '"in today''s fast-paced world" — Pangram measures ~35x; generic opener'
+    suggestion: start with the specific situation
+  - id: en.pangram_navigate_tapestry
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bnavigat(e|es|ing) the (tapestry|complexities|intricacies|labyrinth) of\b'
+    message: '"navigate the tapestry of" — Pangram measures ~18x; stacked AI metaphor'
+    suggestion: name the actual problem being handled
+  - id: en.pangram_blur_line
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bblur(s|red|ring)? the lines? between\b'
+    message: '"blur the line between" — Pangram AI phrase'
+    suggestion: say what the two things share
+  - id: en.pangram_focal_point
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bbec(ome|ame|omes|oming) (a|the) focal point\b|\bbec(ome|ame|omes) an essential part of\b'
+    message: '"become a focal point / an essential part of" — Pangram AI phrase'
+    suggestion: say who started paying attention, or why it matters
+  - id: en.pangram_profound_connection
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bprofound (connection|sense|impact|bond) (between|of|on)\b|\boffering profound\b'
+    message: '"profound connection between" — Pangram AI phrase'
+    suggestion: show the connection in a concrete moment
+  - id: en.pangram_recently_pleasure
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(i )?recently had the pleasure of\b'
+    message: '"I recently had the pleasure of" — Pangram review/AI opener'
+    suggestion: start with what happened
+  - id: en.pangram_anyone_looking
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(highly recommend(ed)?|a must[- ]read|a compelling read|a great read) for anyone (looking|interested)\b|\banyone looking to elevate\b'
+    message: '"highly recommend for anyone looking to" — Pangram AI phrase'
+    suggestion: say who it worked for and why
+  - id: en.pangram_whether_youre
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bwhether you''?re an? [^,.;]{2,40} or an? [^,.;]{2,40}\b'
+    message: '"whether you''re X or Y" — Pangram AI phrase'
+    suggestion: address the one reader you mean
+  - id: en.pangram_engaging_narrative
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(an? )?(engaging|compelling|gripping) narrative\b|\bkeeps? (you|readers) guessing until the (final|very end|last)\b'
+    message: '"engaging narrative / guessing until the final page" — Pangram AI phrase'
+    suggestion: name the scene or turn that worked
+  # Generated fiction props (Pangram phrase samples)
+  - id: en.pangram_slow_sip
+    kind: regex
+    severity: 2
+    pattern: '(?i)\btook a (slow|long|deep|careful) (sip|breath)\b'
+    message: '"took a slow sip" — Pangram AI fiction phrase'
+    suggestion: use the gesture only if it changes the scene
+  - id: en.pangram_weight_unspoken
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(the )?weight of (unspoken|everything unsaid|the unsaid|words left unsaid)\b|\bunspoken (words|tension|understanding) hung\b'
+    message: '"the weight of unspoken words" — Pangram AI fiction phrase'
+    suggestion: write what is not said through an action or an object
+  - id: en.pangram_despite_tremor
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(steady|calm|firm) despite the (tremor|tremble|shake)\b|\bvoice (barely|little more than) (above )?a whisper\b'
+    message: '"steady despite the tremor / barely a whisper" — Pangram AI fiction phrase'
+    suggestion: describe one concrete physical detail instead
+  - id: en.pangram_polished_reflection
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(her|his|their|my) reflection in the (polished|dark|rain-streaked)\b'
+    message: '"reflection in the polished…" — Pangram AI fiction phrase'
+    suggestion: cut the mirror beat unless it matters to the plot
+  - id: en.pangram_heart_pounding
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(heart|pulse) (pounding|racing|hammering) (in|against) (her|his|my|their) (chest|ears)\b|\bcouldn''t help but (feel|wonder|notice)\b|\bfelt a (sense|wave|pang) of\b'
+    message: '"heart pounding in her chest / couldn''t help but" — Pangram AI fiction phrase'
+    suggestion: show the reaction through what the character does
+  - id: en.pangram_default_names
+    kind: regex
+    severity: 1
+    pattern: '\b(Elara|Lyra|Kael|Seraphina|Thorne|Elias Thorne|Zephyr|Aurelia|Silas Vane)\b'
+    message: 'default AI character name — Pangram: generated fiction reuses a short list of names'
+    suggestion: pick a name that belongs to the place and the character
+
+  # ---- Genre packs: correspondence, reviews, opinion essays (blind AI samples + Pangram guide) ----
+  - id: en.mail_hope_finds_you
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bi hope (this|my) (message|email|note|letter) finds you well\b'
+    message: '"I hope this message finds you well" — Pangram AI phrase; stock email opener'
+    suggestion: start with the reason you are writing
+  - id: en.mail_look_forward
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bi look forward to (hearing from you|your response|the possibility of)\b'
+    message: '"I look forward to hearing from you" — conventional closing; AI uses it every time'
+    suggestion: end with the concrete next step
+  - id: en.mail_dont_hesitate
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(please )?(do not|don''t) hesitate to (reach out|contact|get in touch)\b'
+    message: '"don''t hesitate to reach out" — stock AI closing'
+    suggestion: say how and when to reply
+  - id: en.mail_quick_call
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bi''?d (love|be happy) to (set up|schedule|hop on) a (quick|brief|short) (\d+-minute )?(call|chat|meeting)\b'
+    message: '"I''d love to set up a quick call" — AI cold-email template'
+    suggestion: propose a specific time or skip the call
+  - id: en.mail_been_following
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bi''?ve been following [^.]{2,60} (progress|work|journey)\b|\bi was (really|truly) impressed by\b'
+    message: '"I''ve been following your progress / I was truly impressed by" — AI flattery opener'
+    suggestion: name the one thing you saw and why it matters to you
+  - id: en.mail_strong_opportunity
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(there''s|there is) a (strong|great|unique|exciting) opportunity (for us )?to\b|\bmutually beneficial\b|\bexplore (potential )?(collaboration|partnership) opportunities\b'
+    message: '"a strong opportunity to work together / mutually beneficial" — AI partnership pitch'
+    suggestion: state the concrete exchange you propose
+  - id: en.mail_thank_time
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bthank you for (your|considering this) (time and consideration|time and attention|consideration)\b|\bthanks for your time, and\b'
+    message: '"thank you for your time and consideration" — stock closing'
+    suggestion: one plain thanks is enough
+  - id: en.review_character_own_right
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(feels|becomes|is) (almost )?(like )?a character in (its|their|her|his) own right\b'
+    message: '"feels like a character in its own right" — AI review cliché'
+    suggestion: describe one detail of the setting that changes the plot
+  - id: en.review_palpable_sense
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(a )?palpable sense of\b|\bhas a gift for (capturing|creating|evoking)\b'
+    message: '"a palpable sense of / a gift for capturing" — AI review praise'
+    suggestion: quote or describe the passage that does it
+  - id: en.review_well_drawn
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bwell-drawn (protagonist|characters?|cast)\b|\badds? (emotional )?depth to\b|\bhandled with (subtlety|care|nuance|sensitivity)\b'
+    message: '"well-drawn protagonist / adds emotional depth / handled with subtlety" — AI review template'
+    suggestion: say what the character does that convinced you
+  - id: en.review_reader_guessing
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bkeeps? (the reader|readers|you) (guessing|on the edge)\b|\bif there is (a|one) (weakness|flaw|criticism|drawback)\b'
+    message: '"keeps the reader guessing / if there is one weakness" — AI review template'
+    suggestion: name the twist or the weak chapter
+  - id: en.review_fans_of
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bfans of [A-Z][^.]{2,60} will find (much|plenty|a lot) to (admire|love|enjoy)\b|\bthe kind of (book|film|place) you''ll want to\b|\brating: \d(\.\d)? (out of|/) ?(5|10)\b'
+    message: '"fans of X will find much to admire / Rating: 4.5 out of 5" — AI review close'
+    suggestion: end with who should skip it, or with your own verdict in one line
+  - id: en.essay_numerous_studies
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(numerous|many|several|countless) studies (have )?(shown|suggest|found|demonstrate)\b|\bresearch (has )?(consistently )?shown that\b'
+    message: '"numerous studies have shown" — vague attribution (weasel words)'
+    suggestion: cite one study by name or drop the claim
+  - id: en.essay_that_said
+    kind: regex
+    severity: 1
+    pattern: '(?i)^that said,|\bperhaps most importantly\b|\bnot without (its|their) (challenges|drawbacks|flaws)\b'
+    message: '"that said / perhaps most importantly / not without its challenges" — AI essay hinge'
+    suggestion: make the turn with the fact itself
+  - id: en.essay_opens_door
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bopens? the door (to|for)\b|\ba promising middle ground\b|\b(is|are) something worth (celebrating|embracing|exploring)\b|\ba double-edged sword\b'
+    message: '"opens the door to / a promising middle ground / worth celebrating" — AI essay stock phrase'
+    suggestion: say what concretely becomes possible
+  - id: en.fiction_maybe_did
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bas if (she|he|they|it) understood, and (maybe|perhaps) (she|he|they|it) did\b|\bfor a long moment\b|\bfelt a shiver (run )?(down|up) (her|his|my) spine\b'
+    message: '"as if she understood, and maybe she did / for a long moment" — AI fiction beat'
+    suggestion: show what the character does next
+
+  # ---- Reflection, blog and fiction stock lines (held-out AI samples) ----
+  - id: en.reflect_journey_destination
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(is|it''s) a (journey|process|marathon), not a (destination|race|sprint)\b'
+    message: '"a journey, not a destination" — AI closing aphorism'
+    suggestion: end with a concrete next step instead
+  - id: en.reflect_learning_opportunity
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bevery (mistake|failure|setback) is (a|an) (learning )?(opportunity|lesson)\b|\beveryone (starts|has to start) somewhere\b|\bthe good news is( that)?\b|\bbefore you know it\b'
+    message: '"every mistake is a learning opportunity / everyone starts somewhere" — AI encouragement formula'
+    suggestion: give one concrete example instead of the reassurance
+  - id: en.reflect_looking_back
+    kind: regex
+    severity: 2
+    pattern: '(?i)\blooking back, i (realize|see|understand)\b|\bone of the (most valuable|biggest|most important) lessons i''ve learned\b|\bmakes? all the difference\b|\b(have|has) (shaped|made) me (into )?who i am\b'
+    message: '"looking back, I realize / one of the most valuable lessons / makes all the difference" — AI reflection formula'
+    suggestion: tell the specific moment the lesson came from
+  - id: en.reflect_gift_season
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bin the end, [^.]{2,40} is a gift\b|\bcome into our lives for a (reason|season)\b|\b(friendships|relationships|people), like gardens\b|\bmost importantly, have fun\b|\bhappy (cooking|baking|writing|reading|coding)!'
+    message: '"in the end, X is a gift / for a season / like gardens" — AI reflection or blog closer'
+    suggestion: close on something only you would say
+  - id: en.blog_here_are_tips
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bhere are (some|a few) (practical |simple |essential )?(tips|ideas|strategies|ways)\b|\bwhere do you even begin\?'
+    message: '"here are some practical tips / where do you even begin?" — AI blog setup'
+    suggestion: start with the first tip
+  - id: en.fiction_wasnt_question
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bit wasn''t a question\b|\bthe silence that followed was (absolute|deafening|total)\b|\bfaint but unmistakable\b|\bwith every ounce of (strength|courage)\b'
+    message: '"It wasn''t a question / the silence that followed was absolute" — stock AI fiction beat'
+    suggestion: cut the narrator''s comment and let the line stand
+  - id: en.fiction_tears_pale
+    kind: regex
+    severity: 2
+    pattern: '(?i)\btears (streaming|rolling|running) down (her|his|my|their) (face|cheeks)\b|\b(his|her|their) face went (pale|white)\b|\bheart pounding\b|\bbreath (caught|hitched) in (her|his|my) throat\b'
+    message: '"tears streaming down her face / heart pounding" — stock AI fiction reaction'
+    suggestion: show the reaction through an action particular to this character

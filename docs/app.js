@@ -780,6 +780,7 @@ def run(text, lang_code, strict, era_code):
         "notes": report.notes,
         "stats": report.stats,
         "score_components": report.score_components,
+        "rates": report.rates,
         "hits": [],
         "structural": [],
         "sections": [],
@@ -1272,6 +1273,11 @@ function naturalStructuralComment(s) {
     "narrative-cadence": es ? `El relato encadena series con la misma entrada${s.count > 1 ? ` (${s.count} veces)` : ""}.` : `The story chains series with the same opening${s.count > 1 ? ` (${s.count} times)` : ""}.`,
     "narrative-simile": es ? `Se acumulan comparaciones «como si / como quien»${s.count > 1 ? ` (${s.count})` : ""}.` : `“As if / like someone” similes pile up${s.count > 1 ? ` (${s.count})` : ""}.`,
     "narrative-aphorism": es ? "El narrador se detiene a sentenciar en vez de mostrar lo que percibe." : "The narrator stops to pronounce maxims instead of showing what they perceive.",
+    "template-placeholders": es ? `Quedaron huecos de plantilla sin llenar${s.count > 1 ? ` (${s.count})` : ""}, como «[Su nombre]».` : `Unfilled template slots remain${s.count > 1 ? ` (${s.count})` : ""}, like “[Your Name]”.`,
+    "contraction-deficit": es ? "El inglés evita las contracciones de principio a fin: registro uniformemente formal." : "The English avoids contractions throughout: a uniformly formal register.",
+    "listicle-scaffold": es ? `El texto sigue la plantilla de post con subtítulos numerados${s.count > 1 ? ` (${s.count})` : ""}.` : `The text follows the numbered-tips blog template${s.count > 1 ? ` (${s.count})` : ""}.`,
+    "default-names": es ? "Los nombres de los personajes son los que la IA repite por defecto." : "The character names are the ones AI reaches for by default.",
+    "narrative-closing-image": es ? "El final corta a una imagen lejana, el remate de manual de un relato generado." : "The ending cuts to a distant image, the stock close of a generated story.",
     "punchline-paragraphs": es ? `Muchos párrafos son una sola frase corta usada como remate${s.count > 1 ? ` (${s.count})` : ""}.` : `Many paragraphs are a single short punchline${s.count > 1 ? ` (${s.count})` : ""}.`,
   };
   const message = messages[kind] || plainStructuralMessage(s).replace(/\s*\([^)]*\)/g, "");
@@ -1354,10 +1360,50 @@ function renderSegments(report) {
       <p>${escapeHtml(excerpt)}</p>
     </article>`;
   }).join("");
+  // One block per segment: where in the text the signals concentrate.
+  const strip = segments.map((segment) => {
+    const level = severityClass(segment.score);
+    return `<i class="heat ${level}" title="${escapeHtml(`${es ? "Tramo" : "Segment"} ${segment.index}: ${Math.round(segment.score * 100)}/100`)}"></i>`;
+  }).join("");
   return `<details class="segments-more">
-    <summary><span>${title}</span><small>${summary}</small><b class="segment-show">⌄</b><b class="segment-hide">⌃</b></summary>
+    <summary><span>${title}</span><small>${summary}</small><b class="segment-show">⌄</b><b class="segment-hide">⌃</b><span class="heat-strip" aria-hidden="true">${strip}</span></summary>
     <div class="segments-list">${cards}</div>
     <p class="segments-note">${es ? "Cada tramo se lee por separado. El índice muestra señales editoriales, no probabilidad de autoría." : "Each segment is read on its own. The index shows editorial signals, not authorship probability."}</p>
+  </details>`;
+}
+
+const RATE_LABELS = {
+  es: { markdown: "Formato Markdown", ai_phrases: "Frases típicas de IA", em_dashes: "Rayas fuera de diálogo", bullets: "Viñetas", triads: "Series de tres", not_just: "«No solo X, sino Y»", unicode: "Símbolos raros o invisibles" },
+  en: { markdown: "Markdown formatting", ai_phrases: "Typical AI phrases", em_dashes: "Em dashes outside dialogue", bullets: "Bullet points", triads: "Lists of three", not_just: "“Not just X, but Y”", unicode: "Unusual or invisible symbols" },
+};
+
+// Pangram-style view: how often each tell appears per 10k words, next to the human and AI averages.
+function renderRates(report) {
+  const rates = report.rates || {};
+  const es = UILANG === "es";
+  const rows = Object.entries(rates).filter(([, r]) => r.count > 0);
+  if (!rows.length) return "";
+  const body = rows.map(([key, r]) => {
+    const max = Math.max(r.ai * 1.6, r.per10k, 1);
+    const pos = (v) => `${Math.min(100, (v / max) * 100).toFixed(1)}%`;
+    const level = r.per10k >= r.ai ? "s-high" : r.per10k > r.human * 2 ? "s-mod" : "s-low";
+    return `<div class="rate-row">
+      <span class="rate-label">${escapeHtml(RATE_LABELS[es ? "es" : "en"][key] || key)}</span>
+      <span class="rate-value ${level}"><strong>${r.per10k}</strong> <small>(${r.count})</small></span>
+      <span class="rate-bar" role="img" aria-label="${escapeHtml(`${r.per10k} ${es ? "por 10.000 palabras; humano" : "per 10,000 words; human"} ${r.human}, ${es ? "IA" : "AI"} ${r.ai}`)}">
+        <span class="rate-fill ${level}" style="width:${pos(r.per10k)}"></span>
+        <i class="rate-tick human" style="left:${pos(r.human)}" title="${es ? "humano" : "human"} ${r.human}"></i>
+        <i class="rate-tick ai" style="left:${pos(r.ai)}" title="${es ? "IA" : "AI"} ${r.ai}"></i>
+      </span>
+    </div>`;
+  }).join("");
+  return `<details class="rates-panel">
+    <summary><span>${es ? "Huellas por 10.000 palabras" : "Tells per 10,000 words"}</span><small>${es ? "comparado con promedios humanos e IA" : "against human and AI averages"}</small></summary>
+    <div class="rates-legend"><span><i class="rate-tick human"></i>${es ? "promedio humano" : "human average"}</span><span><i class="rate-tick ai"></i>${es ? "promedio IA" : "AI average"}</span></div>
+    ${body}
+    <p class="rates-note">${es
+      ? "Referencia: mediciones de Pangram Labs sobre millones de textos en inglés. Sirven para comparar frecuencias; ninguna huella por sí sola prueba autoría."
+      : "Reference: Pangram Labs measurements over millions of English documents. Use them to compare frequencies; no single tell proves authorship."}</p>
   </details>`;
 }
 
@@ -1382,6 +1428,11 @@ function renderActionSummary(report) {
     priority.push(es
       ? "El problema no es solo la frase: es la manera de cerrar el sentido. Deja que una escena o una consecuencia hagan el trabajo pedagógico."
       : "The issue is not just phrasing: it is how the text closes meaning. Let a scene or consequence do the teaching.");
+  }
+  if (has("template-placeholders")) {
+    priority.push(es
+      ? "Rellena o borra los huecos de plantilla, como «[Su nombre]». Es lo primero que delata un texto generado."
+      : "Fill in or delete the template slots, like “[Your Name]”. They are the first giveaway of generated text.");
   }
   const narrative = structural
     .filter((s) => s.line && /^(narrative-|punchline-)/.test(s.kind))
@@ -1441,6 +1492,7 @@ function render(report) {
   </div>`;
 
   scoreHtml += renderActionSummary(report);
+  scoreHtml += renderRates(report);
   scoreHtml += renderSegments(report);
   if (report.semantic?.length) {
     scoreHtml += `<details class="semantic-notes"><summary>${UILANG === "es" ? "Similitud entre párrafos · experimental" : "Paragraph similarity · experimental"}</summary>

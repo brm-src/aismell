@@ -136,7 +136,7 @@ patterns:
   - id: es.en_el_corazon
     kind: phrase
     severity: 2
-    pattern: en el (corazón|centro) de
+    pattern: en el corazón (mismo )?de
     message: '"en el corazón de" — cliché de IA'
     suggestion: usa la palabra concreta
 
@@ -194,7 +194,7 @@ patterns:
   - id: es.viaje_excelencia
     kind: regex
     severity: 2
-    pattern: '(?i)camino|viaje|trayecto.{1,20}excelencia'
+    pattern: '(?i)\b(camino|viaje|trayecto)\b.{1,20}\bexcelencia\b'
     message: '"viaje hacia la excelencia" — cliché motivacional'
     suggestion: borrar
 
@@ -2095,3 +2095,238 @@ patterns:
     pattern: '(?i)\bsin lugar a dudas\b'
     message: '"sin lugar a dudas" — certeza enfática sin argumento'
     suggestion: da la razón o elimina la certeza enfática
+
+  # ---- Pangram (pangram.com/es, guía completa): equivalentes en español ----
+  - id: es.pangram_complejo_multifacetico
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bcomplej[oa]s? y multifacétic[oa]s?\b|\bmultifacétic[oa]s? y complej[oa]s?\b'
+    message: '"complejo y multifacético" — Pangram: ~700x más frecuente en IA (en inglés)'
+    suggestion: nombra los dos o tres lados concretos
+  - id: es.pangram_intrincada_interaccion
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(intrincad[ao]|compleja) (interacción|interrelación|red|danza|entramado) (de|entre)\b'
+    message: '"intrincada interacción entre" — Pangram: ~100x en IA (en inglés)'
+    suggestion: di qué cosas se afectan y cómo
+  - id: es.pangram_papel_crucial
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(desempeñ|jug)(a|an|ó|aron|aba|aban|ar) un (papel|rol) (crucial|fundamental|clave|vital|esencial|primordial)\b'
+    message: '"desempeñó un papel crucial" — Pangram: ~70x en IA (en inglés)'
+    suggestion: di qué hizo concretamente
+  - id: es.pangram_crucial_senalar
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bes (crucial|fundamental|esencial|vital) (señalar|destacar|recordar|tener en cuenta|entender) que\b'
+    message: '"es crucial señalar que" — Pangram: anuncio meta (~22x en inglés)'
+    suggestion: borra el anuncio y di el punto
+  - id: es.pangram_mundo_vertiginoso
+    kind: regex
+    severity: 3
+    pattern: '(?i)\ben (el|este|un) mundo (vertiginoso|actual en constante cambio|en constante (cambio|evolución)|cada vez más (complejo|interconectado|digital))\b'
+    message: '"en este mundo en constante cambio" — Pangram: apertura genérica (~35x en inglés)'
+    suggestion: empieza por la situación concreta
+  - id: es.pangram_navegar_complejidades
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bnaveg(ar|a|an|ando) (por )?(las complejidades|los entresijos|el entramado|el laberinto|el tapiz) de\b'
+    message: '"navegar las complejidades de" — Pangram: metáfora apilada (~18x en inglés)'
+    suggestion: nombra el problema que se resuelve
+  - id: es.pangram_difuminar_limites
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bdifumin(a|an|ar|ando|ó) (la línea|las líneas|los límites|la frontera|las fronteras) entre\b'
+    message: '"difumina los límites entre" — frase IA según Pangram'
+    suggestion: di qué comparten las dos cosas
+  - id: es.pangram_punto_focal
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bse (convirtió|ha convertido|convierte) en (un|el) (punto focal|eje central|centro de atención)\b|\bse ha convertido en una parte (esencial|fundamental) de\b'
+    message: '"se convirtió en un punto focal" — frase IA según Pangram'
+    suggestion: di quién empezó a prestar atención y por qué
+  - id: es.pangram_conexion_profunda
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(una )?(conexión|vínculo|sensación|impacto) profund[oa] (entre|de|con|en)\b'
+    message: '"una conexión profunda entre" — frase IA según Pangram'
+    suggestion: muestra el vínculo en un momento concreto
+  - id: es.pangram_tuve_placer
+    kind: regex
+    severity: 3
+    pattern: '(?i)\b(recientemente )?tuve el (placer|gusto) de (visitar|probar|conocer|asistir|leer)\b'
+    message: '"recientemente tuve el placer de" — apertura de reseña IA (Pangram)'
+    suggestion: empieza por lo que pasó
+  - id: es.pangram_cualquiera_que_busque
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(lo )?recomiendo (ampliamente |totalmente |encarecidamente )?a (cualquiera|cualquier persona|todo aquel|quien) (que )?(busque|quiera|esté buscando)\b|\bcualquiera que (busque|esté buscando) (elevar|mejorar|llevar)\b'
+    message: '"lo recomiendo a cualquiera que busque" — frase IA según Pangram'
+    suggestion: di a quién le sirvió y por qué
+  - id: es.pangram_ya_seas
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bya sea(s)? (un|una) [^,.;]{2,40} o (un|una) [^,.;]{2,40}\b'
+    message: '"ya seas un X o un Y" — frase IA según Pangram'
+    suggestion: dirígete al lector que de verdad te importa
+  - id: es.pangram_narrativa_atrapante
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bnarrativa (atrapante|cautivadora|envolvente|apasionante)\b|\b(te )?mantiene (adivinando|en vilo) hasta (la última página|el final)\b'
+    message: '"narrativa cautivadora / en vilo hasta la última página" — frase IA según Pangram'
+    suggestion: nombra la escena o el giro que funcionó
+  # Ficción generada (muestras de Pangram)
+  - id: es.pangram_sorbo_lento
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(dio|tomó|bebió) un (sorbo|trago) (lento|largo|pausado)\b'
+    message: '"tomó un sorbo lento" — frase de ficción IA (Pangram)'
+    suggestion: deja el gesto solo si cambia la escena
+  - id: es.pangram_peso_no_dicho
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bel peso de (lo no dicho|las palabras no dichas|todo lo que no (se )?(dijo|dijeron|decían))\b|\b(palabras|tensión) no dichas? (flotaba|flotaban|colgaba|colgaban)\b'
+    message: '"el peso de lo no dicho" — frase de ficción IA (Pangram)'
+    suggestion: muestra lo que se calla con un gesto o un objeto
+  - id: es.pangram_pese_temblor
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(firme|serena|tranquila) a pesar del temblor\b|\bvoz (apenas|poco más que) (un|en un) susurro\b'
+    message: '"firme a pesar del temblor / apenas un susurro" — frase de ficción IA (Pangram)'
+    suggestion: describe un solo detalle físico concreto
+  - id: es.pangram_corazon_latiendo
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(el|su|mi) corazón (latiendo|latía|golpeaba|martilleaba) con fuerza\b|\bno (pude|pudo|podía) evitar (sentir|preguntarme|preguntarse|pensar)\b|\b(sentí|sintió) una (sensación|oleada|punzada) de\b'
+    message: '"el corazón latiendo con fuerza / no pude evitar sentir" — frase de ficción IA (Pangram)'
+    suggestion: muestra la reacción con lo que hace el personaje
+  - id: es.pangram_espiritu_humano
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(la resiliencia|la fuerza|la fortaleza|la grandeza) del espíritu humano\b|\bun recordatorio de (que|la importancia)\b'
+    message: '"la fuerza del espíritu humano / un recordatorio de que" — cierre moralizante IA (Pangram)'
+    suggestion: termina en un hecho, no en la lección
+  - id: es.pangram_nombres_ia
+    kind: regex
+    severity: 1
+    pattern: '\b(Elara|Lyra|Kael|Seraphina|Zephyr|Aurelia)\b'
+    message: 'nombre por defecto de ficción IA — Pangram: la IA repite una lista corta de nombres'
+    suggestion: elige un nombre que pertenezca al lugar y al personaje
+
+  # ---- Paquetes por género: correo, reseña, ensayo de opinión (muestras IA ciegas + guía Pangram) ----
+  - id: es.correo_encuentre_bien
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bespero que (este|el presente) (correo|mensaje) (le|te|los) encuentre bien\b'
+    message: '"espero que este correo le encuentre bien" — calco de "hope this finds you well" (Pangram)'
+    suggestion: empieza por el motivo del correo
+  - id: es.correo_me_pongo_contacto
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bme pongo en contacto con (usted|ustedes|ud\.?) para\b|\bmi nombre es [^.]{2,40} y me desempeño como\b'
+    message: '"me pongo en contacto con usted para / mi nombre es X y me desempeño como" — apertura de plantilla'
+    suggestion: di primero qué pides
+  - id: es.correo_gran_interes_labor
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bsigo con (gran|mucho|especial) interés (la labor|el trabajo|su trabajo|los avances)\b|\bimpacto significativo en la comunidad\b'
+    message: '"sigo con gran interés la labor" — elogio genérico de plantilla IA'
+    suggestion: nombra la iniciativa concreta que viste
+  - id: es.correo_interes_mutuo
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(de|sea de) interés mutuo\b|\boportunidades valiosas para ambas partes\b|\bmutuamente beneficios[oa]\b|\bexplorar (posibles )?(oportunidades de )?(colaboración|alianza)s?\b'
+    message: '"de interés mutuo / oportunidades valiosas para ambas partes" — propuesta IA sin contenido'
+    suggestion: di qué intercambio concreto propones
+  - id: es.correo_entera_disposicion
+    kind: regex
+    severity: 1
+    pattern: '(?i)\bqued(o|amos) a (su|tu|vuestra) (entera |completa )?disposición\b|\bagradezco de antemano su tiempo y (atención|consideración)\b|\bno dude en (contactarme|contactarnos|escribirme)\b'
+    message: '"quedo a su entera disposición / agradezco de antemano" — cierre convencional; la IA lo usa siempre'
+    suggestion: termina con el siguiente paso concreto
+  - id: es.resena_joya
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bes una de esas joyas\b|\buna (verdadera |auténtica )?joya (escondida|oculta|gastronómica)\b|\bel ambiente es cálido y acogedor\b|\b(el|un) aroma inconfundible\b'
+    message: '"una de esas joyas / cálido y acogedor / aroma inconfundible" — reseña IA de plantilla'
+    suggestion: describe un detalle que solo tenga ese lugar
+  - id: es.resena_impecable
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bsencill[oa],? pero impecable\b|\bperfectamente equilibrad[oa]s?\b|\bel punto fuerte,? sin duda\b|\bsi tuviera que (hacer|poner) (un|algún) (reparo|pero)\b'
+    message: '"sencilla, pero impecable / perfectamente equilibrada / si tuviera que hacer un reparo" — reseña IA de plantilla'
+    suggestion: di qué probaste y qué cambiarías, sin el molde de elogio y reparo
+  - id: es.resena_lugar_ideal
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bun lugar ideal para (una cena|una velada|celebrar|compartir)\b|\bvolveré,? sin duda\b|\bcalificación: \d([.,]\d)? ?/ ?(5|10)\b|\blos (fans|amantes|seguidores) de [^.]{2,60} encontrarán\b'
+    message: '"un lugar ideal para / volveré, sin duda / calificación 4,5/5" — cierre de reseña IA'
+    suggestion: termina con tu veredicto en una línea propia
+  - id: es.resena_personaje_mas
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bse convierte en (casi )?un personaje más\b|\b(es|funciona como) un personaje (en sí mism[oa]|por derecho propio)\b|\b(una )?atmósfera palpable\b'
+    message: '"se convierte en un personaje más / atmósfera palpable" — cliché de reseña IA'
+    suggestion: describe un detalle del lugar que cambie la historia
+  - id: es.ensayo_numerosos_estudios
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(numerosos|diversos|múltiples|varios) estudios (han )?(demostrado|relacionado|mostrado|señalado|evidenciado)\b|\bla investigación (ha )?demostrado que\b'
+    message: '"numerosos estudios han demostrado" — atribución vaga'
+    suggestion: cita un estudio concreto o borra la afirmación
+  - id: es.ensayo_innegable
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bes innegable que\b|\bmerece una reflexión (equilibrada|profunda|serena)\b|\bno son (ni )?buen[oa]s ni mal[oa]s en sí mism[oa]s\b'
+    message: '"es innegable que / merece una reflexión equilibrada / ni buenas ni malas en sí mismas" — ensayo IA de equilibrio forzado'
+    suggestion: toma posición y sostenla con un caso
+  - id: es.ensayo_doble_filo
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(una )?(herramienta|arma|espada) de doble filo\b|\bsolo así podremos\b|\bante este panorama\b|\bun enfoque basado en\b'
+    message: '"herramienta de doble filo / solo así podremos / ante este panorama" — muletilla de ensayo IA'
+    suggestion: di qué cambia concretamente y para quién
+  - id: es.ficcion_escalofrio
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(sintió|sentí|sentía) un escalofrío\b|\bel corazón golpeándole el pecho\b|\bdurante un largo (momento|instante)\b|\bcomo si (lo )?entendiera,? y (quizás|tal vez) (lo )?(hacía|entendía)\b'
+    message: '"sintió un escalofrío / durante un largo momento" — gesto de ficción IA'
+    suggestion: muestra lo que el personaje hace a continuación
+
+  # ---- Reflexión, blog y ficción: líneas de manual (muestras IA de control) ----
+  - id: es.reflex_proceso_meta
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bes un (proceso|viaje|camino|maratón),? no una? (meta|destino|carrera)\b'
+    message: '"es un proceso, no una meta" — aforismo de cierre IA'
+    suggestion: termina con un paso concreto
+  - id: es.reflex_oportunidad_aprendizaje
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bcada (error|fracaso|tropiezo) es una oportunidad (de|para) (aprendizaje|aprender|crecer)\b|\btodos empezamos (en algún lugar|desde cero|por algo)\b|\bla buena noticia es que\b|\baquí te dejo (algunos|unos) (consejos|tips|pasos)\b|\b¡manos a la obra\b'
+    message: '"cada error es una oportunidad de aprendizaje / aquí te dejo algunos consejos" — fórmula de blog IA'
+    suggestion: da un ejemplo concreto en vez del ánimo genérico
+  - id: es.reflex_mirando_atras
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(mirando hacia atrás|al mirar atrás),? (me doy cuenta|entiendo|comprendo)\b|\buna de las (lecciones|cosas) más (valiosas|importantes) que he aprendido\b|\ba lo largo de mi vida he aprendido\b|\bmarca(r|n)? (toda )?la diferencia\b'
+    message: '"a lo largo de mi vida he aprendido / marcar la diferencia" — fórmula de reflexión IA'
+    suggestion: cuenta el momento concreto del que viene la lección
+  - id: es.reflex_regalo_huella
+    kind: regex
+    severity: 2
+    pattern: '(?i)\buno de los regalos más (valiosos|hermosos|preciados)\b|\bha dejado una huella en\b|\b(los vínculos|las amistades|las relaciones),? como las plantas\b|\b(que|hacen que) la vida valga la pena\b|\by eso también está bien\b|\bun espacio seguro donde\b'
+    message: '"uno de los regalos más valiosos / como las plantas / y eso también está bien" — cierre de reflexión IA'
+    suggestion: cierra con algo que solo tú dirías
+  - id: es.ficcion_no_era_pregunta
+    kind: regex
+    severity: 3
+    pattern: '(?i)\bno era una pregunta\b|\bel silencio que siguió fue (absoluto|total|ensordecedor)\b|\b(débil|tenue|leve),? pero inconfundible\b'
+    message: '"No era una pregunta / el silencio que siguió fue absoluto" — remate de ficción IA'
+    suggestion: borra el comentario del narrador y deja la línea sola
+  - id: es.ficcion_lagrimas
+    kind: regex
+    severity: 2
+    pattern: '(?i)\blas lágrimas (le )?(corrían|rodaban|caían) por (las|sus) mejillas\b|\bconteniendo la respiración\b|\bel rostro (se le puso|se volvió) pálido\b|\bse le heló la sangre\b'
+    message: '"las lágrimas le corrían por las mejillas / conteniendo la respiración" — reacción de ficción IA'
+    suggestion: muestra la reacción con un gesto propio del personaje
