@@ -1905,3 +1905,16 @@ patterns:
     pattern: '(?i)\bnone of this would have been possible without\b|\bdream big\b|\bthis (achievement|accomplishment|success) (belongs to|is also) (you|yours)\b|\bfull of (possibilities|opportunities)\b'
     message: '"none of this would have been possible without / dream big" — stock speech formula'
     suggestion: thank one person for one concrete thing
+
+  - id: en.review_strengths_recommended
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bone of the (book''s|novel''s|author''s|film''s)? ?(greatest|biggest|main) (strengths|achievements)\b|\ba (highly )?recommended read\b|\bideal for (anyone|those|readers) who\b|\btransports? (the reader|readers|us|you) (to|back to)\b|\bthe prose is (elegant|lyrical|polished)\b'
+    message: '"one of its greatest strengths / a highly recommended read / transports the reader" — AI review template'
+    suggestion: quote a line or name a scene instead of the general praise
+  - id: en.guide_motivational_close
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bhappy [a-z]+ing!|\bevery [a-z]+ (started|starts|has to start) somewhere\b|\bcelebrate (the )?small wins\b|\byou''ll be surprised (by|at) how far you''ve come\b|\bhere''s how to (get started|begin|start)\b'
+    message: '"every runner started somewhere / celebrate small wins / Happy running!" — AI guide close'
+    suggestion: end on the last practical step

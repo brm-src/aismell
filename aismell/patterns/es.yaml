@@ -2343,3 +2343,16 @@ patterns:
     pattern: '(?i)\bnada de esto habría sido posible sin\b|\b(soñar|sueñen|se atrevan a soñar) en grande\b|\beste logro también es (de ustedes|suyo|tuyo)\b|\b(llena|lleno) de posibilidades\b|\bcerramos una etapa\b'
     message: '"nada de esto habría sido posible sin / soñar en grande" — fórmula de discurso'
     suggestion: agradece a una persona por algo concreto
+
+  - id: es.resena_aciertos
+    kind: regex
+    severity: 2
+    pattern: '(?i)\buno de los (grandes|mayores|principales) aciertos\b|\baporta(n)? profundidad\b|\buna lectura (muy |altamente )?recomendable\b|\bideal para (quienes|aquellos que|los que) (disfrutan|buscan|aman)\b|\bnos transporta(n)? a\b|\bla prosa es (elegante|cuidada|evocadora)\b|\bmuy bien construid[oa]s?\b|\bvaloración: \d([.,]\d)? ?(de|/) ?(5|10)\b'
+    message: '"uno de los grandes aciertos / una lectura muy recomendable / nos transporta a" — reseña IA de plantilla'
+    suggestion: cita una frase o nombra una escena en vez del elogio general
+  - id: es.guia_cierre_animo
+    kind: regex
+    severity: 2
+    pattern: '(?i)¡(ánimo|a por ello|manos a la obra|a disfrutar|buen provecho|a correr|a cocinar)[^!]{0,20}!|\baquí tienes (una guía|algunos consejos|unos consejos|todo lo que)\b|\bcelebra(r)? (los )?pequeños logros\b|\bdisfruta (el|del) proceso\b'
+    message: '"aquí tienes una guía / celebra los pequeños logros / ¡Ánimo y a por ello!" — cierre de guía IA'
+    suggestion: termina en el último paso práctico

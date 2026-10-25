@@ -1349,3 +1349,10 @@ def test_single_expanded_form_is_not_a_contraction_deficit():
 def test_ordinary_words_do_not_trip_motivational_cliche():
     report, _ = analyze("El camino al pueblo era largo y el viaje duró dos días.", lang="es")
     assert "es.viaje_excelencia" not in {h.pattern.id for h in report.hits}
+
+
+def test_genre_packs_catch_review_and_guide_templates():
+    review = analyze("Uno de los grandes aciertos de la autora es la ambientación. Es una lectura muy recomendable. Valoración: 4 de 5.", lang="es")[0]
+    assert "es.resena_aciertos" in {h.pattern.id for h in review.hits}
+    guide = analyze("Remember, every runner started somewhere. Celebrate small wins along the way. Happy running!", lang="en")[0]
+    assert "en.guide_motivational_close" in {h.pattern.id for h in guide.hits}

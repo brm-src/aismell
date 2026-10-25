@@ -617,14 +617,14 @@ def _check_wh_starters(sentences: list[str], lang: str) -> list[StructuralFindin
 _PARAGRAPH_CONNECTORS_ES = re.compile(
     r"^(además|adicionalmente|por otra parte|por otro lado|por un lado|en consecuencia|"
     r"asimismo|posteriormente|en primer lugar|en segundo lugar|finalmente|"
-    r"no obstante|sin embargo|otro aspecto|ante este panorama|en definitiva|"
+    r"no obstante|sin embargo|otro aspecto|ante este panorama|en definitiva|aun así|en general|"
     r"en síntesis|en suma|en conclusión|en resumen)[,\s]",
     re.IGNORECASE | re.MULTILINE,
 )
 _PARAGRAPH_CONNECTORS_EN = re.compile(
     r"^(furthermore|moreover|additionally|consequently|hence|"
     r"subsequently|firstly|secondly|finally|in conclusion|that said|"
-    r"on the other hand|on one hand|ultimately|overall|in short|"
+    r"on the other hand|on one hand|ultimately|overall|in short|still|that being said|"
     r"nonetheless|nevertheless|in summary)[,\s]",
     re.IGNORECASE | re.MULTILINE,
 )
@@ -1481,8 +1481,10 @@ def _check_listicle_scaffold(text: str, lang: str) -> list[StructuralFinding]:
             items = bare
     if len(items) < 4:
         return []
-    first_line = next((ln for ln in text.splitlines() if ln.strip()), "")
-    extras = bool(_LISTICLE_TITLE_RX.search(first_line)) + bool(_CLOSING_HEADING_RX.search(text))
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    # Numbered title, a stock closing heading, or a cheering last line ("Happy running!").
+    extras = (bool(_LISTICLE_TITLE_RX.search(lines[0])) + bool(_CLOSING_HEADING_RX.search(text))
+              + (lines[-1].endswith("!") and len(items) >= 6))
     es = lang == "es"
     return [StructuralFinding(
         line=_line_of(text, items[0].start(items[0].re.groups)), kind="listicle-scaffold", severity=3 if extras else 2,

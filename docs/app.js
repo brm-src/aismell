@@ -1210,6 +1210,11 @@ function naturalHitComment(hit) {
     : `“${phrase}” ${reason}. ${advice}`;
 }
 
+function sevName(severity) {
+  const es = UILANG === "es";
+  return severity >= 3 ? (es ? "señal fuerte" : "strong signal") : severity === 2 ? (es ? "señal media" : "medium signal") : (es ? "señal leve" : "light signal");
+}
+
 function renderHit(hit, t) {
   // Compact context: ±60 chars around the match (was: whole paragraph).
   const CTX = 60;
@@ -1226,7 +1231,7 @@ function renderHit(hit, t) {
   else if (hit.severity === 2) glyph = "!";
   return `
     <div class="finding">
-      <div class="glyph s-${hit.severity}">${glyph}</div>
+      <div class="glyph s-${hit.severity}" role="img" aria-label="${sevName(hit.severity)}" title="${sevName(hit.severity)}">${glyph}</div>
       <div class="body">
         <div class="ctx">${lead}${before}<span class="match">${matched}</span>${after}${tail}</div>
         <div class="meta">${escapeHtml(naturalHitComment(hit))}</div>
@@ -1299,7 +1304,7 @@ function renderStructural(s, t) {
   const sug = plainSuggestion(s);
   return `
     <div class="finding">
-      <div class="glyph s-${s.severity}">${glyph}</div>
+      <div class="glyph s-${s.severity}" role="img" aria-label="${sevName(s.severity)}" title="${sevName(s.severity)}">${glyph}</div>
       <div class="body">
         <div class="ctx" style="color: var(--fg);">${escapeHtml(naturalStructuralComment(s))}</div>
         ${structuralExample(s) ? `<blockquote class="finding-example">${escapeHtml(structuralExample(s))}</blockquote>` : ""}
@@ -1492,10 +1497,10 @@ function render(report) {
   </div>`;
 
   scoreHtml += renderActionSummary(report);
-  scoreHtml += renderRates(report);
-  scoreHtml += renderSegments(report);
+  // Detail views follow the findings: a writer needs "what to fix" before statistics.
+  let detailHtml = renderRates(report) + renderSegments(report);
   if (report.semantic?.length) {
-    scoreHtml += `<details class="semantic-notes"><summary>${UILANG === "es" ? "Similitud entre párrafos · experimental" : "Paragraph similarity · experimental"}</summary>
+    detailHtml += `<details class="semantic-notes"><summary>${UILANG === "es" ? "Similitud entre párrafos · experimental" : "Paragraph similarity · experimental"}</summary>
       <p class="editorial-limit">${UILANG === "es" ? "La similitud temática no demuestra repetición ni autoría. Estas observaciones no modifican el índice." : "Topical similarity does not prove repetition or authorship. These observations do not change the index."}</p>
       ${report.semantic.map((finding) => renderStructural(finding, t)).join("")}</details>`;
   }
@@ -1508,15 +1513,20 @@ function render(report) {
   // if (report.score >= 0.6) scoreHtml += renderIntelectaNudge("smell");
 
   els.score.innerHTML = scoreHtml;
+  const detailBlock = detailHtml ? `<section class="result-details"><h3>${UILANG === "es" ? "Más detalle" : "More detail"}</h3>${detailHtml}</section>` : "";
 
   if (report.hits.length === 0 && report.structural.length === 0) {
-    els.findings.innerHTML = `<div class="clean">${t.clean}</div>`;
+    els.findings.innerHTML = `<div class="clean">${t.clean}</div>${detailBlock}`;
     els.resultPanel.hidden = false;
     return;
   }
 
-  // Findings — collapsed by default, expandable to full list.
-  const sorted = [...report.hits].sort((a, b) => (b.severity - a.severity) || (a.line - b.line));
+  // One list: strongest first, then reading order; document-wide notes close each severity.
+  const lineKey = (line) => line || Number.MAX_SAFE_INTEGER;
+  const items = [
+    ...report.hits.map((h) => ({ severity: h.severity, line: h.line, html: () => renderHit(h, t) })),
+    ...report.structural.map((s) => ({ severity: s.severity, line: s.line, html: () => renderStructural(s, t) })),
+  ].sort((a, b) => (b.severity - a.severity) || (lineKey(a.line) - lineKey(b.line)));
 
   // Severity counts (for the compact summary line)
   let sevHigh = 0, sevMod = 0, sevLow = 0;
@@ -1531,25 +1541,24 @@ function render(report) {
     else sevLow++;
   }
 
-  const detailLbl = (UILANG === "es") ? "ver detalle de hallazgos" : "show finding details";
-  const detailHide = (UILANG === "es") ? "colapsar" : "collapse";
+  const es = UILANG === "es";
+  const detailLbl = es ? `Mostrar los ${totalFindings} hallazgos` : `Show all ${totalFindings} findings`;
+  const detailHide = es ? "Ocultar hallazgos" : "Hide findings";
 
   let html = `
     <div class="findings-summary">
-      <span class="fs-count"><strong>${totalFindings}</strong> ${t.findings}</span>
-      <span class="fs-sep">·</span>
-      <span class="fs-sev s-high">${sevHigh} ${t.sev_high}</span>
-      <span class="fs-sev s-mod">${sevMod} ${t.sev_mod}</span>
-      <span class="fs-sev s-low">${sevLow} ${t.sev_low}</span>
+      <h3>${es ? "Qué revisar" : "What to review"}</h3>
+      <span class="fs-sev s-high"><strong>${sevHigh}</strong> ${t.sev_high}</span>
+      <span class="fs-sev s-mod"><strong>${sevMod}</strong> ${t.sev_mod}</span>
+      <span class="fs-sev s-low"><strong>${sevLow}</strong> ${t.sev_low}</span>
     </div>
     <details class="findings-more" ${totalFindings <= 12 ? "open" : ""}>
       <summary>
         <span class="more-show">${detailLbl}</span>
         <span class="more-hide">${detailHide}</span>
       </summary>
-      ${sorted.map((h) => renderHit(h, t)).join("")}
-      ${report.structural.length ? report.structural.map((s) => renderStructural(s, t)).join("") : ""}
-    </details>`;
+      ${items.map((item) => item.html()).join("")}
+    </details>${detailBlock}`;
 
   els.findings.innerHTML = html;
   els.resultPanel.hidden = false;

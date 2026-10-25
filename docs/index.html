@@ -1769,6 +1769,54 @@
     .index-meter { width: 100%; margin: 4px 0 0; }
     .review-index { width: 100%; }
   }
+
+  /* QA pass: one type scale, readable secondary text, coherent footer and result order. */
+  header .tag { font-size: 15px; color: color-mix(in srgb, var(--fg) 72%, var(--bg)); max-width: 60ch; }
+  .status { font-size: 14px; }
+  .examples-row { font-size: 13px; gap: 8px 10px; padding: 12px 18px; }
+  .ex-chip { font-size: 13px; padding: 8px 12px; min-height: 40px; border-radius: 6px; }
+  .btn { font-size: 14px; letter-spacing: 0.1px; border-radius: 6px; }
+  .toolbar { font-size: 14px; }
+  .toolbar label, .option-row { cursor: pointer; }
+  input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--hl); }
+  .editor-note, #inputCount { font-size: 13px; }
+  details.about-toggle > summary { font-size: 14px; min-height: 44px; display: flex; align-items: center; }
+  footer { font-size: 13.5px; grid-template-columns: minmax(0, 1fr) auto; }
+  footer .right-side { display: flex; align-items: center; gap: 18px; justify-self: end; flex-wrap: wrap; }
+  footer .kofi-link { grid-column: auto; padding: 8px 14px; border-radius: 6px; min-height: 40px; display: inline-flex; align-items: center; }
+  footer .brand-intelecta { grid-column: auto; }
+  footer .links button { min-width: 44px; justify-content: center; }
+  header h1.brand-home { padding: 8px 0; margin: -8px 0; }
+
+  .findings-summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 16px; font-family: var(--sans); text-transform: none; letter-spacing: 0; font-size: 13.5px; }
+  .findings-summary h3 { font-family: var(--sans); font-size: 16px; font-weight: 600; color: var(--fg); margin-right: auto; }
+  .findings-summary .fs-sev strong { font-family: "Departure Mono", ui-monospace, monospace; font-size: 15px; margin-right: 3px; }
+  .findings-summary .fs-sev.s-low { color: var(--cya); }
+  .findings-more > summary { font-size: 14px; min-height: 44px; display: flex; align-items: center; color: var(--cya); }
+  .finding .meta { color: color-mix(in srgb, var(--fg) 78%, var(--bg)); }
+  .finding-scope { font-size: 12.5px; }
+  .finding + .finding { border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+  .finding { border-bottom: 0; }
+
+  .result-details { border-top: 1px solid var(--line); padding: 18px 24px 22px; }
+  .result-details > h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .result-details .rates-panel { padding: 0; border-bottom: 0; }
+  .result-details .segments-more { margin-top: 10px; }
+  .next-steps h3 { font-size: 16px; }
+  .next-steps ol { font-size: 15px; }
+  .review-meta { font-size: 13.5px; }
+
+  .ex-chip { border: 1px solid color-mix(in srgb, var(--fg) 22%, transparent); color: color-mix(in srgb, var(--fg) 80%, var(--bg)); }
+  #input::placeholder { color: var(--dim); opacity: 1; font-style: italic; }
+  .finding .source-link { margin-top: 6px; }
+  .examples-lbl { color: var(--dim); }
+
+  @media (max-width: 600px) {
+    footer { grid-template-columns: 1fr; justify-items: center; }
+    footer .right-side { justify-self: center; justify-content: center; }
+    .result-details { padding-inline: 16px; }
+    .findings-summary h3 { width: 100%; }
+  }
 </style>
 </head>
 <body>
@@ -1917,7 +1965,7 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
-<script src="app.js?v=editorial-review-4"></script>
+<script src="app.js?v=editorial-review-5"></script>
 
 </body>
 </html>
