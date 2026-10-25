@@ -8,7 +8,7 @@ const I18N = {
     privacy_local: "Análisis local. Tu texto no se envía ni se guarda.",
     review_options: "Opciones de revisión",
     semantic_label: "Similitud entre párrafos",
-    semantic_note: "Experimental y local. Descarga un modelo de más de 100 MB la primera vez.",
+    semantic_note: "Experimental. Descarga 100 MB la primera vez.",
     strip_run: "Limpiar caracteres localmente",
     tagline: "Encuentra fórmulas, repeticiones y problemas de ritmo. Decide qué editar sin perder tu voz.",
     examples_lbl: "Ejemplos",
@@ -16,8 +16,7 @@ const I18N = {
     example_ai: "Ensayo genérico",
     example_human: "Relato",
     example_fakebib: "Referencias",
-    biblio_note_short: "Consulta solo las referencias (DOI, título, autor) en catálogos públicos. El resto del texto no sale del navegador.",
-    about_toggle: "Qué hace, qué no hace y uso por terminal",
+    biblio_note_short: "Envía solo las referencias a catálogos públicos.",
     tagline_biblio: "Las citas viajan a CrossRef, OpenAlex, Google Books y otras fuentes públicas. El resto del texto se queda contigo.",
     how_title: "cómo funciona",
     how_layer1: "<strong>Patrones de frase.</strong> Muletillas, conectores forzados, calcos del inglés.<small>Regex auditable, sin caja negra.</small>",
@@ -143,16 +142,7 @@ const I18N = {
     stripDiffRewrite: "versión reescrita ({pct}% de diferencia léxica)",
     stripError: "no se pudo quitar marcas ahora. Inténtalo de nuevo en un momento.",
     stripPrivacy: "Procesado por Cloudflare Workers AI. El servicio de aismell no añade almacenamiento del texto. Revisa la versión antes de usarla.",
-    why: "qué hace",
-    whyText: "aismell lee tu texto y te señala qué frases y decisiones de discurso suenan a plantilla de IA: muletillas, conectores raros, párrafos que no cambian de ángulo, temas sobreexplicados, cierres demasiado prolijos y ritmo parejo. Te explica qué detectó, por qué importa y por dónde editar. Si hay bibliografía, revisa si las citas existen de verdad.",
-    not: "qué NO hace",
-    not1: "<strong>No reescribe tu texto sin que lo pidas.</strong> La acción “quitar marcas” lo hace solo si la usas.",
-    not2: "<strong>No promete burlar detectores.</strong> Quitar marcas visibles ayuda a limpiar, no garantiza pasar ninguna prueba.",
-    not3: "<strong>No acusa.</strong> Humanos también usan estas frases. Úsalo para revisar, no para juzgar.",
-    cli: "también por terminal",
-    cliText: "¿Trabajas con PDFs? Hay una versión CLI que anota Word y PDF con comentarios al margen. <a href=\"https://github.com/brm-src/aismell#cli\" target=\"_blank\" rel=\"noopener\">Ver en GitHub</a>.",
     donate: "☕ donar",
-    donateNote: "Si te sirvió, considera donarme. Lo mantengo solo, sin rastreo ni cobros.",
     placeholder: "Pega tu texto aquí, o suelta un archivo (.txt / .md / .docx / .pdf).",
     sentences: "oraciones",
     smell: "índice",
@@ -180,14 +170,13 @@ const I18N = {
     docx_done_file: "Archivo generado",
     docx_done_lead: "Las zonas amarillas marcan frases o zonas que conviene revisar.",
     docx_done_body: "El Word descargado incluye resaltados y comentarios al margen. Cada comentario explica qué se detectó, por qué puede sonar a IA y qué cambiar según el contexto del documento.",
-    pdf_browser_unsupported: "PDF en la web aún no se puede (la librería no carga en el navegador). Para PDF usa el CLI: aismell paper.pdf --out paper-marcado.pdf",
     pdf_extracting: "extrayendo texto del PDF…",
     pdf_extracting_page: "extrayendo PDF: página {page}/{total}…",
-    pdf_too_big: "PDF demasiado pesado para el navegador ({mb} MB). Usa el CLI: aismell archivo.pdf --out archivo-marcado.pdf",
-    pdf_no_text: "El PDF no tiene capa de texto (probablemente escaneado). Sin OCR no puedo leerlo. Para PDFs escaneados usa el CLI con OCR.",
+    pdf_too_big: "El PDF pesa {mb} MB y el límite es 25 MB. Divide el archivo o pega el texto.",
+    pdf_no_text: "El PDF no tiene capa de texto (probablemente escaneado). Sin texto seleccionable no puedo leerlo: pega el texto o usa un PDF con texto.",
     biblio: "Verificar bibliografía",
     biblioTip: "Busca las referencias del texto (DOIs, papers, libros, citas) y verifica si existen en CrossRef, OpenAlex, Google Books y otras fuentes. La IA suele inventar bibliografía.",
-    strictTip: "Oculta las señales leves y medias para ir directo a lo importante.",
+    strictTip: "Oculta las señales leves y medias.",
     biblio_header: "BIBLIOGRAFÍA — {n} REFERENCIAS",
     biblio_privacy: "Solo se envían los identificadores (DOI / título / autor / arXiv ID) a CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books y OpenLibrary. Tu texto no sale.",
     biblio_none: "no se detectaron referencias parseables",
@@ -197,8 +186,8 @@ const I18N = {
     biblio_cta_note: "Bibliografía falsa en una tesis o paper no es un detalle: puede echar abajo una entrega.",
     biblio_cta_btn: "revisión académica con Intelecta",
     footer_brand: "herramienta abierta de <a href=\"https://intelecta.cl\" target=\"_blank\" rel=\"noopener\"><strong>Intelecta</strong></a>",
-    footer_disclaimer: "descargo",
-    footer_about: "sobre",
+    footer_disclaimer: "Privacidad y uso",
+    footer_about: "Sobre",
     about_title: "sobre mí y sobre el sitio",
     about_body: `
       <p>Eterno estudiante. Lector que entiende el 50% de lo que lee y vuelve igual al mismo libro un par de años después como si fuera otro. Saco fotos cuando puedo, escribo cuando me sale. Asesoro a tesistas en redacción y corrección de estilo. Si necesitas ese tipo de apoyo, los servicios profesionales están en <a href="https://intelecta.cl" target="_blank" rel="noopener">intelecta.cl</a>.</p>
@@ -211,7 +200,7 @@ const I18N = {
 
       <p class="about-foot">Si te sirvió, <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener">considera donarme</a> ☕</p>
     `,
-    disc_title: "descargo de responsabilidad",
+    disc_title: "Privacidad y uso responsable",
     disc_body: `
       <h3>qué hace aismell</h3>
       <p>aismell busca patrones de escritura que la IA usa más que los humanos. Es una herramienta de <strong>orientación</strong>, no un veredicto.</p>
@@ -238,7 +227,7 @@ const I18N = {
     privacy_local: "Local analysis. Your text is not sent or saved.",
     review_options: "Review options",
     semantic_label: "Paragraph similarity",
-    semantic_note: "Experimental and local. Downloads a model over 100 MB on first use.",
+    semantic_note: "Experimental. Downloads 100 MB on first use.",
     strip_run: "Clean characters locally",
     tagline: "Find formulas, repetition and rhythm problems. Decide what to edit without losing your voice.",
     examples_lbl: "Samples",
@@ -246,8 +235,7 @@ const I18N = {
     example_ai: "Generic essay",
     example_human: "Story",
     example_fakebib: "References",
-    biblio_note_short: "Looks up only the references (DOI, title, author) in public catalogs. The rest of the text stays in your browser.",
-    about_toggle: "What it does, what it doesn't, and the CLI",
+    biblio_note_short: "Sends only the references to public catalogs.",
     tagline_biblio: "Citations travel to CrossRef, OpenAlex, Google Books and other public sources. The rest of your text stays with you.",
     how_title: "how it works",
     how_layer1: "<strong>Phrase patterns.</strong> Filler phrases, forced connectors, English calques.<small>Auditable regex, no black box.</small>",
@@ -367,16 +355,7 @@ const I18N = {
     stripDiffRewrite: "rewritten version ({pct}% lexical difference)",
     stripError: "couldn't strip marks right now. Try again in a moment.",
     stripPrivacy: "Processed by Cloudflare Workers AI. The aismell service does not add text storage. Review the version before using it.",
-    why: "what it does",
-    whyText: "aismell reads your text and flags phrase-level and discourse-level cues: filler phrases, forced connectors, paragraphs that never change angle, over-explained themes, overly tidy endings, and flat rhythm. It explains what it found, why it matters, and where to edit. If a bibliography is detected, citations are cross-checked against public sources to confirm they exist.",
-    not: "what it does NOT do",
-    not1: "<strong>Does not rewrite your text unless you ask.</strong> The “strip marks” action only rewrites when you use it.",
-    not2: "<strong>Does not promise to bypass detectors.</strong> Stripping visible marks helps clean up text; it doesn't guarantee passing any test.",
-    not3: "<strong>Not forensic.</strong> False positives happen; humans use these phrases too.",
-    cli: "also a CLI",
-    cliText: "Working with PDFs? There's a CLI version that annotates Word and PDF with highlights and margin comments. <a href=\"https://github.com/brm-src/aismell#cli\" target=\"_blank\" rel=\"noopener\">See on GitHub</a>.",
     donate: "☕ donate",
-    donateNote: "If it helped, consider donating. I maintain it solo, without tracking or fees.",
     placeholder: "Paste text, or drop a file (.txt / .md / .docx / .pdf).",
     sentences: "sentences",
     smell: "index",
@@ -404,14 +383,13 @@ const I18N = {
     docx_done_file: "Generated file",
     docx_done_lead: "Yellow marks phrases or areas worth reviewing.",
     docx_done_body: "The downloaded Word includes highlights and margin comments. Each comment explains what was found, why it may sound AI-written, and what to change in this document.",
-    pdf_browser_unsupported: "PDF in the browser isn't supported yet (the library doesn't run in WASM). For PDF use the CLI: aismell paper.pdf --out paper-marked.pdf",
     pdf_extracting: "extracting text from PDF…",
     pdf_extracting_page: "extracting PDF: page {page}/{total}…",
-    pdf_too_big: "PDF too heavy for the browser ({mb} MB). Use the CLI: aismell file.pdf --out file-marked.pdf",
-    pdf_no_text: "This PDF has no text layer (probably scanned). Without OCR I can't read it. Use the CLI with OCR for scanned PDFs.",
+    pdf_too_big: "The PDF is {mb} MB and the limit is 25 MB. Split the file or paste the text.",
+    pdf_no_text: "This PDF has no text layer (probably scanned). Without selectable text I can't read it: paste the text or use a PDF with text.",
     biblio: "Verify bibliography",
     biblioTip: "Finds the references in the text (DOIs, papers, books, citations) and checks them against CrossRef, OpenAlex, Google Books and other sources. AI often invents bibliography.",
-    strictTip: "Hides light and medium signals so you start with what matters.",
+    strictTip: "Hides light and medium signals.",
     biblio_header: "BIBLIOGRAPHY — {n} REFERENCES",
     biblio_privacy: "Only the identifiers (DOI / title / author / arXiv ID) are sent to CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books and OpenLibrary. Your text stays local.",
     biblio_none: "no parseable references found",
@@ -421,8 +399,8 @@ const I18N = {
     biblio_cta_note: "Fake bibliography in a thesis or paper is not a detail: it can sink a submission.",
     biblio_cta_btn: "academic review by Intelecta",
     footer_brand: "an open tool by <a href=\"https://intelecta.cl\" target=\"_blank\" rel=\"noopener\"><strong>Intelecta</strong></a>",
-    footer_disclaimer: "disclaimer",
-    footer_about: "about",
+    footer_disclaimer: "Privacy and use",
+    footer_about: "About",
     about_title: "about me and this site",
     about_body: `
       <p>Eternal student. Reader who understands maybe 50% of what he reads and comes back to the same book a couple of years later as if it were a different one. I take photos when I can, I write when it comes. I help thesis writers with editing and style. If you need that kind of support, the professional services are at <a href="https://intelecta.cl" target="_blank" rel="noopener">intelecta.cl</a>.</p>
@@ -435,7 +413,7 @@ const I18N = {
 
       <p class="about-foot">If it helped, <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener">consider donating</a> ☕</p>
     `,
-    disc_title: "disclaimer",
+    disc_title: "Privacy and responsible use",
     disc_body: `
       <h3>what aismell does</h3>
       <p>aismell looks for writing patterns that AI uses more than humans. It's a <strong>guidance tool</strong>, not a verdict.</p>
@@ -2953,7 +2931,7 @@ async function handleFile(file) {
   const t = I18N[UILANG];
   if (!analyzeFn) { setStatus(t.booting, true); return; }
   if (file.size > 25 * 1024 * 1024) {
-    setStatus(UILANG === "es" ? "Archivo demasiado grande: máximo 25 MB en el navegador. Usa el CLI para documentos mayores." : "File too large: browser limit is 25 MB. Use the CLI for larger documents.", true);
+    setStatus(UILANG === "es" ? "Archivo demasiado grande: máximo 25 MB. Divide el archivo o pega el texto." : "File too large: the limit is 25 MB. Split the file or paste the text.", true);
     return;
   }
   const name = file.name.toLowerCase();
