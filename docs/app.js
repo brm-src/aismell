@@ -762,6 +762,9 @@ def run(text, lang_code, strict, era_code):
         "stats": report.stats,
         "score_components": report.score_components,
         "rates": report.rates,
+        "human_exceed": report.human_exceed,
+        "context": report.context,
+        "style_reasons": report.style_reasons,
         "hits": [],
         "structural": [],
         "sections": [],
@@ -930,19 +933,20 @@ async function addSemanticNotes(report, text, progress) {
   }
 }
 
-function severityClass(score) {
-  if (score >= 0.6) return "s-high";
-  if (score >= 0.3) return "s-mod";
-  if (score > 0) return "s-low";
-  return "s-clean";
+// The engine labels each report against its human reference texts; the score
+// thresholds are only a fallback for reports produced without that label.
+const LEVEL_OF_LABEL = { alto: "high", high: "high", moderado: "mod", moderate: "mod", bajo: "low", low: "low", limpio: "clean", clean: "clean" };
+function severityLevel(score, label) {
+  return LEVEL_OF_LABEL[label] || (score >= 0.6 ? "high" : score >= 0.3 ? "mod" : score > 0 ? "low" : "clean");
 }
 
-function severityLabel(score) {
+function severityClass(score, label) {
+  return "s-" + severityLevel(score, label);
+}
+
+function severityLabel(score, label) {
   const t = I18N[UILANG];
-  if (score >= 0.6) return t.label_high;
-  if (score >= 0.3) return t.label_mod;
-  if (score > 0)    return t.label_low;
-  return t.label_clean;
+  return { high: t.label_high, mod: t.label_mod, low: t.label_low, clean: t.label_clean }[severityLevel(score, label)];
 }
 
 function renderIntelectaNudge(kind) {
@@ -1307,7 +1311,8 @@ function computeVerdict(report) {
   }
 
   if (report.sentences < 3) reasons.push(t.verdict_reasons.length);
-  const key = h >= 0.6 ? "ai" : h >= 0.3 ? "mixed" : hits.length || structural.length ? "human" : "clean";
+  const level = severityLevel(h, report.label);
+  const key = level === "high" ? "ai" : level === "mod" ? "mixed" : hits.length || structural.length ? "human" : "clean";
   const label = {ai: t.verdict_ai, mixed: t.verdict_mixed, human: t.verdict_human, clean: t.verdict_clean}[key];
   const klass = {ai: "v-high", mixed: "v-mid", human: "v-low", clean: "v-clean"}[key];
   return { label, klass, reasons: reasons.slice(0, 3), heur: h, key };
@@ -1348,7 +1353,7 @@ function renderSegments(report) {
   }).join("");
   // One block per segment: where in the text the signals concentrate.
   const strip = segments.map((segment) => {
-    const level = severityClass(segment.score);
+    const level = severityClass(segment.score, segment.label);
     return `<i class="heat ${level}" title="${escapeHtml(`${es ? "Tramo" : "Segment"} ${segment.index}: ${Math.round(segment.score * 100)}/100`)}"></i>`;
   }).join("");
   return `<details class="segments-more">
@@ -1447,6 +1452,32 @@ function renderActionSummary(report) {
   </section>`;
 }
 
+// What the calibration means, in one honest sentence: how many human reference
+// texts reach this index. Not a probability that this text was generated.
+function renderHumanExceed(report) {
+  const share = report.human_exceed;
+  if (share == null) return "";
+  const es = UILANG === "es";
+  const pct = Math.round(share * 100);
+  const amount = share < 0.01 ? (es ? "menos del 1 %" : "under 1%") : (es ? `el ${pct} %` : `${pct}%`);
+  const kind = {
+    fiction: ["relatos", "stories"], academic: ["textos académicos", "academic texts"],
+    info: ["textos informativos", "informative texts"], web: ["textos personales o de opinión", "personal or opinion texts"],
+  }[report.context] || ["textos", "texts"];
+  return `<span class="index-note">${es ? `Lo alcanza ${amount} de los ${kind[0]} humanos de referencia` : `Reached by ${amount} of human ${kind[1]} used as reference`}</span>`;
+}
+
+function renderStyleReasons(report) {
+  const reasons = report.style_reasons || [];
+  if (!reasons.length) return "";
+  const es = UILANG === "es";
+  return `<section class="style-reasons">
+    <h3>${es ? "Qué más pesa en el índice" : "What else weighs on the index"}</h3>
+    <p class="editorial-limit">${es ? "Rasgos de estilo medidos en todo el texto y comparados con escritura humana del mismo idioma." : "Style traits measured across the whole text and compared with human writing in the same language."}</p>
+    <ul>${reasons.map((r) => `<li>${escapeHtml(r.charAt(0).toUpperCase() + r.slice(1))}</li>`).join("")}</ul>
+  </section>`;
+}
+
 function renderVerdict(report) {
   const t = I18N[UILANG];
   const v = computeVerdict(report);
@@ -1467,18 +1498,19 @@ function render(report) {
   lastReport = report;
   const t = I18N[UILANG];
   const pct = Math.round(report.score * 100);
-  const sev = severityClass(report.score);
+  const sev = severityClass(report.score, report.label);
 
   const totalFindings = report.hits.length + report.structural.length;
 
   const es = UILANG === "es";
   let scoreHtml = renderVerdict(report) + `<div class="review-meta">
-    <div class="review-index"><span class="stat-label">${es ? "Índice editorial" : "Editorial index"}</span><strong class="${sev}">${pct}<small>/100 · ${severityLabel(report.score)}</small></strong><span class="index-meter ${sev}" style="--pct:${pct}%" aria-hidden="true"></span></div>
+    <div class="review-index"><span class="stat-label">${es ? "Índice editorial" : "Editorial index"}</span><strong class="${sev}">${pct}<small>/100 · ${severityLabel(report.score, report.label)}</small></strong><span class="index-meter ${sev}" style="--pct:${pct}%" aria-hidden="true"></span>${renderHumanExceed(report)}</div>
     <div><span class="stat-label">${es ? "Cosas a revisar" : "Things to review"}</span><strong>${totalFindings}</strong></div>
     <div><span class="stat-label">${es ? "Oraciones" : "Sentences"}</span><strong>${report.sentences}</strong></div>
   </div>`;
 
   scoreHtml += renderActionSummary(report);
+  scoreHtml += renderStyleReasons(report);
   // Detail views follow the findings: a writer needs "what to fix" before statistics.
   let detailHtml = renderRates(report) + renderSegments(report);
   if (report.semantic?.length) {
@@ -3113,12 +3145,12 @@ async function annotateDocx(file) {
     } else {
       // Fallback: no extracted text — show minimal score panel
       const pct = Math.round(result.score * 100);
-      const sev = severityClass(result.score);
+      const sev = severityClass(result.score, result.label);
       els.score.innerHTML = `
         <div class="score-top">
-          <div class="pct ${sev}">${pct}%</div>
+          <div class="pct ${sev}">${pct}/100</div>
           <div class="meta">
-            <strong>${severityLabel(result.score)}</strong> · ${result.sentences} ${t.sentences} ·
+            <strong>${severityLabel(result.score, result.label)}</strong> · ${result.sentences} ${t.sentences} ·
             ${result.findings} ${t.findings}
           </div>
         </div>`;

@@ -1239,7 +1239,10 @@ def test_statistics_only_score_when_the_finding_is_reported():
         assert report.score_components["statistical"] == 0
         if count == 5:
             assert report.total_findings == 0
-            assert report.score == 0
+            # The rule index stays at zero; the style model may add a small,
+            # explained amount, faded out on short texts.
+            assert report.score_components["combined"] == 0
+            assert report.score < 0.15
 
 
 def test_named_actors_do_not_get_an_unreported_anchor_penalty():
@@ -1356,3 +1359,15 @@ def test_genre_packs_catch_review_and_guide_templates():
     assert "es.resena_aciertos" in {h.pattern.id for h in review.hits}
     guide = analyze("Remember, every runner started somewhere. Celebrate small wins along the way. Happy running!", lang="en")[0]
     assert "en.guide_motivational_close" in {h.pattern.id for h in guide.hits}
+
+
+def test_style_model_ranks_generated_story_above_human_story_and_calibrates():
+    from aismell.core import _STYLE_MODEL, split_sentences
+    assert set(_STYLE_MODEL) == {"es", "en"}
+    ai = analyze((SAMPLES / "es_ai_fiction.txt").read_text(encoding="utf-8"), lang="es")[0]
+    human = analyze((SAMPLES / "es_human_quiroga_gallina.txt").read_text(encoding="utf-8"), lang="es")[0]
+    assert ai.score > human.score
+    assert 0.0 <= ai.human_exceed < human.human_exceed <= 1.0
+    assert ai.context in {"fiction", "academic", "info", "web"}
+    # A hard wrap (PDF copy) is not a sentence boundary.
+    assert len(split_sentences("Esta oración sigue\nen la línea siguiente. Otra más.")) == 2

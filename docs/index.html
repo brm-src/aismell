@@ -1680,6 +1680,12 @@
   .workspace-main { align-self: stretch; grid-template-rows: 1fr; grid-auto-rows: auto; }
   .workspace .editor { display: flex; flex-direction: column; }
   .workspace .editor #input { flex: 1; }
+  .index-note { font-family: var(--sans); font-size: 12.5px; color: var(--dim); margin-top: 4px; line-height: 1.4; }
+  .style-reasons { padding: 18px 24px; border-bottom: 1px solid var(--line); font-family: var(--sans); }
+  .style-reasons h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .style-reasons .editorial-limit { margin-top: 0; }
+  .style-reasons ul { margin: 10px 0 0 18px; font-size: 15px; line-height: 1.6; }
+  @media (max-width: 600px) { .style-reasons { padding: 16px; } }
 </style>
 </head>
 <body>
@@ -1801,7 +1807,7 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
-<script src="app.js?v=layout-9"></script>
+<script src="app.js?v=style-model-1"></script>
 
 </body>
 </html>

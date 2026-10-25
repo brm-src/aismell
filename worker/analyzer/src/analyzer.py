@@ -45,6 +45,10 @@ def analyze_for_rewrite(text: str) -> dict[str, Any]:
         "language": language,
         "score": round(report.score * 100),
         "scoreComponents": report.score_components,
+        "label": report.severity_label,
+        "humanExceed": report.human_exceed,
+        "context": report.context,
+        "styleReasons": report.style_reasons,
         "stats": report.stats,
         "findings": findings[:24],
     }

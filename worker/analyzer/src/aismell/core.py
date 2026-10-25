@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import statistics
 from dataclasses import dataclass, field
@@ -99,6 +100,10 @@ class Report:
     stats: dict[str, float | int] = field(default_factory=dict)
     score_components: dict[str, float] = field(default_factory=dict)
     rates: dict[str, dict[str, float]] = field(default_factory=dict)
+    features: dict[str, float] = field(default_factory=dict)
+    style_reasons: list[str] = field(default_factory=list)
+    human_exceed: float | None = None  # share of human reference texts scoring above this one
+    context: str | None = None  # fiction | academic | info | web
 
     @property
     def total_findings(self) -> int:
@@ -192,8 +197,13 @@ def detect_lang(text: str) -> str:
 _SENT_SPLIT = re.compile(r"(?<=[\.\?!¡¿…])\s+(?=[A-ZÁÉÍÓÚÑ¿¡])|\n+")
 
 
+_HARD_WRAP = re.compile(r"(?<![.!?:;»\"”])[ \t]*\n[ \t]*(?=[a-záéíóúñü(])")
+
+
 def split_sentences(text: str) -> list[str]:
-    return [s.strip() for s in _SENT_SPLIT.split(text) if s.strip()]
+    # A line break before a lowercase word is a hard wrap (PDF, e-text), not a
+    # sentence boundary; splitting there fakes short, choppy sentences.
+    return [s.strip() for s in _SENT_SPLIT.split(_HARD_WRAP.sub(" ", text)) if s.strip()]
 
 
 def _authorial_lines(lines: list[str]) -> list[tuple[int, str]]:
@@ -753,6 +763,180 @@ def _text_stats(text: str, sentences: list[str]) -> dict[str, float | int]:
         "type_token_ratio": round(ttr, 4),
         "trigram_repetition": round(repeated / max(len(tokens) - 2, 1), 4),
     }
+
+
+_FUNCTION_WORDS = {
+    "es": ("de la que el en y a los se del las un por con no una su para es al lo como más pero sus le ya o "
+           "este porque esta entre cuando muy sin sobre también me hasta hay donde desde todo nos todos les ni "
+           "eso esto yo mi te tu ese algo así bueno pues entonces creo cada cual través fundamental además "
+           "importante permite manera forma clave tanto mismo sino incluso").split(),
+    "en": ("the of and to a in is that it for was on with as he be at by i this had not are but from or have an "
+           "they which you were her she there would their we him been has when who will no so what if just "
+           "my me your like really because then also can each its these such crucial ensuring additionally "
+           "however moreover overall key various").split(),
+}
+_WORD_RX = re.compile(r"[^\W\d_]+(?:['’][^\W\d_]+)?", re.UNICODE)
+
+
+def _style_features(text: str, sentences: list[str], lang: str) -> dict[str, float]:
+    """Length-normalized stylometry. Every value is a rate or ratio so short and
+    long texts are comparable. Paragraph layout is left out on purpose: it depends
+    on how the text was pasted (single vs blank-line breaks), not on who wrote it."""
+    text = _HARD_WRAP.sub(" ", text)
+    # Formatting (bold, headings, bullets) is judged by the explainable rules;
+    # here it would only teach "markdown = AI", which a human README breaks.
+    text = re.sub(r"(?m)^\s*(?:#{1,6}|[-*•]|\d+[.)])\s+", "", text.replace("**", "").replace("__", ""))
+    words = _WORD_RX.findall(text)
+    n = max(len(words), 1)
+    low = [w.lower() for w in words]
+    per100 = lambda count: 100.0 * count / n
+    lens = [len(_WORD_RX.findall(s)) for s in sentences] or [0]
+    mean = statistics.mean(lens)
+    first_words = [(_WORD_RX.findall(s) or [""])[0].lower() for s in sentences]
+    caps_mid = sum(1 for s in sentences for w in _WORD_RX.findall(s)[1:] if w[:1].isupper())
+    sample = low[:300]
+    counts: dict[str, int] = {}
+    for w in low:
+        counts[w] = counts.get(w, 0) + 1
+    f = {
+        "sent_mean": mean,
+        "sent_cv": statistics.pstdev(lens) / mean if mean else 0.0,
+        "sent_short": sum(1 for x in lens if x < 8) / len(lens),
+        "sent_long": sum(1 for x in lens if x > 35) / len(lens),
+        "word_len": sum(len(w) for w in words) / n,
+        "ttr300": len(set(sample)) / max(len(sample), 1),
+        "hapax": sum(1 for c in counts.values() if c == 1) / max(len(counts), 1),
+        "first_word_div": len(set(first_words)) / max(len(first_words), 1),
+        "caps_mid": per100(caps_mid),
+        "digits": per100(len(re.findall(r"\d+", text))),
+        "comma": per100(text.count(",")),
+        "semicolon": per100(text.count(";")),
+        "colon": per100(text.count(":")),
+        "paren": per100(text.count("(")),
+        "quote": per100(len(re.findall(r"[\"«»“”]", text))),
+        "question": per100(text.count("?")),
+        "exclaim": per100(text.count("!")),
+        "dash": per100(len(re.findall(r"—|–| - ", text))),
+        "ellipsis": per100(len(re.findall(r"\.\.\.|…", text))),
+        "repeat_punct": per100(len(re.findall(r"[!?]{2,}|\.{4,}", text))),
+        "contraction": per100(len(re.findall(r"\b\w+['’](?:t|s|re|ve|ll|d|m)\b", text))) if lang == "en" else 0.0,
+        "sent_max": max(lens),
+        "word_len_sd": statistics.pstdev([len(w) for w in words]) if len(words) > 1 else 0.0,
+        "conj_start": sum(1 for w in first_words if w in ("y", "pero", "and", "but", "so", "or", "o")) / max(len(first_words), 1),
+    }
+    suffixes = {
+        "es": {"sfx_adverb": ("mente",), "sfx_nominal": ("ción", "sión", "miento"), "sfx_gerund": ("ando", "iendo"),
+               "sfx_quality": ("idad", "ismo"), "sfx_able": ("able", "ible")},
+        "en": {"sfx_adverb": ("ly",), "sfx_nominal": ("tion", "sion", "ment"), "sfx_gerund": ("ing",),
+               "sfx_quality": ("ity", "ness"), "sfx_able": ("able", "ible")},
+    }.get(lang, {})
+    for key, ends in suffixes.items():
+        f[key] = per100(sum(1 for w in low if len(w) > 5 and w.endswith(ends)))
+    for w in _FUNCTION_WORDS.get(lang, ()):
+        f["fw_" + w] = per100(counts.get(w, 0))
+    return f
+
+
+# BEGIN STYLE MODEL (generated by tools/style_model/train.py; do not edit by hand)
+_STYLE_MODEL: dict = {
+    "es": {"genre": {"classes": ["academic", "fiction", "info", "web"], "coef": [[-0.47338, 0.66029, 0.01957, -0.22616, 0.0, -0.15797, 0.19038, -0.04349, 0.04982, 0.32886, -0.12143, -0.08091, -0.06488, -0.1614, -0.08549, 0.07992, -0.32495, -0.11969, 0.27122, 0.25471, -0.09969, 0.0381, 0.09033, 0.36806, 0.05775, -0.19544, -0.02115, -0.14033, 0.42638, -0.10419, 0.17626, -0.04152, 0.08069, -0.07349, -0.16157, 0.09079, -0.16509, -0.27447, 0.02023, -0.31536, -0.0923, 0.00482, 0.08988, 0.14407, 0.21404, -0.31987, -0.05022, -0.08703, 0.11106, 0.05906, -0.0949, 0.04305, 0.1215, -0.10084, -0.03838, -0.01512, 0.00413, -0.15522, -0.32056, 0.18937, 0.24714, -0.1988, 0.17498, -0.03163, -0.09897, -0.33648, 0.10922, -0.09342, 0.12844, 0.01183, -0.25567, 0.10878, -0.25805, 0.2081, -0.24093, -0.30395, 0.08948, 0.05156, -0.27603, 0.02351, 0.00416, 0.18706, 0.01323, -0.02299, -0.18242, 0.2331, -0.06108, 0.28763, 0.06166, -0.98948, 0.38499, -0.4009, -0.34244, 0.00422, 0.0, -0.42822, -0.09107, 0.11485, -0.02054, 0.14313, -0.01444, -0.30017, -0.0478, -0.08803, -0.42001, -0.10528, -0.22161, -0.08296, -0.49812, 0.08782, -0.04192, -0.076, 0.58188, 0.39877, 0.68024, -0.35563, 0.16457, 0.92831, 0.89815], [-0.89031, 0.05917, 0.71406, 0.16551, 0.0, 0.45075, -0.68616, 0.30848, 0.31242, -0.09449, 0.31519, -0.26572, 0.22387, 0.15691, 0.01887, -0.00163, 0.09883, -0.18726, -0.15187, -0.21876, 0.03919, -0.00688, -0.11852, -0.33314, -0.07946, -0.03721, -0.06194, 0.36722, -0.32118, -0.06336, 0.05778, -0.42349, -0.19411, -0.19645, 0.24951, -0.04855, -0.02313, 0.16525, -0.21621, 0.09489, -0.03022, -0.35162, -0.42704, 0.21982, 0.02099, 0.37553, 0.02858, -0.12575, 0.10376, -0.01747, -0.09422, 0.07705, -0.00087, -0.07276, -0.15874, 0.10397, 0.31064, -0.19545, 0.02374, -0.25282, -0.09877, 0.04008, -0.22005, -0.16232, 0.09913, -0.30002, 0.24366, 0.03842, 0.11672, 0.04845, 0.4461, 0.01125, -0.05721, -0.00358, -0.00261, 0.18066, 0.09743, -0.00395, 0.26026, 0.127, 0.13576, 0.17724, -0.05722, 0.10376, 0.07403, 0.0227, -0.15233, -0.26316, -0.14406, 0.61402, -0.49814, 0.4748, -0.02117, -0.36676, 0.0, -0.28524, -0.12726, 0.13196, 0.29851, -0.15582, 0.14676, 0.19106, -0.13435, 0.94161, 0.42057, -0.09042, 0.11592, -0.2053, 0.2547, -0.10917, -0.00682, 0.01806, -0.64975, -0.54869, -0.411, 0.07201, 0.34955, -0.64587, -0.78028], [0.51714, -0.90433, -0.35506, 0.0883, 0.0, -0.55632, 0.348, -0.46278, -0.22378, -0.18406, -0.05379, 0.1226, -0.04251, -0.15103, 0.00134, -0.04777, -0.00314, 0.19193, 0.0998, -0.02458, -0.00424, -0.06545, -0.00517, 0.00582, -0.01927, 0.07728, 0.02261, -0.03978, -0.00238, 0.07308, -0.06861, 0.25848, 0.07385, 0.17289, -0.08656, 0.06143, 0.18669, 0.0696, 0.12866, 0.24612, 0.05159, 0.17864, 0.24798, 0.15108, 0.06072, -0.10217, 0.06161, 0.20094, -0.0868, -0.10301, -0.08103, -0.17838, -0.09858, 0.10588, 0.11323, -0.08309, -0.0592, 0.08912, 0.15317, -0.1307, -0.0201, 0.00668, 0.00945, 0.15133, 0.0251, 0.28656, -0.06666, 0.05695, -0.32155, -0.06207, 0.07348, -0.08047, 0.29044, -0.10665, 0.06593, 0.0342, -0.13671, 0.04579, -0.03026, -0.1979, 0.00754, -0.0386, 0.00322, 0.05207, -0.09649, -0.31762, -0.06885, -0.18949, -0.21212, 0.23794, 0.24759, 0.06747, 0.17452, 0.32217, 0.0, 0.2894, 0.45583, -0.09057, -0.17163, 0.21263, 0.06952, 0.00835, -0.00964, -0.78018, -0.2342, -0.14959, 0.55583, 1.2971, 0.22993, -0.07979, 0.2051, 0.01922, -0.02702, -0.04405, -0.13345, 0.09922, 0.05371, 0.03883, -0.14402], [0.84654, 0.18487, -0.37857, -0.02765, 0.0, 0.26354, 0.14778, 0.19779, -0.13846, -0.05031, -0.13998, 0.22403, -0.11647, 0.15553, 0.06528, -0.03053, 0.22927, 0.11501, -0.21915, -0.01136, 0.06474, 0.03423, 0.03336, -0.04074, 0.04098, 0.15537, 0.06048, -0.18711, -0.10282, 0.09447, -0.16543, 0.20654, 0.03957, 0.09705, -0.00139, -0.10367, 0.00153, 0.03962, 0.06732, -0.02565, 0.07092, 0.16817, 0.08918, -0.51497, -0.29575, 0.04651, -0.03997, 0.01184, -0.12801, 0.06142, 0.27014, 0.05828, -0.02204, 0.06772, 0.0839, -0.00576, -0.25557, 0.26154, 0.14365, 0.19415, -0.12827, 0.15204, 0.03562, 0.04261, -0.02527, 0.34994, -0.28621, -0.00195, 0.07639, 0.00179, -0.26392, -0.03956, 0.02482, -0.09787, 0.1776, 0.08909, -0.0502, -0.0934, 0.04603, 0.0474, -0.14747, -0.32569, 0.04077, -0.13284, 0.20489, 0.06182, 0.28227, 0.16503, 0.29453, 0.13752, -0.13444, -0.14137, 0.18908, 0.04037, 0.0, 0.42406, -0.2375, -0.15624, -0.10633, -0.19994, -0.20184, 0.10076, 0.19179, -0.07339, 0.23364, 0.34529, -0.45015, -1.00884, 0.01349, 0.10114, -0.15636, 0.03872, 0.09489, 0.19397, -0.13579, 0.18441, -0.56782, -0.32127, 0.02615]], "intercept": [-4.70084, -2.28028, 3.26317, 3.71795]}, "human_cdf_by_genre": {"academic": [[0.0, 0.0], [0.0, 0.025], [0.0, 0.05], [0.0, 0.075], [0.0, 0.1], [0.0001, 0.125], [0.0001, 0.15], [0.0001, 0.175], [0.0001, 0.2], [0.0003, 0.225], [0.0003, 0.25], [0.0004, 0.275], [0.0005, 0.3], [0.0006, 0.325], [0.0009, 0.35], [0.0011, 0.375], [0.0013, 0.4], [0.0015, 0.425], [0.0018, 0.45], [0.0021, 0.475], [0.0029, 0.5], [0.0038, 0.525], [0.0052, 0.55], [0.0057, 0.575], [0.0066, 0.6], [0.0084, 0.625], [0.0101, 0.65], [0.0128, 0.675], [0.0209, 0.7], [0.0226, 0.725], [0.0247, 0.75], [0.0315, 0.775], [0.0394, 0.8], [0.0515, 0.825], [0.0623, 0.85], [0.0711, 0.875], [0.1, 0.9], [0.2052, 0.925], [0.3285, 0.95], [0.5119, 0.975], [0.7933, 1.0]], "fiction": [[0.0, 0.0], [0.0, 0.025], [0.0001, 0.05], [0.0002, 0.075], [0.0002, 0.1], [0.0003, 0.125], [0.0006, 0.15], [0.0009, 0.175], [0.0012, 0.2], [0.0014, 0.225], [0.0016, 0.25], [0.0022, 0.275], [0.0028, 0.3], [0.0032, 0.325], [0.0042, 0.35], [0.0049, 0.375], [0.0067, 0.4], [0.0072, 0.425], [0.0085, 0.45], [0.0097, 0.475], [0.011, 0.5], [0.0119, 0.525], [0.0143, 0.55], [0.0168, 0.575], [0.0197, 0.6], [0.0218, 0.625], [0.0267, 0.65], [0.0317, 0.675], [0.0412, 0.7], [0.0551, 0.725], [0.0657, 0.75], [0.0726, 0.775], [0.0846, 0.8], [0.1018, 0.825], [0.1275, 0.85], [0.149, 0.875], [0.2025, 0.9], [0.2316, 0.925], [0.3542, 0.95], [0.6405, 0.975], [0.9991, 1.0]], "info": [[0.0, 0.0], [0.0, 0.025], [0.0, 0.05], [0.0, 0.075], [0.0, 0.1], [0.0, 0.125], [0.0, 0.15], [0.0, 0.175], [0.0001, 0.2], [0.0001, 0.225], [0.0001, 0.25], [0.0002, 0.275], [0.0002, 0.3], [0.0003, 0.325], [0.0004, 0.35], [0.0006, 0.375], [0.0007, 0.4], [0.001, 0.425], [0.0012, 0.45], [0.0014, 0.475], [0.0017, 0.5], [0.0022, 0.525], [0.0027, 0.55], [0.0036, 0.575], [0.0051, 0.6], [0.0065, 0.625], [0.0082, 0.65], [0.0098, 0.675], [0.0118, 0.7], [0.0144, 0.725], [0.0174, 0.75], [0.0217, 0.775], [0.0287, 0.8], [0.0364, 0.825], [0.0447, 0.85], [0.0602, 0.875], [0.0834, 0.9], [0.1239, 0.925], [0.1874, 0.95], [0.3911, 0.975], [0.9581, 1.0]], "web": [[0.0, 0.0], [0.0, 0.025], [0.0, 0.05], [0.0001, 0.075], [0.0001, 0.1], [0.0002, 0.125], [0.0002, 0.15], [0.0003, 0.175], [0.0003, 0.2], [0.0005, 0.225], [0.0007, 0.25], [0.0007, 0.275], [0.0009, 0.3], [0.0012, 0.325], [0.0013, 0.35], [0.0016, 0.375], [0.002, 0.4], [0.0024, 0.425], [0.0032, 0.45], [0.0042, 0.475], [0.0054, 0.5], [0.0064, 0.525], [0.0074, 0.55], [0.0096, 0.575], [0.0116, 0.6], [0.0152, 0.625], [0.0189, 0.65], [0.0243, 0.675], [0.0283, 0.7], [0.0354, 0.725], [0.0427, 0.75], [0.0482, 0.775], [0.0585, 0.8], [0.0743, 0.825], [0.0908, 0.85], [0.1346, 0.875], [0.1597, 0.9], [0.1963, 0.925], [0.2734, 0.95], [0.5157, 0.975], [0.9931, 1.0]]}, "keys": ["caps_mid", "colon", "comma", "conj_start", "contraction", "dash", "digits", "ellipsis", "exclaim", "first_word_div", "fw_a", "fw_adem\u00e1s", "fw_al", "fw_algo", "fw_as\u00ed", "fw_bueno", "fw_cada", "fw_clave", "fw_como", "fw_con", "fw_creo", "fw_cual", "fw_cuando", "fw_de", "fw_del", "fw_desde", "fw_donde", "fw_el", "fw_en", "fw_entonces", "fw_entre", "fw_es", "fw_ese", "fw_eso", "fw_esta", "fw_este", "fw_esto", "fw_forma", "fw_fundamental", "fw_hasta", "fw_hay", "fw_importante", "fw_incluso", "fw_la", "fw_las", "fw_le", "fw_les", "fw_lo", "fw_los", "fw_manera", "fw_me", "fw_mi", "fw_mismo", "fw_muy", "fw_m\u00e1s", "fw_ni", "fw_no", "fw_nos", "fw_o", "fw_para", "fw_permite", "fw_pero", "fw_por", "fw_porque", "fw_pues", "fw_que", "fw_se", "fw_sin", "fw_sino", "fw_sobre", "fw_su", "fw_sus", "fw_tambi\u00e9n", "fw_tanto", "fw_te", "fw_todo", "fw_todos", "fw_trav\u00e9s", "fw_tu", "fw_un", "fw_una", "fw_y", "fw_ya", "fw_yo", "hapax", "hit_ids", "hits1", "hits2", "hits3", "log_words", "paren", "question", "quote", "repeat_punct", "rule_anchor_starvation", "rule_chatbot_artifacts", "rule_combined", "rule_discourse", "rule_editorial_distance", "rule_lexical", "rule_narrative", "rule_rhythm_format", "rule_statistical", "semicolon", "sent_cv", "sent_long", "sent_max", "sent_mean", "sent_short", "sfx_able", "sfx_adverb", "sfx_gerund", "sfx_nominal", "sfx_quality", "structural", "structural_kinds", "ttr300", "word_len", "word_len_sd"], "mean": [7.091833, 0.779902, 6.185714, 0.03115, 0.0, 0.21057, 1.591691, 0.187876, 0.213393, 0.76143, 1.909694, 0.06906, 0.520275, 0.066503, 0.084062, 0.013174, 0.088312, 0.016224, 0.518385, 0.978547, 0.010502, 0.030357, 0.139354, 6.657434, 1.09156, 0.134305, 0.111211, 3.066333, 2.78399, 0.036194, 0.211503, 0.817846, 0.068459, 0.05179, 0.16457, 0.277213, 0.065353, 0.062922, 0.017617, 0.112379, 0.100187, 0.034239, 0.028847, 4.254644, 1.09887, 0.173244, 0.04512, 0.470706, 1.570577, 0.039458, 0.191229, 0.123723, 0.062044, 0.10464, 0.471094, 0.062084, 0.850495, 0.121685, 0.329128, 0.881161, 0.019197, 0.25081, 0.850218, 0.07468, 0.033719, 2.649132, 1.157913, 0.201667, 0.104262, 0.216416, 0.710781, 0.280173, 0.161953, 0.054002, 0.107262, 0.133499, 0.101167, 0.05813, 0.081203, 1.318936, 1.026439, 2.98738, 0.151679, 0.065067, 0.741771, 1.161307, 0.040566, 0.168404, 0.063898, 6.108714, 0.369123, 0.210814, 1.013917, 0.013193, 0.0, 0.029495, 0.181633, 0.013354, 0.005508, 0.106176, 0.003527, 0.034916, 0.013109, 0.290902, 0.57839, 0.192098, 59.201123, 26.070729, 0.14342, 0.186813, 0.466787, 0.681607, 2.166433, 0.736243, 8.359876, 1.50536, 0.568246, 4.976379, 3.071169], "scale": [6.65495, 1.400448, 2.231432, 0.052393, 1.0, 0.600147, 2.850771, 0.684186, 0.917716, 0.153292, 0.940956, 0.15156, 0.44518, 0.158525, 0.15754, 0.06369, 0.178006, 0.069272, 0.438144, 0.664835, 0.053664, 0.099748, 0.22944, 2.308109, 0.807431, 0.230093, 0.202879, 1.294061, 1.107056, 0.101908, 0.328528, 0.735127, 0.15288, 0.127761, 0.253251, 0.351158, 0.148585, 0.136841, 0.068839, 0.197606, 0.201803, 0.105554, 0.094533, 1.874669, 0.819844, 0.335462, 0.13854, 0.457988, 1.00936, 0.108933, 0.468991, 0.342266, 0.140329, 0.202071, 0.441259, 0.15282, 0.732776, 0.274101, 0.421979, 0.680295, 0.076731, 0.310077, 0.589481, 0.169748, 0.111618, 1.353064, 0.727537, 0.246146, 0.204491, 0.304138, 0.717684, 0.347138, 0.23654, 0.124468, 0.298843, 0.208763, 0.198566, 0.158191, 0.248138, 0.830445, 0.692705, 1.171999, 0.22637, 0.194445, 0.08027, 1.487231, 0.116172, 0.297037, 0.157072, 0.677397, 0.631384, 0.450426, 1.513645, 0.179351, 1.0, 0.11056, 0.211346, 0.046822, 0.014355, 0.168729, 0.032853, 0.058533, 0.038162, 0.886139, 0.202014, 0.212773, 42.211038, 24.750669, 0.15053, 0.269478, 0.431035, 0.57644, 1.758703, 0.767011, 8.810834, 1.184745, 0.056682, 0.412241, 0.371633], "coef": [-0.57598, 0.12166, -0.22586, -0.32461, 0.0, 0.10866, -0.73041, -0.59774, -0.48512, -0.25169, -0.14076, 0.13015, -0.25336, 0.2332, -0.32167, -0.0185, 0.2304, 0.07167, 0.07475, -0.29901, 0.11604, -0.16724, 0.26539, -0.06721, 0.04206, 0.17867, 0.3695, 0.54305, -0.07888, -0.23978, -0.06311, 0.30884, 0.16896, -0.08721, -0.32207, 0.01086, 0.14784, -0.02733, 0.5705, -0.02195, -0.31794, 0.00296, 0.0119, 0.76868, -0.12983, -0.25753, 0.01572, 0.00937, -0.17246, -0.10372, 0.34534, 0.34121, 0.13806, -0.1431, 0.31488, -0.12028, 0.08599, 0.14993, 0.03238, -0.14983, 0.00766, 0.08455, 0.07091, -0.29679, -0.41812, 0.02399, -0.41502, 0.33888, 0.64693, 0.08733, 0.1977, 0.18272, 0.28213, -0.16516, 0.14706, -0.17396, -0.24762, -0.11736, -0.0401, 0.43379, 0.59339, 0.25233, -0.05199, -0.13067, 1.02621, 0.08365, 0.15226, 0.14698, 0.24452, -0.06969, -0.24141, -0.3914, -0.00797, -0.02566, 0.0, 0.4422, 0.40849, 0.06681, 0.12736, 0.31612, 0.13895, -0.28715, -0.13055, -0.52204, -0.37799, -1.02984, -0.64295, -0.31769, 0.40561, 0.01229, 0.22633, 0.16025, -0.04104, 0.33893, -0.32597, 0.22008, -0.11712, -0.00799, -0.13623], "intercept": -3.26514, "human_cdf": [[0.0, 0.0], [0.0, 0.025], [0.0, 0.05], [0.0, 0.075], [0.0, 0.1], [0.0001, 0.125], [0.0001, 0.15], [0.0002, 0.175], [0.0002, 0.2], [0.0003, 0.225], [0.0004, 0.25], [0.0005, 0.275], [0.0007, 0.3], [0.0009, 0.325], [0.0011, 0.35], [0.0013, 0.375], [0.0016, 0.4], [0.002, 0.425], [0.0025, 0.45], [0.0032, 0.475], [0.0044, 0.5], [0.0055, 0.525], [0.0067, 0.55], [0.0081, 0.575], [0.0097, 0.6], [0.0115, 0.625], [0.0143, 0.65], [0.0177, 0.675], [0.0213, 0.7], [0.0257, 0.725], [0.0322, 0.75], [0.0407, 0.775], [0.0481, 0.8], [0.0616, 0.825], [0.0756, 0.85], [0.1025, 0.875], [0.143, 0.9], [0.1884, 0.925], [0.2672, 0.95], [0.522, 0.975], [0.9991, 1.0]], "ai_recall_at": {"0.9": 0.939, "0.95": 0.902, "0.99": 0.703}, "n": {"human": 1468, "ai": 491}},
+    "en": {"genre": {"classes": ["academic", "fiction", "info", "web"], "coef": [[-0.57307, -0.29821, -0.18647, -0.22859, -0.59954, -0.37485, 0.32373, 0.01674, -0.09473, 0.12001, -0.13881, 0.12344, 0.31008, 0.19653, -0.1324, 0.01481, -0.06949, -0.14898, 0.21251, -0.22638, -0.18271, -0.11434, -0.04634, 0.00585, -0.01799, 0.21718, -0.21258, 0.04152, -0.02454, -0.23805, 0.11183, -0.46744, -0.39662, -0.33122, -0.21314, 0.32165, -0.2635, -0.17984, -0.062, 0.26562, -0.21242, -0.18629, -0.28142, 0.12399, 0.19842, -0.15819, 0.18471, -0.13651, -0.15059, -0.04561, 0.08191, 0.40165, -0.36825, 0.32163, -0.04046, -0.2569, -0.17242, 0.04824, 0.17004, -0.20165, -0.06861, 0.28604, -0.44985, 0.17104, -0.19481, 0.3622, 0.00484, 0.26664, -0.2657, 0.56062, -0.3658, -0.09693, 0.14845, 0.2546, -0.38589, -0.61391, -0.29197, -0.236, -0.2416, -0.24109, -0.40037, 0.30204, 0.30458, 0.15712, 0.04661, -0.79956, 0.49147, -0.36635, -0.35446, -0.16302, 0.0, 0.06229, 0.00663, -0.13136, -0.14349, 0.1455, -0.00168, -0.19074, -0.19361, 0.00463, -0.27508, 0.0317, -0.24147, 0.18541, -0.33212, -0.29762, 0.23214, -0.06564, 0.19936, 0.21725, 0.37113, -0.20699, -0.28196, 0.91099, 0.08689], [-0.15848, -0.03021, 0.67532, 0.10936, -0.20517, 0.23878, -0.32792, -0.07943, 0.13288, -0.18516, 0.18123, -0.14023, -0.39094, -0.26815, -0.10925, -0.1561, -0.1958, 0.20592, -0.09921, -0.31027, 0.23048, 0.09609, 0.25468, -0.31602, -0.07074, -0.1531, 0.23641, -0.16339, 0.01692, 0.32951, -0.3356, 0.02062, 0.33511, 0.40353, 0.01853, -0.29347, 0.11724, 0.16237, -0.07726, -0.625, 0.28721, -0.12147, -0.10979, 0.09397, 0.10747, 0.22301, -0.03778, 0.52132, 0.16244, 0.50179, 0.43748, -0.64533, 0.59197, -0.35493, -0.23013, 0.27371, -0.01846, 0.01073, -0.23232, 0.53175, -0.27109, 0.14105, 0.37818, -0.26574, -0.20607, -0.03445, -0.09072, -0.13844, 0.05424, -0.09079, 0.10925, 0.05385, -0.07239, 0.08918, -0.00989, 0.03386, 0.31197, -0.04889, 0.48857, -0.04698, -0.00339, -0.09712, -0.00373, -0.27631, 0.02556, 0.70716, -0.59227, 0.183, 0.41618, -0.09075, 0.0, -0.28462, 0.03814, -0.08284, 0.20802, 0.07067, 0.06805, -0.06834, 0.12649, 0.36072, 0.58301, -0.1792, -0.0444, -0.38432, 0.46083, 0.07238, -0.0473, -0.22598, 0.14203, -0.27491, -0.21197, 0.26205, 0.07657, -0.26293, -0.28005], [0.35481, -0.05558, -0.24985, 0.0997, 0.53621, 0.14061, -0.18637, -0.19062, -0.24118, -0.07924, -0.10115, 0.263, 0.10409, 0.06953, -0.01724, 0.11375, 0.20709, -0.08598, -0.10559, 0.22746, -0.00311, 0.06693, 0.07216, 0.13535, 0.16431, -0.09396, -0.01756, -0.03264, -0.02996, -0.06735, 0.31017, 0.24839, 0.06958, 0.10941, 0.21327, 0.10605, -0.32628, -0.27028, 0.09655, 0.10876, -0.0905, 0.21803, 0.23679, -0.06575, -0.46606, -0.10133, -0.03806, -0.5433, -0.0596, -0.33182, -0.26861, 0.0826, -0.40191, 0.10541, 0.05789, 0.09705, -0.20934, 0.01461, 0.0255, -0.15991, 0.3832, -0.19522, -0.13497, -0.05858, 0.15419, -0.375, 0.06802, -0.03927, -0.11667, -0.48425, 0.18187, 0.01185, -0.07261, -0.02211, 0.56346, 0.39327, -0.15458, 0.13372, -0.43303, -0.42737, 0.46079, -0.43917, 0.01325, 0.2412, 0.13739, 0.06736, -0.11435, -0.2288, 0.33341, 0.12814, 0.0, 0.25317, 0.18669, 0.32544, -0.27669, -0.1844, -0.12541, -0.08569, -0.00485, -0.32283, -0.23486, -0.01887, 0.60299, -0.08271, -0.46637, 0.12464, -0.17633, 0.17138, -0.47858, -0.1843, 0.02416, 0.08675, 0.00109, 0.09295, -0.04173], [0.37674, 0.384, -0.239, 0.01952, 0.26849, -0.00454, 0.19056, 0.25332, 0.20304, 0.14439, 0.05873, -0.24622, -0.02323, 0.00208, 0.25889, 0.02754, 0.0582, 0.02905, -0.0077, 0.30919, -0.04467, -0.04867, -0.28051, 0.17481, -0.07559, 0.02988, -0.00626, 0.1545, 0.03758, -0.02411, -0.08641, 0.19843, -0.00808, -0.18173, -0.01866, -0.13423, 0.47254, 0.28775, 0.04271, 0.25062, 0.01571, 0.08972, 0.15442, -0.15221, 0.16017, 0.03651, -0.10886, 0.15848, 0.04775, -0.12436, -0.25078, 0.16108, 0.17819, -0.07211, 0.2127, -0.11386, 0.40022, -0.07357, 0.03678, -0.1702, -0.04349, -0.23187, 0.20664, 0.15328, 0.24669, 0.04725, 0.01786, -0.08893, 0.32814, 0.01442, 0.07468, 0.03124, -0.00344, -0.32167, -0.16768, 0.18679, 0.13458, 0.15116, 0.18606, 0.71544, -0.05704, 0.23425, -0.31409, -0.12201, -0.20955, 0.02505, 0.21516, 0.41215, -0.39512, 0.12562, 0.0, -0.03083, -0.23147, -0.11124, 0.21216, -0.03177, 0.05904, 0.34477, 0.07197, -0.04252, -0.07307, 0.16637, -0.31712, 0.28162, 0.33766, 0.1006, -0.00851, 0.12024, 0.13719, 0.24196, -0.18332, -0.14181, 0.20429, -0.74101, 0.23488]], "intercept": [-3.90146, -2.45705, 1.91557, 4.44293]}, "human_cdf_by_genre": {"academic": [[0.0002, 0.0], [0.0004, 0.025], [0.0013, 0.05], [0.0043, 0.075], [0.0089, 0.1], [0.0134, 0.125], [0.0196, 0.15], [0.0269, 0.175], [0.0311, 0.2], [0.0458, 0.225], [0.0612, 0.25], [0.0649, 0.275], [0.0706, 0.3], [0.0979, 0.325], [0.1083, 0.35], [0.127, 0.375], [0.141, 0.4], [0.1702, 0.425], [0.2102, 0.45], [0.2213, 0.475], [0.2581, 0.5], [0.2695, 0.525], [0.2923, 0.55], [0.3391, 0.575], [0.407, 0.6], [0.4496, 0.625], [0.4993, 0.65], [0.5288, 0.675], [0.5505, 0.7], [0.5897, 0.725], [0.6152, 0.75], [0.6316, 0.775], [0.7024, 0.8], [0.759, 0.825], [0.8014, 0.85], [0.8329, 0.875], [0.8745, 0.9], [0.905, 0.925], [0.9296, 0.95], [0.9555, 0.975], [0.9986, 1.0]], "info": [[0.0, 0.0], [0.0013, 0.025], [0.0032, 0.05], [0.0039, 0.075], [0.0053, 0.1], [0.0089, 0.125], [0.0101, 0.15], [0.0131, 0.175], [0.0166, 0.2], [0.0214, 0.225], [0.0228, 0.25], [0.0264, 0.275], [0.0315, 0.3], [0.0363, 0.325], [0.0409, 0.35], [0.0501, 0.375], [0.0535, 0.4], [0.0667, 0.425], [0.0731, 0.45], [0.0785, 0.475], [0.0927, 0.5], [0.1077, 0.525], [0.1305, 0.55], [0.1369, 0.575], [0.1595, 0.6], [0.172, 0.625], [0.1929, 0.65], [0.2027, 0.675], [0.2308, 0.7], [0.2612, 0.725], [0.3068, 0.75], [0.3355, 0.775], [0.3809, 0.8], [0.4275, 0.825], [0.458, 0.85], [0.5344, 0.875], [0.6149, 0.9], [0.6766, 0.925], [0.81, 0.95], [0.884, 0.975], [0.9668, 1.0]], "web": [[0.0, 0.0], [0.0, 0.025], [0.0001, 0.05], [0.0002, 0.075], [0.0003, 0.1], [0.0004, 0.125], [0.0006, 0.15], [0.0007, 0.175], [0.0009, 0.2], [0.0012, 0.225], [0.0015, 0.25], [0.0019, 0.275], [0.0026, 0.3], [0.0032, 0.325], [0.0037, 0.35], [0.0044, 0.375], [0.0052, 0.4], [0.0062, 0.425], [0.0072, 0.45], [0.0081, 0.475], [0.0097, 0.5], [0.0111, 0.525], [0.0132, 0.55], [0.016, 0.575], [0.0207, 0.6], [0.0236, 0.625], [0.0308, 0.65], [0.0377, 0.675], [0.0486, 0.7], [0.0611, 0.725], [0.0718, 0.75], [0.0872, 0.775], [0.1052, 0.8], [0.1323, 0.825], [0.1669, 0.85], [0.2088, 0.875], [0.2654, 0.9], [0.3713, 0.925], [0.5305, 0.95], [0.8015, 0.975], [1.0, 1.0]]}, "keys": ["caps_mid", "colon", "comma", "conj_start", "contraction", "dash", "digits", "ellipsis", "exclaim", "first_word_div", "fw_a", "fw_additionally", "fw_also", "fw_an", "fw_and", "fw_are", "fw_as", "fw_at", "fw_be", "fw_because", "fw_been", "fw_but", "fw_by", "fw_can", "fw_crucial", "fw_each", "fw_ensuring", "fw_for", "fw_from", "fw_had", "fw_has", "fw_have", "fw_he", "fw_her", "fw_him", "fw_however", "fw_i", "fw_if", "fw_in", "fw_is", "fw_it", "fw_its", "fw_just", "fw_key", "fw_like", "fw_me", "fw_moreover", "fw_my", "fw_no", "fw_not", "fw_of", "fw_on", "fw_or", "fw_overall", "fw_really", "fw_she", "fw_so", "fw_such", "fw_that", "fw_the", "fw_their", "fw_then", "fw_there", "fw_these", "fw_they", "fw_this", "fw_to", "fw_various", "fw_was", "fw_we", "fw_were", "fw_what", "fw_when", "fw_which", "fw_who", "fw_will", "fw_with", "fw_would", "fw_you", "fw_your", "hapax", "hit_ids", "hits1", "hits2", "hits3", "log_words", "paren", "question", "quote", "repeat_punct", "rule_anchor_starvation", "rule_chatbot_artifacts", "rule_combined", "rule_discourse", "rule_editorial_distance", "rule_lexical", "rule_narrative", "rule_rhythm_format", "rule_statistical", "semicolon", "sent_cv", "sent_long", "sent_max", "sent_mean", "sent_short", "sfx_able", "sfx_adverb", "sfx_gerund", "sfx_nominal", "sfx_quality", "structural", "structural_kinds", "ttr300", "word_len", "word_len_sd"], "mean": [7.235893, 0.269465, 5.304934, 0.041299, 1.396873, 0.200079, 1.114982, 0.114072, 0.226951, 0.74172, 2.56127, 0.009174, 0.170639, 0.335561, 3.052991, 0.497262, 0.663779, 0.398044, 0.448132, 0.100688, 0.18784, 0.452283, 0.413629, 0.252723, 0.011377, 0.067547, 0.004325, 1.035328, 0.396149, 0.213933, 0.342128, 0.404061, 0.369377, 0.360811, 0.111034, 0.072829, 1.059424, 0.217477, 1.697424, 1.148477, 0.784915, 0.170383, 0.192679, 0.018866, 0.212413, 0.202742, 0.005529, 0.407427, 0.143546, 0.350807, 2.618612, 0.67173, 0.318511, 0.021361, 0.07842, 0.258796, 0.245828, 0.092069, 1.055549, 5.65678, 0.320469, 0.110405, 0.195376, 0.112617, 0.392175, 0.575512, 2.712671, 0.033849, 0.593068, 0.497742, 0.175458, 0.160155, 0.230381, 0.224659, 0.225923, 0.265692, 0.802117, 0.153785, 0.564071, 0.246138, 0.737367, 0.889, 0.088905, 0.167648, 0.058796, 5.682463, 0.318244, 0.172755, 0.881229, 0.035443, 0.0, 0.016098, 0.177592, 0.039582, 0.001354, 0.088642, 0.001105, 0.043305, 0.009647, 0.156555, 0.47059, 0.090555, 41.811349, 20.543291, 0.147396, 0.260811, 1.278753, 3.20205, 1.673971, 0.555198, 12.148389, 1.695371, 0.60455, 4.768925, 2.51424], "scale": [6.324182, 0.833881, 2.85794, 0.066308, 1.35972, 0.492764, 2.145158, 0.721237, 0.713495, 0.154461, 1.360312, 0.064838, 0.288628, 0.406116, 1.400593, 0.604039, 0.608199, 0.482505, 0.515306, 0.24732, 0.314217, 0.514184, 0.467829, 0.433365, 0.070194, 0.188104, 0.035268, 0.758357, 0.538606, 0.40978, 0.498409, 0.493069, 0.793178, 0.987035, 0.312852, 0.173857, 1.710769, 0.366275, 1.004542, 0.947685, 0.836445, 0.386518, 0.355021, 0.103722, 0.391359, 0.543046, 0.048756, 0.835838, 0.292557, 0.4683, 1.555773, 0.581967, 0.474782, 0.107718, 0.239755, 0.732657, 0.412508, 0.218748, 0.810143, 2.479758, 0.551265, 0.237383, 0.347416, 0.251599, 0.61998, 0.596161, 1.258807, 0.142947, 0.937022, 0.845855, 0.375691, 0.300938, 0.350093, 0.358077, 0.358332, 0.47668, 0.645407, 0.331116, 1.094193, 0.595604, 0.075787, 1.283631, 0.243504, 0.333665, 0.154094, 0.513474, 0.591695, 0.450539, 1.527709, 0.214401, 1.0, 0.090319, 0.205065, 0.079924, 0.007504, 0.161041, 0.018714, 0.056935, 0.03478, 0.438685, 0.228245, 0.136935, 26.439705, 11.08337, 0.197844, 0.38418, 0.941901, 1.662602, 1.745754, 0.76822, 10.282038, 1.166474, 0.082865, 0.589929, 0.519422], "coef": [-0.52962, 0.13361, 0.33795, -0.09513, 0.49596, 0.00798, -0.13641, -0.17301, -0.4709, -0.20199, 0.36036, 0.18389, -0.14987, -0.26813, -0.25844, -0.14606, 0.12557, -0.19048, -0.07164, -0.21964, 0.25122, -0.21036, -0.21086, 0.04303, -0.11644, 0.11229, 0.02582, 0.22408, -0.09502, -0.09881, 0.22273, -0.19956, -0.11668, 0.14085, -0.04702, -0.14086, -0.37221, -0.29124, -0.13249, -0.38408, -0.07878, 0.1035, 0.3114, 0.07987, 0.05918, -0.03385, -0.07007, 0.22915, -0.07225, -0.22828, -0.31927, -0.15059, -0.22009, 0.20528, -0.46477, 0.04413, -0.17713, -0.005, 0.23872, 0.37304, 0.21961, -0.3266, -0.22265, -0.02598, 0.07267, 0.04662, -0.15982, 0.0352, -0.26368, 0.1581, -0.31578, -0.10513, -0.25652, -0.19256, 0.39425, 0.05462, -0.18213, -0.11204, -0.01034, -0.18366, 0.41251, 0.177, 0.16764, 0.25678, 0.31298, -0.11974, -0.60407, 0.01168, 0.33647, -0.34892, 0.0, 0.58291, 0.44668, 0.38564, 0.14549, -0.1274, 0.20474, 0.09729, 0.21831, -0.61753, -0.04931, -0.37543, 0.01135, 0.08145, 0.02796, -0.04003, -0.23107, 0.56887, -0.18165, 0.15472, 0.55773, 0.08431, 0.33161, 0.58113, 0.14319], "intercept": -1.22947, "human_cdf": [[0.0, 0.0], [0.0, 0.025], [0.0002, 0.05], [0.0003, 0.075], [0.0005, 0.1], [0.0007, 0.125], [0.001, 0.15], [0.0014, 0.175], [0.002, 0.2], [0.0027, 0.225], [0.0034, 0.25], [0.004, 0.275], [0.005, 0.3], [0.0061, 0.325], [0.0075, 0.35], [0.0089, 0.375], [0.0103, 0.4], [0.0124, 0.425], [0.0152, 0.45], [0.0196, 0.475], [0.023, 0.5], [0.0298, 0.525], [0.0364, 0.55], [0.0462, 0.575], [0.0553, 0.6], [0.0657, 0.625], [0.0753, 0.65], [0.0914, 0.675], [0.11, 0.7], [0.132, 0.725], [0.1633, 0.75], [0.1939, 0.775], [0.222, 0.8], [0.2632, 0.825], [0.3261, 0.85], [0.4238, 0.875], [0.5158, 0.9], [0.6085, 0.925], [0.7613, 0.95], [0.8799, 0.975], [1.0, 1.0]], "ai_recall_at": {"0.9": 0.794, "0.95": 0.687, "0.99": 0.494}, "n": {"human": 1296, "ai": 713}},
+}
+# END STYLE MODEL
+
+_FEATURE_TEXT = {
+    # feature: ((es high, es low), (en high, en low)); only directions a writer can act on.
+    "sent_cv": (("el largo de las oraciones varía mucho", "las oraciones tienen largos muy parecidos"),
+                ("sentence length varies a lot", "sentences are all about the same length")),
+    "sent_long": (("hay muchas oraciones largas", "casi no hay oraciones largas"),
+                  ("many long sentences", "almost no long sentences")),
+    "sent_short": (("abundan las frases muy cortas", "casi no hay frases cortas"),
+                   ("many very short sentences", "almost no short sentences")),
+    "sent_mean": (("las oraciones son largas en promedio", "las oraciones son cortas en promedio"),
+                  ("sentences are long on average", "sentences are short on average")),
+    "caps_mid": (("hay muchos nombres propios", "casi no aparecen nombres propios: el texto habla en general"),
+                 ("many proper names", "almost no proper names: the text stays general")),
+    "digits": (("hay muchas cifras y fechas", "casi no hay cifras, fechas ni datos concretos"),
+               ("many figures and dates", "almost no figures, dates or concrete data")),
+    "first_word_div": (("las oraciones empiezan de formas variadas", "muchas oraciones empiezan con las mismas palabras"),
+                       ("sentences open in varied ways", "many sentences open with the same words")),
+    "ttr300": (("vocabulario muy variado", "vocabulario repetitivo"), ("very varied vocabulary", "repetitive vocabulary")),
+    "word_len": (("palabras largas y abstractas", "palabras cortas"), ("long, abstract words", "short words")),
+    "exclaim": (("muchas exclamaciones", "ninguna exclamación"), ("many exclamation marks", "no exclamation marks")),
+    "question": (("muchas preguntas", "casi ninguna pregunta"), ("many questions", "almost no questions")),
+    "paren": (("muchos paréntesis", "casi ningún paréntesis"), ("many parentheses", "almost no parentheses")),
+    "quote": (("muchas citas textuales", "casi ninguna cita textual"), ("many direct quotes", "almost no direct quotes")),
+    "comma": (("muchas comas", "pocas comas"), ("many commas", "few commas")),
+    "colon": (("muchos dos puntos", "pocos dos puntos"), ("many colons", "few colons")),
+    "dash": (("muchas rayas o guiones de inciso", "pocas rayas de inciso"), ("many dashes", "few dashes")),
+    "sfx_nominal": (("muchos sustantivos abstractos (-ción, -miento)", "pocos sustantivos abstractos"),
+                    ("many abstract nouns (-tion, -ment)", "few abstract nouns")),
+    "sfx_adverb": (("muchos adverbios en -mente", "pocos adverbios en -mente"), ("many -ly adverbs", "few -ly adverbs")),
+    "sfx_gerund": (("muchos gerundios", "pocos gerundios"), ("many -ing forms", "few -ing forms")),
+    "conj_start": (("oraciones que arrancan con «y» o «pero», como al hablar", "casi ninguna oración arranca con «y» o «pero»"),
+                   ("sentences that open with “and” or “but”, like speech", "almost no sentence opens with “and” or “but”")),
+    "contraction": (("muchas contracciones", "casi ninguna contracción"), ("many contractions", "almost no contractions")),
+    "hits3": (("varias frases hechas de IA", "sin frases hechas fuertes"), ("several stock AI phrases", "no strong stock phrases")),
+    "hits2": (("frases de plantilla", "pocas frases de plantilla"), ("template phrases", "few template phrases")),
+}
+
+
+def _style_model(features: dict[str, float], lang: str) -> tuple[float, list[str]] | None:
+    """Trained logistic combiner over the explainable features. Returns the
+    probability-like score and the strongest reasons that pushed it up."""
+    m = _STYLE_MODEL.get(lang)
+    if not m:
+        return None
+    contrib = []
+    logit = m["intercept"]
+    for k, mu, sd, c in zip(m["keys"], m["mean"], m["scale"], m["coef"]):
+        z = (features.get(k, 0.0) - mu) / sd
+        z = max(-4.0, min(4.0, z))  # one outlier (a table, a list of numbers) cannot decide alone
+        logit += c * z
+        contrib.append((c * z, k, z))
+    p = 1.0 / (1.0 + math.exp(-logit))
+    es = lang == "es"
+    reasons = []
+    # Function words weigh in the score but are not listed: "uses «la» more"
+    # gives a writer nothing to act on.
+    for value, k, z in sorted(contrib, reverse=True):
+        if value < 0.25 or len(reasons) == 4:
+            break
+        if k in _FEATURE_TEXT:
+            reasons.append(_FEATURE_TEXT[k][0 if es else 1][0 if z > 0 else 1])
+    return p, reasons
+
+
+CONTEXT_NAMES = {
+    "fiction": ("relato", "story"), "academic": ("texto académico", "academic text"),
+    "info": ("texto informativo", "informative text"), "web": ("texto personal o de opinión", "personal or opinion text"),
+}
+
+
+def _context(features: dict[str, float], lang: str) -> str | None:
+    """Kind of text (story, academic, informative, personal/opinion) from the same
+    standardized features; used to compare against human texts of that kind."""
+    m = _STYLE_MODEL.get(lang)
+    if not m or "genre" not in m:
+        return None
+    z = [max(-4.0, min(4.0, (features.get(k, 0.0) - mu) / sd)) for k, mu, sd in zip(m["keys"], m["mean"], m["scale"])]
+    g = m["genre"]
+    scores = [b + sum(c * x for c, x in zip(row, z)) for row, b in zip(g["coef"], g["intercept"])]
+    return g["classes"][scores.index(max(scores))]
+
+
+def _human_exceed(p: float, lang: str, context: str | None = None) -> float | None:
+    """Share of human reference texts (of the same kind when known) scoring above p."""
+    m = _STYLE_MODEL.get(lang)
+    if not m:
+        return None
+    qs = m.get("human_cdf_by_genre", {}).get(context) or m["human_cdf"]  # [(score, share_at_or_below)]
+    if p <= qs[0][0]:
+        return 1.0 - qs[0][1]
+    for (s0, c0), (s1, c1) in zip(qs, qs[1:]):
+        if p <= s1:
+            return 1.0 - (c0 + (c1 - c0) * (p - s0) / max(s1 - s0, 1e-9))
+    return 1.0 - qs[-1][1]
 
 
 def _check_statistical_uniformity(stats: dict[str, float | int], lang: str) -> list[StructuralFinding]:
@@ -2240,13 +2424,10 @@ def analyze(
             * (f.count if f.kind in NARRATIVE_KINDS else 1) for f in report.structural)
     )
     evidence_density = weighted_findings / max(report.sentences, 1)
+    evidence_cap = 1.0
     if report.sentences >= 150:
-        if evidence_density < 0.035:
-            combined = min(combined, 0.24)
-        elif evidence_density < 0.10:
-            combined = min(combined, 0.34)
-        elif evidence_density < 0.13:
-            combined = min(combined, 0.42)
+        evidence_cap = 0.24 if evidence_density < 0.035 else 0.34 if evidence_density < 0.10 else 0.42 if evidence_density < 0.13 else 1.0
+        combined = min(combined, evidence_cap)
     elif report.sentences >= 60:
         if evidence_density < 0.05:
             combined = min(combined, 0.30)
@@ -2309,14 +2490,46 @@ def analyze(
     }
     report.score = min(1.0, combined)
 
-    if report.score >= 0.6:
-        report.severity_label = "alto" if lang == "es" else "high"
-    elif report.score >= 0.3:
-        report.severity_label = "moderado" if lang == "es" else "moderate"
-    elif report.score > 0:
-        report.severity_label = "bajo" if lang == "es" else "low"
+    words = max(_word_count(authorial_text), 1)
+    report.features = {
+        **{"rule_" + k: v for k, v in report.score_components.items()},
+        "hits3": 100.0 * sev3_hits / words,
+        "hits2": 100.0 * sev2_hits / words,
+        "hits1": 100.0 * sev1_hits / words,
+        "hit_ids": float(distinct_ids),
+        "structural": 100.0 * len(report.structural) / max(report.sentences, 1),
+        "structural_kinds": float(len(structural_kinds)),
+        "log_words": math.log(words),
+        **_style_features(authorial_text, sentences, lang),
+    }
+
+    # The trained combiner reads every feature above (rule dimensions included)
+    # and replaces the hand-tuned blend; the short-text cap still applies because
+    # a few sentences cannot carry a strong conclusion.
+    styled = _style_model(report.features, lang)
+    if styled:
+        p, report.style_reasons = styled
+        report.score_components["style_model"] = round(p, 4)
+        # The model was trained on 120-2,500 word texts. Below that it fades into
+        # the rule index; above ~150 sentences the findings-density caps still
+        # bound it, so a long thesis is judged on located evidence.
+        trust = max(0.0, min(1.0, (words - 60) / 120))
+        blended = trust * p + (1 - trust) * combined
+        report.score = min(blended, short_cap, evidence_cap if report.sentences >= 150 else 1.0)
+        report.context = _context(report.features, lang)
+        report.human_exceed = _human_exceed(report.score, lang, report.context)
+    es = lang == "es"
+    exceed = report.human_exceed
+    if exceed is not None:
+        # Both conditions: rare among human texts of the same kind AND a real index.
+        # About 3% of human reference texts reach "alto", 10% "moderado".
+        high = exceed <= 0.03 and report.score >= 0.6
+        mid = exceed <= 0.10 and report.score >= 0.3
+        low = report.score >= 0.10 or bool(report.hits or report.structural)
     else:
-        report.severity_label = "limpio" if lang == "es" else "clean"
+        high, mid, low = report.score >= 0.6, report.score >= 0.3, report.score > 0
+    report.severity_label = (("alto" if es else "high") if high else ("moderado" if es else "moderate") if mid
+                             else ("bajo" if es else "low") if low else ("limpio" if es else "clean"))
 
     report.rates = _pangram_rates(authorial_text, len(report.hits))
 
