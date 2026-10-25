@@ -7,14 +7,15 @@ const I18N = {
     editor_label: "Tu texto",
     privacy_local: "Análisis local. Tu texto no se envía ni se guarda.",
     review_options: "Opciones de revisión",
-    semantic_label: "Revisar similitud entre párrafos",
+    semantic_label: "Similitud entre párrafos",
     semantic_note: "Experimental y local. Descarga un modelo de más de 100 MB la primera vez. No modifica el índice.",
     strip_run: "Limpiar caracteres localmente",
     tagline: "Encuentra fórmulas, repeticiones y problemas de ritmo. Decide qué editar sin perder tu voz.",
-    examples_lbl: "probar con ejemplo:",
-    example_ai: "ensayo genérico",
-    example_human: "relato",
-    example_fakebib: "referencias de prueba",
+    examples_lbl: "Ejemplos",
+    example_ai: "Ensayo genérico",
+    example_human: "Relato",
+    example_fakebib: "Referencias",
+    biblio_note_short: "Consulta solo las referencias (DOI, título, autor) en catálogos públicos. El resto del texto no sale del navegador.",
     about_toggle: "qué hace, qué no hace, cli",
     tagline_biblio: "Las citas viajan a CrossRef, OpenAlex, Google Books y otras fuentes públicas. El resto del texto se queda contigo.",
     how_title: "cómo funciona",
@@ -32,7 +33,7 @@ const I18N = {
       "montando sistema de archivos…",
       "preparando analizador…",
     ],
-    ready: "listo. pega tu texto y dale a analizar.",
+    ready: "Listo. Pega un texto o sube un archivo.",
     analyzing: "olfateando…",
     analyzing_steps: [
       "leyendo el texto…",
@@ -114,12 +115,12 @@ const I18N = {
     },
     error: "algo se rompió:",
     bad_format: "formato no soportado. Usa .txt, .md, .docx o .pdf.",
-    lang: "idioma",
+    lang: "Idioma del texto",
     era_label: "¿cuándo?",
-    strict: "solo prioridad alta",
-    analyze: "analizar",
-    clear: "vaciar texto",
-    stripMarks: "limpiar caracteres",
+    strict: "Solo prioridad alta",
+    analyze: "Analizar texto",
+    clear: "Vaciar",
+    stripMarks: "Limpiar caracteres",
     stripTip: "Quita caracteres invisibles y, si quieres, reescribe el texto para que suene menos a plantilla. Solo se usa si lo pides.",
     analyzeTip: "Revisa patrones editoriales localmente y muestra dónde editar. Solo consulta referencias si activas la opción.",
     clearTip: "Borra el texto y vuelve al inicio.",
@@ -172,7 +173,7 @@ const I18N = {
     inline: "frase por frase",
     global: "(global)",
     drop_hint: "suelta el archivo para analizarlo",
-    upload: "subir archivo",
+    upload: "Subir archivo",
     annotating: "marcando word…",
     docx_done_title: "Word comentado listo",
     docx_done_file: "Archivo generado",
@@ -183,9 +184,9 @@ const I18N = {
     pdf_extracting_page: "extrayendo PDF: página {page}/{total}…",
     pdf_too_big: "PDF demasiado pesado para el navegador ({mb} MB). Usa el CLI: aismell archivo.pdf --out archivo-marcado.pdf",
     pdf_no_text: "El PDF no tiene capa de texto (probablemente escaneado). Sin OCR no puedo leerlo. Para PDFs escaneados usa el CLI con OCR.",
-    biblio: "verificar bibliografía",
+    biblio: "Verificar bibliografía",
     biblioTip: "Busca las referencias del texto (DOIs, papers, libros, citas) y verifica si existen en CrossRef, OpenAlex, Google Books y otras fuentes. La IA suele inventar bibliografía.",
-    strictTip: "Muestra solo hallazgos de severidad 3. Es prioridad editorial, no certeza de autoría.",
+    strictTip: "Oculta las señales leves y medias para ir directo a lo importante.",
     biblio_header: "BIBLIOGRAFÍA — {n} REFERENCIAS",
     biblio_privacy: "Solo se envían los identificadores (DOI / título / autor / arXiv ID) a CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books y OpenLibrary. Tu texto no sale.",
     biblio_none: "no se detectaron referencias parseables",
@@ -235,14 +236,15 @@ const I18N = {
     editor_label: "Your text",
     privacy_local: "Local analysis. Your text is not sent or saved.",
     review_options: "Review options",
-    semantic_label: "Review paragraph similarity",
+    semantic_label: "Paragraph similarity",
     semantic_note: "Experimental and local. Downloads a model over 100 MB on first use. Does not change the index.",
     strip_run: "Clean characters locally",
     tagline: "Find formulas, repetition and rhythm problems. Decide what to edit without losing your voice.",
-    examples_lbl: "try with sample:",
-    example_ai: "generic essay",
-    example_human: "narrative",
-    example_fakebib: "fake bibliography",
+    examples_lbl: "Samples",
+    example_ai: "Generic essay",
+    example_human: "Story",
+    example_fakebib: "References",
+    biblio_note_short: "Looks up only the references (DOI, title, author) in public catalogs. The rest of the text stays in your browser.",
     about_toggle: "what it does, what it doesn't, cli",
     tagline_biblio: "Citations travel to CrossRef, OpenAlex, Google Books and other public sources. The rest of your text stays with you.",
     how_title: "how it works",
@@ -260,7 +262,7 @@ const I18N = {
       "mounting filesystem…",
       "preparing analyzer…",
     ],
-    ready: "ready. paste your text and hit analyze.",
+    ready: "Ready. Paste text or upload a file.",
     analyzing: "sniffing…",
     analyzing_steps: [
       "reading text…",
@@ -336,12 +338,12 @@ const I18N = {
     },
     error: "something broke:",
     bad_format: "unsupported format. Use .txt, .md, .docx, or .pdf.",
-    lang: "language",
+    lang: "Text language",
     era_label: "when?",
-    strict: "high priority only",
-    analyze: "analyze",
-    clear: "clear",
-    stripMarks: "clean characters",
+    strict: "High priority only",
+    analyze: "Analyze text",
+    clear: "Clear",
+    stripMarks: "Clean characters",
     stripTip: "Removes invisible characters and, if you want, rewrites the text so it sounds less like a template. Only runs when you ask for it.",
     analyzeTip: "Reviews editorial patterns locally and shows where to edit. Looks up references only when you enable the option.",
     clearTip: "Clears the text and returns to the start.",
@@ -394,7 +396,7 @@ const I18N = {
     inline: "line-by-line findings",
     global: "(global)",
     drop_hint: "drop the file to analyze",
-    upload: "upload file",
+    upload: "Upload file",
     annotating: "annotating word…",
     docx_done_title: "Commented Word ready",
     docx_done_file: "Generated file",
@@ -405,9 +407,9 @@ const I18N = {
     pdf_extracting_page: "extracting PDF: page {page}/{total}…",
     pdf_too_big: "PDF too heavy for the browser ({mb} MB). Use the CLI: aismell file.pdf --out file-marked.pdf",
     pdf_no_text: "This PDF has no text layer (probably scanned). Without OCR I can't read it. Use the CLI with OCR for scanned PDFs.",
-    biblio: "verify bibliography",
+    biblio: "Verify bibliography",
     biblioTip: "Finds the references in the text (DOIs, papers, books, citations) and checks them against CrossRef, OpenAlex, Google Books and other sources. AI often invents bibliography.",
-    strictTip: "Shows only severity 3 findings. This is editorial priority, not authorship certainty.",
+    strictTip: "Hides light and medium signals so you start with what matters.",
     biblio_header: "BIBLIOGRAPHY — {n} REFERENCES",
     biblio_privacy: "Only the identifiers (DOI / title / author / arXiv ID) are sent to CrossRef, OpenAlex, Semantic Scholar, arXiv, Google Books and OpenLibrary. Your text stays local.",
     biblio_none: "no parseable references found",
@@ -468,8 +470,6 @@ const els = {
   stripResult: document.getElementById("stripResult"),
   stripRewrite: document.getElementById("stripRewrite"),
   stripRunBtn: document.getElementById("stripRunBtn"),
-  helpBtn: document.getElementById("helpBtn"),
-  helpPanel: document.getElementById("helpPanel"),
   helpList: document.getElementById("helpList"),
   clearBtn: document.getElementById("clearBtn"),
   fileBtn: document.getElementById("fileBtn"),
@@ -489,7 +489,7 @@ let busy = false;
 function setBusy(value) {
   busy = value;
   els.input.readOnly = value;
-  for (const control of document.querySelectorAll(".toolbar button, .toolbar select, .toolbar input, .review-options input, .ex-chip, #langSwitch button, #stripRunBtn, #stripRewrite")) {
+  for (const control of document.querySelectorAll(".settings button, .settings select, .settings input, #fileBtn, .ex-chip, #langSwitch button, #stripRunBtn, #stripRewrite")) {
     control.disabled = value;
   }
   els.analyzeBtn.disabled = value || !analyzeFn;
@@ -522,7 +522,6 @@ function applyI18n() {
   }
   els.input.placeholder = t.placeholder;
   updateInputCount();
-  els.helpBtn.setAttribute("aria-label", t.helpTitle);
   updateStripAction();
   document.documentElement.lang = UILANG;
   for (const b of els.langSwitch.querySelectorAll("button")) {
@@ -1490,10 +1489,11 @@ function render(report) {
 
   const totalFindings = report.hits.length + report.structural.length;
 
+  const es = UILANG === "es";
   let scoreHtml = renderVerdict(report) + `<div class="review-meta">
-    <span><strong>${report.sentences}</strong> ${t.sentences}</span>
-    <span><strong>${totalFindings}</strong> ${t.findings}</span>
-    <span class="review-index">${UILANG === "es" ? "Índice editorial" : "Editorial index"}: <strong class="${sev}">${pct}/100</strong> · ${severityLabel(report.score)}<span class="index-meter ${sev}" style="--pct:${pct}%" aria-hidden="true"></span></span>
+    <div class="review-index"><span class="stat-label">${es ? "Índice editorial" : "Editorial index"}</span><strong class="${sev}">${pct}<small>/100 · ${severityLabel(report.score)}</small></strong><span class="index-meter ${sev}" style="--pct:${pct}%" aria-hidden="true"></span></div>
+    <div><span class="stat-label">${es ? "Cosas a revisar" : "Things to review"}</span><strong>${totalFindings}</strong></div>
+    <div><span class="stat-label">${es ? "Oraciones" : "Sentences"}</span><strong>${report.sentences}</strong></div>
   </div>`;
 
   scoreHtml += renderActionSummary(report);
@@ -1541,7 +1541,6 @@ function render(report) {
     else sevLow++;
   }
 
-  const es = UILANG === "es";
   const detailLbl = es ? `Mostrar los ${totalFindings} hallazgos` : `Show all ${totalFindings} findings`;
   const detailHide = es ? "Ocultar hallazgos" : "Hide findings";
 
@@ -1632,30 +1631,6 @@ function updateStripAction() {
 }
 els.stripRewrite.addEventListener("change", updateStripAction);
 
-const HELP_ITEMS = [
-  ["analyzeBtn", "analyze", "analyzeTip"],
-  ["stripBtn", "stripMarks", "stripTip"],
-  ["clearBtn", "clear", "clearTip"],
-  ["fileBtn", "upload", "uploadTip"],
-];
-
-function renderHelp() {
-  const t = I18N[UILANG];
-  if (!els.helpList) return;
-  els.helpList.innerHTML = HELP_ITEMS.map(([id, labelKey, tipKey]) => {
-    const label = t[labelKey] || labelKey;
-    const tip = t[tipKey] || "";
-    return `<div class="help-row"><span class="help-key">${escapeHtml(label)}</span><span class="help-desc">${escapeHtml(tip)}</span></div>`;
-  }).join("");
-}
-if (els.helpBtn && els.helpPanel) {
-  els.helpBtn.addEventListener("click", () => {
-    renderHelp();
-    els.helpPanel.hidden = !els.helpPanel.hidden;
-    els.helpBtn.setAttribute("aria-expanded", String(!els.helpPanel.hidden));
-    if (!els.helpPanel.hidden) els.helpPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  });
-}
 
 const STRIP_API = "https://aismell-rewrite.brmcl.workers.dev/strip-marks";
 
@@ -1774,11 +1749,9 @@ function resetToHome(opts = {}) {
   els.scanning.innerHTML = "";
   els.resultPanel.hidden = true;
   if (els.stripPanel) els.stripPanel.hidden = true;
-  if (els.helpPanel) els.helpPanel.hidden = true;
   clearBiblio();
   lastReport = null;
   els.stripBtn.setAttribute("aria-expanded", "false");
-  els.helpBtn.setAttribute("aria-expanded", "false");
   document.body.classList.remove("has-text");
   updateInputCount();
   setStatus(analyzeFn ? I18N[UILANG].ready : I18N[UILANG].booting);

@@ -88,35 +88,8 @@
     margin-top: 8px;
     max-width: 640px;
   }
-  header .tag-biblio {
-    color: var(--fg);
-    font-size: 13.5px;
-    margin-top: 8px;
-    max-width: 640px;
-    border-left: 2px solid var(--hl);
-    padding-left: 10px;
-  }
-  header .tag-biblio strong { color: var(--hl); font-weight: 600; }
 
   /* Inline privacy note under biblio checkbox */
-  .biblio-inline-note {
-    flex-basis: 100%;
-    color: var(--dim);
-    font-size: 11.5px;
-    line-height: 1.5;
-    margin: 2px 0 0 4px;
-    padding: 2px 0 2px 10px;
-    border-left: 2px solid var(--line);
-  }
-  .biblio-inline-note.visible {
-    color: var(--fg);
-    border-left-color: var(--hl);
-  }
-  .biblio-inline-note.visible::before {
-    content: "🔒 ";
-    margin-right: 4px;
-    filter: grayscale(0.4);
-  }
   header .lang-switch {
     float: right;
     display: inline-flex;
@@ -170,38 +143,7 @@
   textarea::placeholder { color: var(--dim); }
   textarea.drag-over { background: rgba(232, 197, 71, 0.08); }
 
-  .toolbar {
-    border-top: 1px solid var(--line);
-    padding: 10px 14px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    align-items: center;
-    font-size: 12.5px;
-    color: var(--dim);
-  }
-  .toolbar .right { margin-left: auto; display: flex; gap: 12px; align-items: center; }
-  .toolbar label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
-  .toolbar select, .toolbar input[type="checkbox"] {
-    background: var(--bg);
-    color: var(--fg);
-    border: 1px solid var(--line);
-    font: inherit;
-    padding: 3px 6px;
-  }
-  .toolbar input[type="checkbox"] { padding: 0; }
-
   /* Example chips below the textarea */
-  .examples-row {
-    border-top: 1px solid var(--line);
-    padding: 10px 14px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    font-size: 11.5px;
-    color: var(--dim);
-  }
   .examples-lbl { letter-spacing: 0.4px; text-transform: lowercase; margin-right: 4px; }
   .ex-chip {
     background: transparent;
@@ -1149,72 +1091,8 @@
   }
 
   /* Tooltip (info) */
-  .info {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 14px;
-    height: 14px;
-    border: 1px solid var(--dim);
-    border-radius: 50%;
-    color: var(--dim);
-    font-size: 10px;
-    font-weight: 700;
-    cursor: help;
-    margin-left: 4px;
-    position: relative;
-    line-height: 1;
-    user-select: none;
-  }
-  .info:hover { color: var(--fg); border-color: var(--fg); }
-  .info::after {
-    content: attr(data-tip);
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--bg);
-    color: var(--fg);
-    border: 1px solid var(--line);
-    padding: 8px 10px;
-    font-size: 11.5px;
-    line-height: 1.5;
-    width: 240px;
-    text-align: left;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.15s;
-    z-index: 10;
-    text-transform: none;
-    letter-spacing: normal;
-    font-weight: 400;
-  }
-  .info:hover::after { opacity: 1; }
 
   /* Help panel: visible text explanations (mobile tap / fallback) */
-  .help-toggle { min-width: 36px; }
-  @media (min-width: 721px) {
-    .help-toggle { display: none; }
-  }
-  .help-panel .help-head h2 { margin: 0 0 10px; font-size: 16px; }
-  .help-list { display: flex; flex-direction: column; gap: 10px; }
-  .help-row {
-    display: flex;
-    gap: 10px;
-    align-items: baseline;
-    font-size: 13.5px;
-    line-height: 1.45;
-    padding: 10px 12px;
-    background: var(--bg);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-  }
-  .help-row .help-key {
-    flex: 0 0 auto;
-    font-weight: 700;
-    white-space: nowrap;
-  }
-  .help-row .help-desc { color: var(--dim); }
 
   .biblio-link {
     color: var(--cya);
@@ -1426,24 +1304,9 @@
       border-top: 1px dashed var(--line);
     }
     .docx-download .btn { width: 100%; text-align: center; }
-    .toolbar { font-size: 12px; gap: 8px; }
     .btn { padding: 7px 14px; }
 
     /* Sticky analyze button on mobile when there's text */
-    body.has-text .toolbar .right {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      margin: 0;
-      padding: 10px 14px;
-      background: var(--bg);
-      border-top: 1px solid var(--line);
-      justify-content: flex-end;
-      gap: 8px;
-      z-index: 50;
-      box-shadow: 0 -8px 20px rgba(0,0,0,0.4);
-    }
     body.has-text main { padding-bottom: 70px; }
 
     /* Footer mobile — stack centered */
@@ -1503,8 +1366,6 @@
   }
   header h1,
   .lang-switch,
-  .toolbar,
-  .examples-row,
   .btn,
   .status,
   details.about-toggle > summary,
@@ -1545,18 +1406,8 @@
 
   /* aismell pass: clearer grouping and task focus */
   .panel { border-radius: 10px; overflow: hidden; }
-  .toolbar .right { gap: 8px; padding-left: 10px; border-left: 1px solid var(--line); }
-  .toolbar .right .btn { min-width: 92px; }
-  .toolbar .right .btn:first-child { min-width: 112px; }
-  .toolbar { background: rgba(255, 255, 255, 0.012); }
   .status[aria-busy="true"] { color: var(--hl); }
   .status[aria-busy="true"] .spin { color: var(--hl); }
-
-  @media (max-width: 600px) {
-    .toolbar .right { padding-left: 0; border-left: 0; }
-    .toolbar .right .btn,
-    .toolbar .right .btn:first-child { min-width: 0; }
-  }
   :root {
     --dim: #8d8880;
     --line: #35312e;
@@ -1572,8 +1423,6 @@
   header h1 { letter-spacing: -0.8px; }
   header .tag { color: var(--dim); line-height: 1.55; }
   .status { color: var(--dim); }
-  .toolbar { row-gap: 10px; }
-  .toolbar select { min-height: 34px; padding: 5px 28px 5px 9px; }
   .btn { transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease; }
   .btn:not(:disabled):hover { transform: translateY(-1px); }
   .btn:not(:disabled):active { transform: translateY(0); }
@@ -1586,27 +1435,6 @@
     header { margin-bottom: 20px; }
     header .tag { max-width: 32ch; }
     .panel { box-shadow: none; }
-    .toolbar { padding: 10px 12px; }
-    .toolbar label { min-height: 34px; }
-    body.has-text .toolbar .right {
-      width: 100%;
-      left: 0;
-      right: 0;
-      display: grid;
-      grid-template-columns: minmax(0, 1.2fr) repeat(3, minmax(0, 1fr)) 38px;
-      gap: 6px;
-      padding: 8px 12px;
-      align-items: stretch;
-    }
-    body.has-text .toolbar .right .btn {
-      width: 100%;
-      min-width: 0;
-      min-height: 48px;
-      padding: 6px 5px;
-      line-height: 1.15;
-      white-space: normal;
-      overflow-wrap: anywhere;
-    }
     body.has-text main { padding-bottom: 78px; }
     footer { padding-bottom: 24px; }
   }
@@ -1620,16 +1448,12 @@
   #input { min-height: 260px; padding-top: 12px; }
   .editor-note { padding: 0 18px 14px; color: var(--dim); font-size: 13px; }
   .review-options { border-top: 1px solid var(--line); padding: 0 14px; }
-  .review-options summary { cursor: pointer; min-height: 44px; padding: 12px 0; font-size: 13px; }
   .option-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0 16px; cursor: pointer; }
   .option-row input { margin-top: 5px; accent-color: var(--hl); }
   .option-row strong { font-size: 14px; font-weight: 600; }
   .option-row small { display: block; color: var(--dim); font-size: 13px; line-height: 1.55; max-width: 75ch; margin-top: 3px; }
-  .btn, .ex-chip, .toolbar select, .toolbar label, header .lang-switch button, .source-link,
+  .btn, .ex-chip, header .lang-switch button, .source-link,
   .biblio-action, .biblio-sortbtn, footer button, .modal .close { min-height: 44px; }
-  .toolbar { align-items: center; gap: 10px; }
-  .toolbar .right { flex-wrap: wrap; padding-left: 0; border-left: 0; }
-  .help-toggle { display: inline-block; min-width: 44px; }
   .verdict { background: transparent; padding: 24px 24px 16px; border-bottom: 0; }
   .verdict-value { font-size: clamp(22px, 3vw, 30px); line-height: 1.25; font-weight: 600; }
   .verdict-subtitle { max-width: 72ch; margin-top: 10px; }
@@ -1670,9 +1494,6 @@
   @media (max-width: 600px) {
     .editor-head { padding-inline: 14px; }
     .editor-note { padding-inline: 14px; }
-    .toolbar { align-items: start; }
-    .toolbar .right, body.has-text .toolbar .right { position: static; display: flex; flex-wrap: wrap; justify-content: flex-start; width: 100%; padding: 0; border: 0; box-shadow: none; }
-    .toolbar .right .btn, body.has-text .toolbar .right .btn { flex: 1 1 auto; width: auto; min-height: 44px; font-size: 12px; padding: 8px 10px; overflow-wrap: normal; }
     body.has-text #analyzeBtn { position: fixed; left: 14px; right: 14px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 50; width: calc(100% - 28px); min-height: 48px; box-shadow: 0 -8px 24px var(--bg); }
     body.has-text main { padding-bottom: 76px; }
     .review-index { margin-left: 0; }
@@ -1705,7 +1526,7 @@
     font-optical-sizing: auto;
   }
   #input { font-size: 17.5px; line-height: 1.68; padding-inline: 18px; }
-  .btn, .ex-chip, .toolbar, .examples-row, .status, details.about-toggle > summary, footer {
+  .btn, .ex-chip, .status, details.about-toggle > summary, footer {
     font-family: var(--sans);
     letter-spacing: 0;
   }
@@ -1773,11 +1594,8 @@
   /* QA pass: one type scale, readable secondary text, coherent footer and result order. */
   header .tag { font-size: 15px; color: color-mix(in srgb, var(--fg) 72%, var(--bg)); max-width: 60ch; }
   .status { font-size: 14px; }
-  .examples-row { font-size: 13px; gap: 8px 10px; padding: 12px 18px; }
   .ex-chip { font-size: 13px; padding: 8px 12px; min-height: 40px; border-radius: 6px; }
-  .btn { font-size: 14px; letter-spacing: 0.1px; border-radius: 6px; }
-  .toolbar { font-size: 14px; }
-  .toolbar label, .option-row { cursor: pointer; }
+  .btn { font-size: 14px; letter-spacing: 0.1px; border-radius: 6px; } .option-row { cursor: pointer; }
   input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--hl); }
   .editor-note, #inputCount { font-size: 13px; }
   details.about-toggle > summary { font-size: 14px; min-height: 44px; display: flex; align-items: center; }
@@ -1817,16 +1635,83 @@
     .result-details { padding-inline: 16px; }
     .findings-summary h3 { width: 100%; }
   }
+  /* Layout: writing column on the left, review settings always visible on the right. */
+  header, main, footer { max-width: 1160px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-bottom: 18px; margin-bottom: 22px; border-bottom: 1px solid var(--line); }
+  header .lang-switch { float: none; flex: none; border-radius: 6px; padding: 2px; gap: 2px; background: var(--bg2); }
+  header .lang-switch button { font-family: var(--sans); font-size: 12.5px; font-weight: 600; border-radius: 4px; background: transparent; min-height: 32px; }
+  header .lang-switch button.on { background: color-mix(in srgb, var(--fg) 14%, var(--bg2)); color: var(--fg); }
+  header .tag { margin-top: 6px; }
+  .btn, .setting select, .ex-chip { text-transform: none; font-family: var(--sans); }
+  .status { margin-bottom: 12px; }
+  .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; margin-bottom: 18px; }
+  .workspace-main { min-width: 0; display: grid; gap: 18px; }
+  .workspace .panel { margin-bottom: 0; }
+  #input { min-height: 360px; resize: vertical; }
+  .editor-foot { border-top: 1px solid var(--line); padding: 12px 18px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; }
+  .editor-foot .editor-note { padding: 0; }
+  .editor-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-family: var(--sans); font-size: 13px; }
+  .editor-tools .examples-lbl { margin-left: 6px; padding-left: 14px; border-left: 1px solid var(--line); color: var(--dim); }
+  .editor-tools .btn, .editor-tools .ex-chip { min-height: 36px; padding: 6px 12px; font-size: 13px; border-radius: 6px; }
+
+  .settings { position: sticky; top: 16px; padding: 18px; font-family: var(--sans); }
+  .settings h2 { font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 14px; }
+  .setting { display: grid; gap: 6px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .setting label { font-size: 14px; font-weight: 600; }
+  .setting select { min-height: 40px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font-size: 14px; }
+  .review-options { border-top: 0; padding: 0; }
+  .review-options .option-row { padding: 14px 0; gap: 10px; border-bottom: 1px solid var(--line); }
+  .review-options .option-row input { margin-top: 2px; flex: none; }
+  .review-options .option-row strong { font-size: 14px; }
+  .review-options .option-row small { font-size: 12.5px; line-height: 1.5; margin-top: 3px; }
+  .settings-actions { display: grid; gap: 8px; padding-top: 16px; }
+  .settings-actions #analyzeBtn { width: 100%; min-height: 48px; font-size: 15px; }
+  .secondary-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .secondary-actions .btn { min-height: 40px; padding: 8px 12px; font-size: 13.5px; }
+  .kbd-hint { font-size: 12px; color: var(--dim); text-align: center; margin-top: 2px; }
+  kbd { font-family: "Departure Mono", ui-monospace, monospace; font-size: 11px; color: var(--fg); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px; }
+
+  @media (max-width: 920px) {
+    .workspace { grid-template-columns: 1fr; }
+    .settings { position: static; order: -1; }
+    .workspace-main { display: contents; }
+    .workspace .editor { order: -2; }
+  }
+  @media (max-width: 600px) {
+    header { align-items: flex-start; }
+    #input { min-height: 240px; }
+    .editor-foot { padding: 12px 14px; }
+    .editor-tools .examples-lbl { margin-left: 0; padding-left: 0; border-left: 0; width: 100%; }
+    .settings { padding: 16px 14px; }
+    .kbd-hint { display: none; }
+  }
+  /* Result header: three measured facts in one aligned row. */
+  .review-meta { display: grid; grid-template-columns: minmax(0, 1.4fr) 1fr 1fr; gap: 0; padding: 0; font-family: var(--sans); border-bottom: 1px solid var(--line); }
+  .review-meta > div { display: grid; gap: 4px; align-content: start; padding: 14px 24px; border-left: 1px solid var(--line); margin: 0; width: auto; }
+  .review-meta > div:first-child { border-left: 0; }
+  .review-meta .stat-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); }
+  .review-meta strong { font-family: "Departure Mono", ui-monospace, monospace; font-size: 24px; font-weight: 400; line-height: 1.1; color: var(--fg); }
+  .review-meta strong small { font-family: var(--sans); font-size: 13px; color: var(--dim); margin-left: 4px; }
+  .review-meta strong.s-high { color: var(--red); } .review-meta strong.s-mod { color: var(--hl); } .review-meta strong.s-low, .review-meta strong.s-clean { color: var(--grn); }
+  .review-meta .index-meter { width: 100%; max-width: 220px; margin: 4px 0 0; }
+  @media (max-width: 600px) {
+    .review-meta { grid-template-columns: 1fr 1fr; }
+    .review-meta > div { padding: 12px 16px; }
+    .review-meta > .review-index { grid-column: 1 / -1; border-bottom: 1px solid var(--line); }
+    .review-meta > div:nth-child(2) { border-left: 0; }
+  }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="lang-switch" id="langSwitch">
+  <div class="brand-block">
+    <h1 id="homeReset" class="brand-home" role="button" tabindex="0" aria-label="volver al inicio"><span class="nose" aria-hidden="true">👃</span><span data-i18n="title">aismell</span></h1>
+    <p class="tag" data-i18n="tagline">Encuentra fórmulas, repeticiones y problemas de ritmo. Decide qué editar sin perder tu voz.</p>
+  </div>
+  <div class="lang-switch" id="langSwitch" role="group" aria-label="Idioma de la interfaz">
     <button data-lang="es" class="on">ES</button><button data-lang="en">EN</button>
   </div>
-  <h1 id="homeReset" class="brand-home" role="button" tabindex="0" aria-label="volver al inicio"><span class="nose" aria-hidden="true">👃</span><span data-i18n="title">aismell</span></h1>
-  <p class="tag" data-i18n="tagline">Encuentra fórmulas, repeticiones y problemas de ritmo. Decide qué editar sin perder tu voz.</p>
 </header>
 
 <main>
@@ -1835,73 +1720,71 @@
     <span class="spin">●</span> <span data-i18n="boot">cargando python en tu navegador (~6 MB la primera vez)…</span>
   </div>
 
-  <div class="panel">
-    <div class="editor-head"><label for="input" data-i18n="editor_label">Tu texto</label><span id="inputCount"></span></div>
-    <textarea id="input" aria-describedby="privacyNote" placeholder="Pega tu texto, o suelta un archivo (.txt / .md / .docx / .pdf)."></textarea>
-    <p class="editor-note" id="privacyNote" data-i18n="privacy_local">Análisis local. Tu texto no se envía ni se guarda.</p>
-    <div class="examples-row">
-      <span class="examples-lbl" data-i18n="examples_lbl">probar con ejemplo:</span>
-      <button type="button" class="ex-chip" data-example="ai" data-i18n="example_ai">texto IA</button>
-      <button type="button" class="ex-chip" data-example="human" data-i18n="example_human">texto humano</button>
-      <button type="button" class="ex-chip" data-example="fakebib" data-i18n="example_fakebib">bibliografía falsa</button>
-    </div>
-    <details class="review-options">
-      <summary data-i18n="review_options">Opciones de revisión</summary>
-      <label class="option-row"><input type="checkbox" id="biblioSel" aria-describedby="biblioConsent"><span><strong data-i18n="biblio">Verificar bibliografía</strong><small id="biblioConsent" data-i18n="biblio_note_inline">Envía solo las referencias a fuentes públicas, no el documento completo.</small></span></label>
-      <label class="option-row"><input type="checkbox" id="semanticSel" aria-describedby="semanticConsent"><span><strong data-i18n="semantic_label">Revisar similitud entre párrafos</strong><small id="semanticConsent" data-i18n="semantic_note">Experimental y local. Descarga un modelo de más de 100 MB la primera vez. No modifica el índice.</small></span></label>
-    </details>
-    <div class="toolbar">
-      <label>
-        <span data-i18n="lang">idioma</span>:
-        <select id="langSel">
-          <option value="auto">auto</option>
-          <option value="es">español</option>
-          <option value="en">english</option>
-        </select>
-      </label>
-      <label>
-        <input type="checkbox" id="strictSel">
-        <span data-i18n="strict">solo alta confianza</span>
-        <span class="info" data-i18n-tip="strictTip" data-tip="Muestra solo hallazgos con severidad 3. Oculta las señales más suaves que podrían ser falsos positivos.">i</span>
-      </label>
-      <div class="right">
-        <button class="btn tip" id="analyzeBtn" disabled aria-keyshortcuts="Control+Enter Meta+Enter" data-i18n="analyze" data-i18n-tip="analyzeTip" data-tip="Analiza el texto y te marca línea por línea qué suena a IA, además de verificar la bibliografía si hay.">analizar</button>
-        <button class="btn ghost tip" id="stripBtn" aria-controls="stripPanel" aria-expanded="false" data-i18n="stripMarks" data-i18n-tip="stripTip" data-tip="Quita caracteres invisibles y, si quieres, reescribe el texto para que suene menos a plantilla. Solo se usa si lo pides.">quitar marcas</button>
-        <button class="btn ghost tip" id="clearBtn" data-i18n="clear" data-i18n-tip="clearTip" data-tip="Borra el texto y vuelve al inicio.">limpiar</button>
-        <input type="file" id="fileInput" accept=".txt,.md,.docx,.pdf" style="display:none">
-        <button class="btn ghost tip" id="fileBtn" data-i18n="upload" data-i18n-tip="uploadTip" data-tip="Sube un archivo .txt, .md, .docx o .pdf y lo analiza igual que el texto pegado.">subir archivo</button>
-        <button class="btn ghost help-toggle" id="helpBtn" aria-controls="helpPanel" aria-expanded="false" data-i18n="help" data-i18n-tip="helpTip" data-tip="Muestra qué hace cada botón.">?</button>
+  <section class="workspace">
+    <div class="workspace-main">
+    <div class="panel editor">
+      <div class="editor-head"><label for="input" data-i18n="editor_label">Tu texto</label><span id="inputCount"></span></div>
+      <textarea id="input" aria-describedby="privacyNote" placeholder="Pega tu texto, o suelta un archivo (.txt / .md / .docx / .pdf)."></textarea>
+      <div class="editor-foot">
+        <p class="editor-note" id="privacyNote" data-i18n="privacy_local">Análisis local. Tu texto no se envía ni se guarda.</p>
+        <div class="editor-tools">
+          <input type="file" id="fileInput" accept=".txt,.md,.docx,.pdf" hidden>
+          <button type="button" class="btn ghost" id="fileBtn" data-i18n="upload" data-i18n-tip="uploadTip">Subir archivo</button>
+          <span class="examples-lbl" data-i18n="examples_lbl">Ejemplos</span>
+          <button type="button" class="ex-chip" data-example="ai" data-i18n="example_ai">Ensayo genérico</button>
+          <button type="button" class="ex-chip" data-example="human" data-i18n="example_human">Relato</button>
+          <button type="button" class="ex-chip" data-example="fakebib" data-i18n="example_fakebib">Referencias</button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="panel" id="resultPanel" hidden>
-    <div class="scanning" id="scanning" hidden></div>
-    <div class="score" id="score"></div>
-    <div class="findings" id="findings"></div>
-  </div>
+    <div class="panel" id="resultPanel" hidden>
+      <div class="scanning" id="scanning" hidden></div>
+      <div class="score" id="score"></div>
+      <div class="findings" id="findings"></div>
+    </div>
 
-  <div class="panel help-panel" id="helpPanel" hidden>
-    <div class="help-head">
-      <h2 data-i18n="helpTitle">qué hace cada botón</h2>
+    <div class="panel" id="stripPanel" hidden>
+      <div class="strip-head">
+        <h2 data-i18n="stripTitle">quitar marcas de ia</h2>
+        <p data-i18n="stripExplain">Quita caracteres invisibles (espacios raros, unicode de control) y, si quieres, reescribe el texto para que suene menos a plantilla. El texto se envía al servicio de aismell para procesarlo y no se guarda.</p>
+      </div>
+      <div class="strip-actions">
+        <label>
+          <input type="checkbox" id="stripRewrite">
+          <span data-i18n="stripRewriteLbl">también reescribir (quita marcas de fraseo de ia)</span>
+        </label>
+      </div>
+      <button class="btn" type="button" id="stripRunBtn" data-i18n="strip_run">Enviar y procesar</button>
+      <div class="strip-result" id="stripResult"></div>
     </div>
-    <div class="help-list" id="helpList"></div>
-  </div>
+    </div>
 
-  <div class="panel" id="stripPanel" hidden>
-    <div class="strip-head">
-      <h2 data-i18n="stripTitle">quitar marcas de ia</h2>
-      <p data-i18n="stripExplain">Quita caracteres invisibles (espacios raros, unicode de control) y, si quieres, reescribe el texto para que suene menos a plantilla. El texto se envía al servicio de aismell para procesarlo y no se guarda.</p>
-    </div>
-    <div class="strip-actions">
-      <label>
-        <input type="checkbox" id="stripRewrite">
-        <span data-i18n="stripRewriteLbl">también reescribir (quita marcas de fraseo de ia)</span>
-      </label>
-    </div>
-    <button class="btn" type="button" id="stripRunBtn" data-i18n="strip_run">Enviar y procesar</button>
-    <div class="strip-result" id="stripResult"></div>
-  </div>
+    <aside class="panel settings" aria-labelledby="settingsTitle">
+      <h2 id="settingsTitle" data-i18n="review_options">Opciones de revisión</h2>
+      <div class="setting">
+        <label for="langSel" data-i18n="lang">Idioma del texto</label>
+        <select id="langSel">
+          <option value="auto">Detectar</option>
+          <option value="es">Español</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+      <div class="review-options">
+        <label class="option-row"><input type="checkbox" id="strictSel"><span><strong data-i18n="strict">Solo prioridad alta</strong><small data-i18n="strictTip">Muestra solo hallazgos de severidad 3.</small></span></label>
+        <label class="option-row"><input type="checkbox" id="biblioSel" aria-describedby="biblioConsent"><span><strong data-i18n="biblio">Verificar bibliografía</strong><small id="biblioConsent" data-i18n="biblio_note_short">Consulta solo las referencias en catálogos públicos.</small></span></label>
+        <label class="option-row"><input type="checkbox" id="semanticSel" aria-describedby="semanticConsent"><span><strong data-i18n="semantic_label">Similitud entre párrafos</strong><small id="semanticConsent" data-i18n="semantic_note">Experimental y local. Descarga un modelo de más de 100 MB la primera vez.</small></span></label>
+      </div>
+      <div class="settings-actions">
+        <button class="btn primary" id="analyzeBtn" disabled aria-keyshortcuts="Control+Enter Meta+Enter" data-i18n="analyze" data-i18n-tip="analyzeTip">Analizar texto</button>
+        <div class="secondary-actions">
+          <button class="btn ghost" id="stripBtn" aria-controls="stripPanel" aria-expanded="false" data-i18n="stripMarks" data-i18n-tip="stripTip">Limpiar caracteres</button>
+          <button class="btn ghost" id="clearBtn" data-i18n="clear" data-i18n-tip="clearTip">Vaciar</button>
+        </div>
+        <p class="kbd-hint"><kbd>Ctrl</kbd> + <kbd>Enter</kbd></p>
+      </div>
+    </aside>
+  </section>
 
   <details class="about-toggle">
     <summary data-i18n="about_toggle">qué hace, qué no hace, cli</summary>
@@ -1965,7 +1848,7 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
-<script src="app.js?v=editorial-review-5"></script>
+<script src="app.js?v=layout-6"></script>
 
 </body>
 </html>
