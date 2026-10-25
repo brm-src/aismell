@@ -1465,22 +1465,29 @@ _LISTICLE_TITLE_RX = re.compile(
 )
 _CLOSING_HEADING_RX = re.compile(
     r"^\s*(?:#{1,4}\s*)?(?:conclusión|conclusiones|en resumen|reflexión final|palabras finales|bonus|extra|"
-    r"conclusion|final thoughts|in summary|key takeaways|the bottom line|wrapping up|bonus tip)\s*:?\s*$", re.I | re.M,
+    r"conclusion|final thoughts|in summary|key takeaways|the bottom line|bottom line|wrapping up|bonus tip)\s*:?\s*$", re.I | re.M,
 )
+# Unnumbered blog headings: a short capitalized line alone between blank lines.
+_BARE_HEADING_RX = re.compile(r"(?:^|\n\s*\n)([A-ZÁÉÍÓÚÑ¿][^\n.!?:;,]{2,60})\n\s*\n(?=\S)")
 
 
 def _check_listicle_scaffold(text: str, lang: str) -> list[StructuralFinding]:
     """Blog-post template: numbered tip headings, a number in the title, a 'Final Thoughts' heading."""
     items = list(_LISTICLE_ITEM_RX.finditer(text))
+    if len(items) < 4 and _CLOSING_HEADING_RX.search(text):
+        # Headings without numbers count only when the post also ends on a stock heading.
+        bare = [m for m in _BARE_HEADING_RX.finditer(text) if len(m.group(1).split()) <= 8][1:]
+        if len(bare) >= 4:
+            items = bare
     if len(items) < 4:
         return []
     first_line = next((ln for ln in text.splitlines() if ln.strip()), "")
     extras = bool(_LISTICLE_TITLE_RX.search(first_line)) + bool(_CLOSING_HEADING_RX.search(text))
     es = lang == "es"
     return [StructuralFinding(
-        line=_line_of(text, items[0].start()), kind="listicle-scaffold", severity=3 if extras else 2,
-        message=(f"{len(items)} subtítulos numerados{' con número en el título y cierre «Conclusión»' if extras == 2 else ''}: plantilla de post de blog IA («{items[0].group(0).strip()[:50]}»)"
-                 if es else f"{len(items)} numbered tip headings{' plus a numbered title and a closing heading' if extras == 2 else ''}: AI blog-post template («{items[0].group(0).strip()[:50]}»)"),
+        line=_line_of(text, items[0].start(items[0].re.groups)), kind="listicle-scaffold", severity=3 if extras else 2,
+        message=(f"{len(items)} subtítulos numerados{' con número en el título y cierre «Conclusión»' if extras == 2 else ''}: plantilla de post de blog IA («{items[0].group(items[0].re.groups).strip()[:50]}»)"
+                 if es else f"{len(items)} numbered tip headings{' plus a numbered title and a closing heading' if extras == 2 else ''}: AI blog-post template («{items[0].group(items[0].re.groups).strip()[:50]}»)"),
         suggestion=("quédate con los tres consejos que de verdad usas y cuéntalos con un caso propio" if es
                     else "keep the three tips you actually use and tell them through your own case"),
         count=len(items),

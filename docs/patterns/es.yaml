@@ -2321,7 +2321,7 @@ patterns:
   - id: es.ficcion_no_era_pregunta
     kind: regex
     severity: 3
-    pattern: '(?i)\bno era una pregunta\b|\bel silencio que siguió fue (absoluto|total|ensordecedor)\b|\b(débil|tenue|leve),? pero inconfundible\b'
+    pattern: '(?i)\bno (era|fue) una pregunta\b|\bel silencio que siguió fue (absoluto|total|ensordecedor)\b|\b(débil|tenue|leve),? pero inconfundible\b'
     message: '"No era una pregunta / el silencio que siguió fue absoluto" — remate de ficción IA'
     suggestion: borra el comentario del narrador y deja la línea sola
   - id: es.ficcion_lagrimas
@@ -2330,3 +2330,16 @@ patterns:
     pattern: '(?i)\blas lágrimas (le )?(corrían|rodaban|caían) por (las|sus) mejillas\b|\bconteniendo la respiración\b|\bel rostro (se le puso|se volvió) pálido\b|\bse le heló la sangre\b'
     message: '"las lágrimas le corrían por las mejillas / conteniendo la respiración" — reacción de ficción IA'
     suggestion: muestra la reacción con un gesto propio del personaje
+
+  - id: es.no_es_x_es_y
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bno es (un|una|el|la|solo|sólo)?\b[^.;:\n]{1,80};\s+es\b'
+    message: '"no es A; es B" — fórmula de reencuadre IA'
+    suggestion: di B directamente
+  - id: es.discurso_posible_sin
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bnada de esto habría sido posible sin\b|\b(soñar|sueñen|se atrevan a soñar) en grande\b|\beste logro también es (de ustedes|suyo|tuyo)\b|\b(llena|lleno) de posibilidades\b|\bcerramos una etapa\b'
+    message: '"nada de esto habría sido posible sin / soñar en grande" — fórmula de discurso'
+    suggestion: agradece a una persona por algo concreto

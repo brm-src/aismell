@@ -1892,3 +1892,16 @@ patterns:
     pattern: '(?i)\btears (streaming|rolling|running) down (her|his|my|their) (face|cheeks)\b|\b(his|her|their) face went (pale|white)\b|\bheart pounding\b|\bbreath (caught|hitched) in (her|his|my) throat\b'
     message: '"tears streaming down her face / heart pounding" — stock AI fiction reaction'
     suggestion: show the reaction through an action particular to this character
+
+  - id: en.isnt_x_its_y
+    kind: regex
+    severity: 2
+    pattern: '(?i)\b(isn''t|is not|aren''t|are not|wasn''t)\b[^.;:\n]{1,80};\s+(it''s|it is|they''re|they are|it was)\b'
+    message: '"X isn''t A; it''s B" — AI reframing formula'
+    suggestion: state B directly
+  - id: en.speech_none_possible
+    kind: regex
+    severity: 2
+    pattern: '(?i)\bnone of this would have been possible without\b|\bdream big\b|\bthis (achievement|accomplishment|success) (belongs to|is also) (you|yours)\b|\bfull of (possibilities|opportunities)\b'
+    message: '"none of this would have been possible without / dream big" — stock speech formula'
+    suggestion: thank one person for one concrete thing
