@@ -8,15 +8,16 @@ const I18N = {
     privacy_local: "Análisis local. Tu texto no se envía ni se guarda.",
     review_options: "Opciones de revisión",
     semantic_label: "Similitud entre párrafos",
-    semantic_note: "Experimental y local. Descarga un modelo de más de 100 MB la primera vez. No modifica el índice.",
+    semantic_note: "Experimental y local. Descarga un modelo de más de 100 MB la primera vez.",
     strip_run: "Limpiar caracteres localmente",
     tagline: "Encuentra fórmulas, repeticiones y problemas de ritmo. Decide qué editar sin perder tu voz.",
     examples_lbl: "Ejemplos",
+    ui_lang: "Interfaz",
     example_ai: "Ensayo genérico",
     example_human: "Relato",
     example_fakebib: "Referencias",
     biblio_note_short: "Consulta solo las referencias (DOI, título, autor) en catálogos públicos. El resto del texto no sale del navegador.",
-    about_toggle: "qué hace, qué no hace, cli",
+    about_toggle: "Qué hace, qué no hace y uso por terminal",
     tagline_biblio: "Las citas viajan a CrossRef, OpenAlex, Google Books y otras fuentes públicas. El resto del texto se queda contigo.",
     how_title: "cómo funciona",
     how_layer1: "<strong>Patrones de frase.</strong> Muletillas, conectores forzados, calcos del inglés.<small>Regex auditable, sin caja negra.</small>",
@@ -237,15 +238,16 @@ const I18N = {
     privacy_local: "Local analysis. Your text is not sent or saved.",
     review_options: "Review options",
     semantic_label: "Paragraph similarity",
-    semantic_note: "Experimental and local. Downloads a model over 100 MB on first use. Does not change the index.",
+    semantic_note: "Experimental and local. Downloads a model over 100 MB on first use.",
     strip_run: "Clean characters locally",
     tagline: "Find formulas, repetition and rhythm problems. Decide what to edit without losing your voice.",
     examples_lbl: "Samples",
+    ui_lang: "Interface",
     example_ai: "Generic essay",
     example_human: "Story",
     example_fakebib: "References",
     biblio_note_short: "Looks up only the references (DOI, title, author) in public catalogs. The rest of the text stays in your browser.",
-    about_toggle: "what it does, what it doesn't, cli",
+    about_toggle: "What it does, what it doesn't, and the CLI",
     tagline_biblio: "Citations travel to CrossRef, OpenAlex, Google Books and other public sources. The rest of your text stays with you.",
     how_title: "how it works",
     how_layer1: "<strong>Phrase patterns.</strong> Filler phrases, forced connectors, English calques.<small>Auditable regex, no black box.</small>",
@@ -606,6 +608,8 @@ function setStatus(msg, isError = false) {
   }
   els.status.textContent = msg;
   els.status.classList.toggle("err", isError);
+  // The editor already says what to do; the idle "ready" line only adds noise.
+  els.status.classList.toggle("quiet", msg === I18N[UILANG].ready);
 }
 
 // Big in-panel scanner with rotating step labels + live hit counter.
@@ -1461,7 +1465,7 @@ function renderActionSummary(report) {
   if (!priority.length) return "";
   return `<section class="next-steps">
     <h3>${es ? "Por dónde empezar" : "Where to start"}</h3>
-    <ol>${priority.slice(0, 3).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol>
+    ${priority.length === 1 ? `<p>${escapeHtml(priority[0])}</p>` : `<ol>${priority.slice(0, 3).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol>`}
   </section>`;
 }
 
@@ -1501,7 +1505,7 @@ function render(report) {
   let detailHtml = renderRates(report) + renderSegments(report);
   if (report.semantic?.length) {
     detailHtml += `<details class="semantic-notes"><summary>${UILANG === "es" ? "Similitud entre párrafos · experimental" : "Paragraph similarity · experimental"}</summary>
-      <p class="editorial-limit">${UILANG === "es" ? "La similitud temática no demuestra repetición ni autoría. Estas observaciones no modifican el índice." : "Topical similarity does not prove repetition or authorship. These observations do not change the index."}</p>
+      <p class="editorial-limit">${UILANG === "es" ? "Que dos párrafos traten temas parecidos no significa que se repitan. Úsalo como pista para revisar." : "Two paragraphs on similar topics are not necessarily repetitive. Use this as a hint to review."}</p>
       ${report.semantic.map((finding) => renderStructural(finding, t)).join("")}</details>`;
   }
 
@@ -1547,9 +1551,9 @@ function render(report) {
   let html = `
     <div class="findings-summary">
       <h3>${es ? "Qué revisar" : "What to review"}</h3>
-      <span class="fs-sev s-high"><strong>${sevHigh}</strong> ${t.sev_high}</span>
-      <span class="fs-sev s-mod"><strong>${sevMod}</strong> ${t.sev_mod}</span>
-      <span class="fs-sev s-low"><strong>${sevLow}</strong> ${t.sev_low}</span>
+      <span class="fs-sev s-high"><span class="glyph s-3" aria-hidden="true">X</span><strong>${sevHigh}</strong> ${t.sev_high}</span>
+      <span class="fs-sev s-mod"><span class="glyph s-2" aria-hidden="true">!</span><strong>${sevMod}</strong> ${t.sev_mod}</span>
+      <span class="fs-sev s-low"><span class="glyph s-1" aria-hidden="true">.</span><strong>${sevLow}</strong> ${t.sev_low}</span>
     </div>
     <details class="findings-more" ${totalFindings <= 12 ? "open" : ""}>
       <summary>
