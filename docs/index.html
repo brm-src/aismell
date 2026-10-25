@@ -1683,6 +1683,63 @@
     .modal { padding: 24px 20px; }
     .biblio-row, .docx-download-file strong { overflow-wrap: anywhere; }
   }
+
+  /* Editorial type: serif for the writer's prose, sans for guidance, mono only for labels. */
+  @font-face {
+    font-family: "Source Serif 4";
+    src: url("fonts/source-serif-4-latin.woff2") format("woff2");
+    font-weight: 400 600;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Source Serif 4";
+    src: url("fonts/source-serif-4-latin-italic.woff2") format("woff2");
+    font-weight: 400 600;
+    font-style: italic;
+    font-display: swap;
+  }
+  :root { --serif: "Source Serif 4", Georgia, "Times New Roman", serif; --sans: "Noto Sans", system-ui, sans-serif; }
+  textarea, #input, .finding .ctx, .finding-example, .segment-card p, .strip-output textarea {
+    font-family: var(--serif);
+    font-optical-sizing: auto;
+  }
+  #input { font-size: 17.5px; line-height: 1.68; padding-inline: 18px; }
+  .btn, .ex-chip, .toolbar, .examples-row, .status, details.about-toggle > summary, footer {
+    font-family: var(--sans);
+    letter-spacing: 0;
+  }
+  .btn { font-weight: 600; }
+  .verdict-value { font-family: var(--serif); font-weight: 600; letter-spacing: -0.4px; text-transform: none; }
+  .verdict-value::first-letter { text-transform: uppercase; }
+  .findings-summary, .segment-head, .review-meta { font-family: "Departure Mono", ui-monospace, monospace; }
+
+  .review-index { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .index-meter { position: relative; display: inline-block; width: 120px; height: 6px; margin-left: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .index-meter::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--pct); background: currentColor; border-radius: 3px; }
+  .index-meter.s-high { color: var(--red); }
+  .index-meter.s-mod { color: var(--hl); }
+  .index-meter.s-low, .index-meter.s-clean { color: var(--grn); }
+
+  .findings { padding: 0; }
+  .finding { grid-template-columns: 24px minmax(0, 68ch); padding: 16px 24px; gap: 12px; }
+  .finding .glyph { font-family: "Departure Mono", ui-monospace, monospace; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%; font-size: 12px; background: color-mix(in srgb, currentColor 14%, transparent); }
+  .finding .ctx { font-size: 16.5px; line-height: 1.6; }
+  .finding .meta { font-size: 13.5px; line-height: 1.55; margin-top: 6px; }
+  .finding-example { margin: 10px 0 2px; padding: 2px 0 2px 12px; border-left: 2px solid var(--hl); color: var(--dim); font-style: italic; font-size: 16px; line-height: 1.55; }
+  .finding .source-link { display: inline-block; margin-top: 2px; }
+  .finding-scope { margin-top: 6px; }
+  .findings-summary { padding: 12px 24px; gap: 10px 14px; }
+  .findings-more > summary { padding: 14px 24px; }
+  .next-steps ol li::marker { color: var(--hl); font-family: "Departure Mono", ui-monospace, monospace; }
+
+  @media (max-width: 600px) {
+    #input { font-size: 17px; padding-inline: 14px; }
+    .finding { padding: 14px 16px; grid-template-columns: 22px minmax(0, 1fr); }
+    .findings-summary, .findings-more > summary { padding-inline: 16px; }
+    .index-meter { width: 100%; margin: 4px 0 0; }
+    .review-index { width: 100%; }
+  }
 </style>
 </head>
 <body>
@@ -1831,7 +1888,7 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
-<script src="app.js?v=editorial-review-2"></script>
+<script src="app.js?v=editorial-review-3"></script>
 
 </body>
 </html>

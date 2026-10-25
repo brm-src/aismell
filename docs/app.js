@@ -155,9 +155,9 @@ const I18N = {
     sentences: "oraciones",
     smell: "índice",
     findings: "cosas a revisar",
-    sev_high: "señal fuerte",
-    sev_mod: "a revisar",
-    sev_low: "leve",
+    sev_high: "fuertes",
+    sev_mod: "medias",
+    sev_low: "leves",
     density: "densidad",
     density_text: "{n} de {total} oraciones tienen alguna marca ({pct}%)",
     top_patterns: "lo que más aparece:",
@@ -377,9 +377,9 @@ const I18N = {
     sentences: "sentences",
     smell: "index",
     findings: "findings",
-    sev_high: "high severity",
+    sev_high: "strong",
     sev_mod: "medium",
-    sev_low: "low",
+    sev_low: "light",
     density: "density",
     density_text: "{n} of {total} sentences flagged ({pct}%)",
     top_patterns: "most repeated:",
@@ -804,6 +804,7 @@ def run(text, lang_code, strict, era_code):
             "severity": s.severity,
             "message": s.message,
             "suggestion": s.suggestion,
+            "count": s.count,
         })
     for sec in report.sections:
         out["sections"].append({
@@ -1266,9 +1267,21 @@ function naturalStructuralComment(s) {
     "staccato-runs": es ? "Hay demasiadas frases cortas seguidas." : "There are too many short sentences in a row.",
     "em-dash": es ? "Los guiones largos se acumulan y cargan el ritmo." : "The em dashes pile up and make the rhythm feel staged.",
     "tricolon": es ? "La frase insiste en una serie de tres elementos." : "The sentence leans hard on a three-part list.",
+    "wh-starters": es ? "Varias oraciones arrancan con qué, cómo o por qué, como una explicación armada." : "Several sentences open with what, how or why, like a scripted explainer.",
+    "narrative-pivot": es ? "El relato prepara una revelación con «no es que… es que»." : "The story stages a reveal with “it's not that… it's that”.",
+    "narrative-cadence": es ? `El relato encadena series con la misma entrada${s.count > 1 ? ` (${s.count} veces)` : ""}.` : `The story chains series with the same opening${s.count > 1 ? ` (${s.count} times)` : ""}.`,
+    "narrative-simile": es ? `Se acumulan comparaciones «como si / como quien»${s.count > 1 ? ` (${s.count})` : ""}.` : `“As if / like someone” similes pile up${s.count > 1 ? ` (${s.count})` : ""}.`,
+    "narrative-aphorism": es ? "El narrador se detiene a sentenciar en vez de mostrar lo que percibe." : "The narrator stops to pronounce maxims instead of showing what they perceive.",
+    "punchline-paragraphs": es ? `Muchos párrafos son una sola frase corta usada como remate${s.count > 1 ? ` (${s.count})` : ""}.` : `Many paragraphs are a single short punchline${s.count > 1 ? ` (${s.count})` : ""}.`,
   };
   const message = messages[kind] || plainStructuralMessage(s).replace(/\s*\([^)]*\)/g, "");
   return `${message} ${advice}`.trim();
+}
+
+// Narrative findings end with («first instance») so the evidence is visible.
+function structuralExample(s) {
+  const m = String(s.message || "").match(/«([^»]+)»\)\s*$/);
+  return m ? m[1] : "";
 }
 
 function renderStructural(s, t) {
@@ -1283,6 +1296,7 @@ function renderStructural(s, t) {
       <div class="glyph s-${s.severity}">${glyph}</div>
       <div class="body">
         <div class="ctx" style="color: var(--fg);">${escapeHtml(naturalStructuralComment(s))}</div>
+        ${structuralExample(s) ? `<blockquote class="finding-example">${escapeHtml(structuralExample(s))}</blockquote>` : ""}
         ${s.line ? `<button type="button" class="source-link" data-source-line="${s.line}">${UILANG === "es" ? "Revisar línea" : "Review line"} ${s.line}</button>` : `<span class="finding-scope">${UILANG === "es" ? "Observación global" : "Document-wide observation"}</span>`}
       </div>
     </div>`;
@@ -1324,8 +1338,8 @@ function renderSegments(report) {
   if (segments.length < 2 || !relevant.length) return "";
   const es = UILANG === "es";
   const summary = es
-    ? `${relevant.length} con señales · ${segments.length} en total`
-    : `${relevant.length} with signals · ${segments.length} total`;
+    ? `${relevant.length} de ${segments.length} tramos`
+    : `${relevant.length} of ${segments.length} segments`;
   const title = es ? "ver tramos con señales" : "view segments with signals";
   const cards = relevant.map((segment) => {
     const copy = segmentCopy(segment, es);
@@ -1368,6 +1382,14 @@ function renderActionSummary(report) {
     priority.push(es
       ? "El problema no es solo la frase: es la manera de cerrar el sentido. Deja que una escena o una consecuencia hagan el trabajo pedagógico."
       : "The issue is not just phrasing: it is how the text closes meaning. Let a scene or consequence do the teaching.");
+  }
+  const narrative = structural
+    .filter((s) => s.line && /^(narrative-|punchline-)/.test(s.kind))
+    .sort((a, b) => a.line - b.line)[0];
+  if (narrative) {
+    priority.push(es
+      ? `El relato repite recursos de ficción generada: revelaciones armadas, series de fragmentos y párrafos de una frase. Empieza por la línea ${narrative.line}.`
+      : `The story repeats generated-fiction devices: staged reveals, fragment series and one-line paragraphs. Start at line ${narrative.line}.`);
   }
   if (has("nominalization_density")) {
     priority.push(es
@@ -1415,7 +1437,7 @@ function render(report) {
   let scoreHtml = renderVerdict(report) + `<div class="review-meta">
     <span><strong>${report.sentences}</strong> ${t.sentences}</span>
     <span><strong>${totalFindings}</strong> ${t.findings}</span>
-    <span class="review-index">${UILANG === "es" ? "Índice editorial" : "Editorial index"}: <strong class="${sev}">${pct}/100</strong> · ${severityLabel(report.score)}</span>
+    <span class="review-index">${UILANG === "es" ? "Índice editorial" : "Editorial index"}: <strong class="${sev}">${pct}/100</strong> · ${severityLabel(report.score)}<span class="index-meter ${sev}" style="--pct:${pct}%" aria-hidden="true"></span></span>
   </div>`;
 
   scoreHtml += renderActionSummary(report);

@@ -1298,3 +1298,29 @@ if __name__ == "__main__":
         print(f"\n{failed} failed")
         sys.exit(1)
     print("\nall tests passed")
+
+
+SAMPLES = Path(__file__).parent / "samples"
+
+
+def test_generated_spanish_fiction_is_not_reported_as_light():
+    report, _ = analyze((SAMPLES / "es_ai_fiction.txt").read_text(encoding="utf-8"), lang="es")
+    kinds = {f.kind for f in report.structural}
+    assert {"narrative-pivot", "narrative-cadence", "narrative-aphorism", "punchline-paragraphs"} <= kinds
+    assert all(f.line > 0 for f in report.structural if f.kind.startswith(("narrative-", "punchline")))
+    assert report.score >= 0.6
+
+
+def test_human_spanish_fiction_dialogue_is_not_ai_punctuation():
+    # Quiroga (1909): raya de diálogo, reflexive "se" and dialogue ellipses are ordinary Spanish.
+    report, _ = analyze((SAMPLES / "es_human_quiroga_gallina.txt").read_text(encoding="utf-8"), lang="es")
+    kinds = {f.kind for f in report.structural}
+    assert not kinds & {"em-dash", "impersonal_se", "wh-starters"}
+    assert not kinds & {"narrative-pivot", "narrative-cadence", "narrative-aphorism", "punchline-paragraphs"}
+    assert report.score < 0.3
+
+
+def test_unaccented_relative_que_como_are_not_wh_starters():
+    text = "Que la luna es una piedra. Como la mancha de una ampolleta. Que no duele nada. Como si nada."
+    report, _ = analyze(text, lang="es")
+    assert "wh-starters" not in {f.kind for f in report.structural}

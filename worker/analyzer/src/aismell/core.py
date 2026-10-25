@@ -58,6 +58,7 @@ class StructuralFinding:
     severity: int
     message: str
     suggestion: str = ""
+    count: int = 1      # instances behind a document-wide finding
 
 
 @dataclass
@@ -250,17 +251,22 @@ def _match_is_quoted_example(line: str, start: int, end: int) -> bool:
 
 # ---------- structural checks ----------
 
-def _check_em_dashes(text: str, lines: list[str]) -> list[StructuralFinding]:
+def _check_em_dashes(text: str, lines: list[str], lang: str = "es") -> list[StructuralFinding]:
     out: list[StructuralFinding] = []
     for i, line in enumerate(lines, start=1):
+        # Dialogue lines (Spanish raya, "—dijo—") use dashes as punctuation.
+        if line.lstrip().startswith(("—", "–", "-")):
+            continue
         count = line.count("—") + line.count("–") + line.count("--")
         if count >= 2:
             out.append(StructuralFinding(
                 line=i,
                 kind="em-dash",
                 severity=2,
-                message=f"{count} rayas (—/–/--) en una línea — la IA las abusa",
-                suggestion="reemplaza por comas, paréntesis o puntos",
+                message=(f"{count} rayas (—/–/--) en una línea — la IA las abusa" if lang == "es"
+                         else f"{count} dashes (—/–/--) in one line — AI overuses them"),
+                suggestion=("reemplaza por comas, paréntesis o puntos" if lang == "es"
+                            else "replace them with commas, parentheses or periods"),
             ))
     return out
 
@@ -328,7 +334,9 @@ def _check_list_density(text: str) -> list[StructuralFinding]:
 
 def _check_ellipses(text: str, lang: str) -> list[StructuralFinding]:
     """Google Doc AI-isms: repeated ellipses used for fake drama."""
-    count = text.count("...") + text.count("…")
+    # Trailing off inside dialogue is ordinary punctuation, not narration.
+    narration = [ln for ln in text.splitlines() if not ln.lstrip().startswith(("—", "–", "-", '"', "“", "«"))]
+    count = sum(ln.count("...") + ln.count("…") for ln in narration)
     if count < 3:
         return []
     return [StructuralFinding(
@@ -588,7 +596,8 @@ def _check_passive_voice(text: str, lang: str) -> list[StructuralFinding]:
 
 def _check_wh_starters(sentences: list[str], lang: str) -> list[StructuralFinding]:
     if lang == "es":
-        rx = re.compile(r"^(qu[eé]|por\s+qu[eé]|c[oó]mo|cu[aá]ndo|d[oó]nde)\b", re.IGNORECASE)
+        # Interrogatives carry an accent; unaccented que/como/cuando are relatives.
+        rx = re.compile(r"^¿?(qué|por\s+qué|cómo|cuándo|dónde)\b", re.IGNORECASE)
         msg = "arranques interrogativos repetidos — molde de explicación IA"
         suggestion = "convierte preguntas retóricas en afirmaciones: sujeto + acción + consecuencia; deja una sola pregunta si de verdad organiza el argumento"
     else:
@@ -1217,12 +1226,23 @@ def _check_nominalization_density(text: str, lang: str) -> list[StructuralFindin
         return []
 
 
+_IMPERSONAL_SE_ES = re.compile(
+    r"\bse\s+(?:puede|pueden|debe|deben|observa|observan|considera|consideran|"
+    r"recomienda|sugiere|espera|requiere|requieren|necesita|busca|trata|plantea|"
+    r"propone|destaca|evidencia|aprecia|establece|identifica|identificaron|"
+    r"analiza|analizan|presenta|presentan|concluye|entiende|define|logra|"
+    r"obtiene|obtuvieron|realiza|realizan|realizó|llevó\s+a\s+cabo)\b",
+    re.I,
+)
+
+
 def _check_impersonal_se_stacking(text: str, lang: str) -> list[StructuralFinding]:
     """Three or more close co-occurrences of impersonal 'se' within 200 chars
     indicate passive-voice stacking typical of machine-generated Spanish."""
     if lang != "es":
         return []
-    positions = [m.start() for m in re.finditer(r'\bse\s+\w+', text, re.I)]
+    # Reflexive narrative verbs ("se sentó", "se apagó") are not impersonal.
+    positions = [m.start() for m in re.finditer(_IMPERSONAL_SE_ES, text)]
     if len(positions) < 3:
         return []
     # check if any 3 positions fall within 200 chars of each other
@@ -1364,6 +1384,158 @@ def _check_staccato_runs(sentences: list[str], lang: str) -> list[StructuralFind
             "merge the fragments into one sentence or vary the length; one emphatic sentence is enough"
         ),
     )]
+
+
+# ---- narrative fiction tells ----
+# Generated short fiction rarely uses essay tics; it repeats a different kit:
+# "No es que X. Es que Y", anaphoric fragment ladders, "como si" similes,
+# aphorisms and one-line punchline paragraphs. Each is ordinary once; the
+# finding needs a cluster and always reports where the first instance is.
+
+_NARRATIVE_RX = {
+    "es": {
+        "pivot": re.compile(
+            r"\bno\s+(?:es|era|fue)\s+que\b[^.!?\n]{1,140}[.!?]\s+(?:es|era|fue)\s+que\b"
+            r"|\bno\s+(?:era|es)\s+(?:un|una|el|la)\s+\w+[.!?]\s+(?:era|es)\s+(?:un|una|el|la)\b",
+            re.I,
+        ),
+        "inline": re.compile(
+            r"\b(?P<w>\w{2,})\b[^.!?,;\n]{1,40},\s+(?P=w)\b[^.!?,;\n]{1,40},\s+(?:y\s+)?(?P=w)\b", re.I,
+        ),
+        "ladder": re.compile(r"\b\w+,\s+luego\s+[^,.;\n]{1,25},\s+luego\b", re.I),
+        "simile": re.compile(r"\bcomo\s+(?:si|quien|cuando)\b|\bde\s+quien\s+\w+", re.I),
+        "aphorism": re.compile(
+            r"\bhay\s+\w+\s+que\s+uno\b"
+            r"|\b(?P<w>\w{4,})\b[^.!?\n]{0,40}\bnunca\s+es\s+(?:un\s+|una\s+)?(?P=w)\b"
+            r"|\bcon\s+una\s+(?:claridad|certeza|lucidez|calma|precisi[oó]n|ternura|urgencia|nitidez)\s+que\b",
+            re.I,
+        ),
+    },
+    "en": {
+        "pivot": re.compile(
+            r"\b(?:it['’]?s|it\s+is|it\s+was|this\s+is)\s+not\s+that\b[^.!?\n]{1,140}[.!?]\s+(?:it['’]?s|it\s+is|it\s+was)\s+that\b"
+            r"|\bit\s+(?:wasn['’]?t|isn['’]?t)\s+(?:a|an|the)\s+\w+[.!?]\s+it\s+(?:was|is)\s+(?:a|an|the)\b",
+            re.I,
+        ),
+        "inline": re.compile(
+            r"\b(?P<w>\w{2,})\b[^.!?,;\n]{1,40},\s+(?P=w)\b[^.!?,;\n]{1,40},\s+(?:and\s+)?(?P=w)\b", re.I,
+        ),
+        "ladder": re.compile(r"\b\w+,\s+then\s+[^,.;\n]{1,25},\s+then\b", re.I),
+        "simile": re.compile(r"\bas\s+(?:if|though)\b|\blike\s+someone\b|\bthe\s+way\s+someone\b", re.I),
+        "aphorism": re.compile(
+            r"\bthere\s+are\s+\w+\s+(?:that|which)\s+(?:you|one)\b"
+            r"|\b(?P<w>\w{4,})\b[^.!?\n]{0,40}\bis\s+never\s+(?:just\s+)?(?P=w)\b"
+            r"|\bwith\s+a\s+(?:clarity|certainty|calm|precision|tenderness|urgency)\s+that\b",
+            re.I,
+        ),
+    },
+}
+# Articles, pronouns and glue words repeat naturally at sentence starts.
+_ANAPHORA_IGNORE = {
+    "el", "la", "los", "las", "un", "una", "de", "en", "y", "e", "o", "a", "yo", "él", "ella", "me", "mi", "se", "lo", "le",
+    "the", "an", "and", "of", "in", "to", "i", "he", "she", "it", "they", "we", "my", "his", "her",
+}
+NARRATIVE_KINDS = {
+    "narrative-pivot", "narrative-cadence", "narrative-simile",
+    "narrative-aphorism", "punchline-paragraphs",
+}
+
+
+def _line_of(text: str, pos: int) -> int:
+    return text.count("\n", 0, max(pos, 0)) + 1
+
+
+def _lead_word(sentence: str) -> str:
+    words = re.findall(r"[^\W\d_]+", sentence.lower())
+    while words and words[0] in ("y", "e", "pero", "and", "but"):
+        words = words[1:]
+    return words[0] if words else ""
+
+
+def _check_narrative_tics(text: str, sentences: list[str], lang: str) -> list[StructuralFinding]:
+    if lang not in _NARRATIVE_RX or _word_count(text) < 120:
+        return []
+    rx = _NARRATIVE_RX[lang]
+    es = lang == "es"
+    out: list[StructuralFinding] = []
+
+    def spans(pattern):
+        return [(m.start(), m.group(0)) for m in pattern.finditer(text)]
+
+    def found(kind, matches, sev, msg, sug):
+        pos, first = matches[0]
+        sample = re.sub(r"\s+", " ", first).strip()[:70]
+        out.append(StructuralFinding(
+            line=_line_of(text, pos), kind=kind, severity=sev,
+            message=f"{len(matches)} {('caso' if es else 'case') + ('s' if len(matches) > 1 else '')}: {msg} («{sample}»)",
+            suggestion=sug, count=len(matches),
+        ))
+
+    pivots = spans(rx["pivot"])
+    if pivots:
+        found("narrative-pivot", pivots, 2,
+              "giro «no es que… es que» que fabrica una revelación" if es else
+              "“it's not that… it's that” pivot staging a reveal",
+              "di la revelación directamente o muéstrala en un hecho" if es else
+              "state the reveal directly or show it through an event")
+
+    # Ladders: "Por las rendijas. Por los espejos. Por las cucharas."
+    cadence = [(m.start(), m.group(0)) for m in rx["inline"].finditer(text)
+               if m.group("w").lower() not in _ANAPHORA_IGNORE]
+    cadence += spans(rx["ladder"])
+    run_start, run = 0, 1
+    for i in range(1, len(sentences) + 1):
+        same = i < len(sentences) and _lead_word(sentences[i]) == _lead_word(sentences[i - 1])
+        word = _lead_word(sentences[i - 1])
+        if same and word and word not in _ANAPHORA_IGNORE:
+            run += 1
+            continue
+        if run >= 3:
+            pos = text.find(sentences[run_start])
+            if pos >= 0:
+                cadence.append((pos, " ".join(sentences[run_start:i])))
+        run_start, run = i, 1
+    cadence.sort()
+    if len(cadence) >= 3:
+        found("narrative-cadence", cadence, 2,
+              "anáforas y gradaciones en serie (repite la misma entrada o «luego… luego»)" if es else
+              "serial anaphora and ladders (same opening, “then… then”)",
+              "conserva la serie que más importe y escribe las demás como una sola oración" if es else
+              "keep the one series that matters and fold the others into a single sentence")
+
+    similes = spans(rx["simile"])
+    if len(similes) >= 4 and len(similes) / (_word_count(text) / 1000) >= 3:
+        found("narrative-simile", similes, 1,
+              "comparaciones «como si / como quien» acumuladas" if es else "stacked “as if / like someone” similes",
+              "deja la comparación más precisa y cambia las otras por un detalle observable" if es else
+              "keep the sharpest comparison and turn the rest into an observable detail")
+
+    aphorisms = spans(rx["aphorism"])
+    if len(aphorisms) >= 2:
+        found("narrative-aphorism", aphorisms, 2,
+              "aforismos de narrador («hay voces que uno…», «X nunca es X»)" if es else
+              "narrator aphorisms (“there are things that you…”, “X is never X”)",
+              "cambia la sentencia general por lo que el personaje percibe en ese momento" if es else
+              "replace the general maxim with what the character perceives right then")
+
+    # One-sentence paragraphs used as drumbeats, excluding dialogue and headings.
+    paragraphs = [(m.start(), m.group(0).strip()) for m in re.finditer(r"[^\n]+(?:\n(?!\s*\n)[^\n]+)*", text)]
+    # Titles have no closing punctuation; dialogue paragraphs follow their own rhythm.
+    paragraphs = [(p, s) for p, s in paragraphs
+                  if re.search(r"[.!?…»”\"]$", s) and not s.startswith(("#", "**", "—", "–", "-", '"', "“", "«", "'"))]
+    punch = [(p, s) for p, s in paragraphs if len(split_sentences(s)) == 1 and _word_count(s) <= 8]
+    if len(paragraphs) >= 10 and len(punch) >= 5 and len(punch) / len(paragraphs) >= 0.25:
+        first_pos, first_text = punch[0]
+        out.append(StructuralFinding(
+            line=_line_of(text, first_pos), kind="punchline-paragraphs", severity=2,
+            message=(f"{len(punch)} de {len(paragraphs)} párrafos son una sola frase corta, como remate («{first_text[:60]}»)"
+                     if es else
+                     f"{len(punch)} of {len(paragraphs)} paragraphs are a single short punchline (“{first_text[:60]}”)"),
+            suggestion=("deja aislada solo la frase que cambia la escena; integra las demás a su párrafo" if es else
+                        "isolate only the line that turns the scene; fold the others into their paragraph"),
+            count=len(punch),
+        ))
+    return out
 
 
 def _check_hyphenated_pairs(text: str, lang: str) -> list[StructuralFinding]:
@@ -1687,7 +1859,7 @@ def analyze(
 
     # structural checks
     if not strict:
-        report.structural.extend(_check_em_dashes(authorial_text, authorial_text.splitlines()))
+        report.structural.extend(_check_em_dashes(authorial_text, authorial_text.splitlines(), lang))
         report.structural.extend(_check_list_density(authorial_text))
         report.structural.extend(_check_ellipses(authorial_text, lang))
         report.structural.extend(_check_section_headers(authorial_text, lang))
@@ -1719,6 +1891,7 @@ def analyze(
         report.structural.extend(_check_storyscope_discourse(authorial_text, lang))
         # humanizer v2.9.1 + stop-slop gaps (2026-08)
         report.structural.extend(_check_staccato_runs(sentences, lang))
+        report.structural.extend(_check_narrative_tics(authorial_text, sentences, lang))
         report.structural.extend(_check_hyphenated_pairs(authorial_text, lang))
         report.structural.extend(_check_adverb_density(authorial_text, lang))
         report.structural.extend(_check_fragmented_headers(authorial_text, lang))
@@ -1798,8 +1971,15 @@ def analyze(
     elif wiki_present:
         wiki_d = min(0.55, 0.18 * len(wiki_present))
 
+    # Dimension 7: narrative fiction kit. Staccato only counts alongside
+    # another narrative tell: clipped sentences alone are a human style too.
+    narrative_present = NARRATIVE_KINDS & structural_kinds
+    if narrative_present and "staccato-runs" in structural_kinds:
+        narrative_present = narrative_present | {"staccato-runs"}
+    narrative_d = min(0.66, 0.13 * len(narrative_present))
+
     # Combine: 1 - prod(1 - d_i). Reacts when independent dimensions agree.
-    dims = [lex_d, macro_d, rhythm_d, statistical_d, editorial_weak_d, anchor_d, wiki_d]
+    dims = [lex_d, macro_d, rhythm_d, statistical_d, editorial_weak_d, anchor_d, wiki_d, narrative_d]
     combined = 1.0
     for d in dims:
         combined *= (1.0 - d)
@@ -1858,7 +2038,8 @@ def analyze(
     # "revise these passages", not as a conviction.
     weighted_findings = (
         sev3_hits * 1.3 + sev2_hits * 0.8 + sev1_hits * 0.35 +
-        sum(1.2 if f.severity >= 3 else 0.75 if f.severity == 2 else 0.35 for f in report.structural)
+        sum((1.2 if f.severity >= 3 else 0.75 if f.severity == 2 else 0.35)
+            * (f.count if f.kind in NARRATIVE_KINDS else 1) for f in report.structural)
     )
     evidence_density = weighted_findings / max(report.sentences, 1)
     if report.sentences >= 150:
@@ -1925,6 +2106,7 @@ def analyze(
         "editorial_distance": round(editorial_weak_d, 4),
         "anchor_starvation": round(anchor_d, 4),
         "chatbot_artifacts": round(wiki_d, 4),
+        "narrative": round(narrative_d, 4),
         "combined": round(combined, 4),
     }
     report.score = min(1.0, combined)
