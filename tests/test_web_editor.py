@@ -23,7 +23,7 @@ def page():
         browser = p.chromium.launch(args=["--no-sandbox"])
         tab = browser.new_page(locale="es-CL", viewport={"width": 1280, "height": 900})
         tab.goto(f"http://127.0.0.1:{server.server_port}")
-        tab.wait_for_function("!document.getElementById('analyzeBtn').disabled", timeout=120000)
+        tab.wait_for_function("analyzeFn !== null", timeout=120000)
         yield tab
         browser.close()
     server.shutdown()

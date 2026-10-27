@@ -119,6 +119,7 @@ const I18N = {
     era_label: "¿cuándo?",
     strict: "Solo prioridad alta",
     analyze: "Analizar texto",
+    analyze_empty: "Pega un texto para analizar",
     clear: "Vaciar",
     stripMarks: "Limpiar caracteres",
     stripTip: "Quita caracteres invisibles y, si quieres, reescribe el texto para que suene menos a plantilla. Solo se usa si lo pides.",
@@ -188,6 +189,7 @@ const I18N = {
     footer_brand: "herramienta abierta de <a href=\"https://intelecta.cl\" target=\"_blank\" rel=\"noopener\"><strong>Intelecta</strong></a>",
     footer_disclaimer: "Privacidad y uso",
     footer_about: "Sobre",
+    footer_license: "Licencia MIT",
     about_title: "sobre mí y sobre el sitio",
     about_body: `
       <p>Eterno estudiante. Lector que entiende el 50% de lo que lee y vuelve igual al mismo libro un par de años después como si fuera otro. Saco fotos cuando puedo, escribo cuando me sale. Asesoro a tesistas en redacción y corrección de estilo. Si necesitas ese tipo de apoyo, los servicios profesionales están en <a href="https://intelecta.cl" target="_blank" rel="noopener">intelecta.cl</a>.</p>
@@ -332,6 +334,7 @@ const I18N = {
     era_label: "when?",
     strict: "High priority only",
     analyze: "Analyze text",
+    analyze_empty: "Paste text to analyze",
     clear: "Clear",
     stripMarks: "Clean characters",
     stripTip: "Removes invisible characters and, if you want, rewrites the text so it sounds less like a template. Only runs when you ask for it.",
@@ -401,6 +404,7 @@ const I18N = {
     footer_brand: "an open tool by <a href=\"https://intelecta.cl\" target=\"_blank\" rel=\"noopener\"><strong>Intelecta</strong></a>",
     footer_disclaimer: "Privacy and use",
     footer_about: "About",
+    footer_license: "MIT license",
     about_title: "about me and this site",
     about_body: `
       <p>Eternal student. Reader who understands maybe 50% of what he reads and comes back to the same book a couple of years later as if it were a different one. I take photos when I can, I write when it comes. I help thesis writers with editing and style. If you need that kind of support, the professional services are at <a href="https://intelecta.cl" target="_blank" rel="noopener">intelecta.cl</a>.</p>
@@ -466,13 +470,14 @@ const els = {
 let UILANG = (navigator.language || "es").startsWith("en") ? "en" : "es";
 let lastReport = null;
 let busy = false;
+let analyzeFn = null;
 function setBusy(value) {
   busy = value;
   els.input.readOnly = value;
   for (const control of document.querySelectorAll(".settings button, .settings select, .settings input, #fileBtn, .ex-chip, #langSwitch button, #stripRunBtn, #stripRewrite")) {
     control.disabled = value;
   }
-  els.analyzeBtn.disabled = value || !analyzeFn;
+  updateInputCount();
   els.resultPanel.setAttribute("aria-busy", String(value));
 }
 
@@ -489,6 +494,8 @@ function updateInputCount() {
   const words = els.input.value.trim().match(/\S+/g)?.length || 0;
   document.getElementById("inputCount").textContent = `${words} ${UILANG === "es" ? "palabras" : "words"}`;
   document.body.classList.toggle("has-text", words > 0);
+  els.analyzeBtn.disabled = busy || !analyzeFn || !words;
+  els.analyzeBtn.textContent = I18N[UILANG][words ? "analyze" : "analyze_empty"];
 }
 function applyI18n() {
   const t = I18N[UILANG];
@@ -528,7 +535,6 @@ applyI18n();
 
 
 // ---------- Pyodide ----------
-let analyzeFn = null;
 let annotateDocxFn = null;
 let extractRefsFn = null;
 let extractDocxTextFn = null;

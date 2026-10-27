@@ -1113,7 +1113,6 @@
     text-underline-offset: 3px;
   }
   footer .links a:hover, footer .links button:hover { color: var(--fg); }
-  footer .links .mit { text-decoration: none; }
   footer .right-side {
     display: contents;
   }
@@ -1404,11 +1403,11 @@
   /* Editorial workbench: prose first, measurements secondary. */
   html { color-scheme: dark; scrollbar-color: var(--dim) var(--bg); }
   textarea { caret-color: var(--hl); }
-  .editor-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 16px 18px 0; }
+  .editor-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 16px 18px 0; }
   .editor-head label { font-weight: 600; }
   #inputCount { color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
   #input { min-height: 260px; padding-top: 12px; }
-  .editor-note { padding: 0 18px 14px; color: var(--dim); font-size: 13px; }
+  .editor-note { margin-right: auto; color: var(--dim); font-size: 13px; }
   .review-options { border-top: 1px solid var(--line); padding: 0 14px; }
   .option-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0 16px; cursor: pointer; }
   .option-row input { margin-top: 5px; accent-color: var(--hl); }
@@ -1455,7 +1454,6 @@
   }
   @media (max-width: 600px) {
     .editor-head { padding-inline: 14px; }
-    .editor-note { padding-inline: 14px; }
     body.has-text #analyzeBtn { position: fixed; left: 14px; right: 14px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 50; width: calc(100% - 28px); min-height: 48px; box-shadow: 0 -8px 24px var(--bg); }
     body.has-text main { padding-bottom: 76px; }
     .review-index { margin-left: 0; }
@@ -1610,10 +1608,9 @@
   .workspace .panel { margin-bottom: 0; }
   #input { min-height: 360px; resize: vertical; }
   .editor-foot { border-top: 1px solid var(--line); padding: 12px 18px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; }
-  .editor-foot .editor-note { padding: 0; }
-  .editor-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-family: var(--sans); font-size: 13px; }
-  .editor-tools .examples-lbl { margin-left: 6px; padding-left: 14px; border-left: 1px solid var(--line); color: var(--dim); }
-  .editor-tools .btn, .editor-tools .ex-chip { min-height: 36px; padding: 6px 12px; font-size: 13px; border-radius: 6px; }
+  .editor-foot .btn { min-height: 36px; padding: 6px 14px; font-size: 13px; color: var(--fg); border-color: color-mix(in srgb, var(--fg) 35%, transparent); }
+  .examples { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-family: var(--sans); font-size: 13px; }
+  .examples .ex-chip { min-height: 32px; padding: 4px 12px; font-size: 13px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--fg) 7%, transparent); }
 
   .settings { position: sticky; top: 16px; padding: 18px; font-family: var(--sans); }
   .settings h2 { font-size: 15px; font-weight: 600; color: var(--fg); margin-bottom: 12px; }
@@ -1624,7 +1621,7 @@
   .review-options .option-row { padding: 14px 0; gap: 10px; border-bottom: 1px solid var(--line); }
   .review-options .option-row input { margin-top: 2px; flex: none; }
   .review-options .option-row strong { font-size: 14px; }
-  .review-options .option-row small { font-size: 12.5px; line-height: 1.5; margin-top: 3px; }
+  .review-options .option-row small { font-size: 12px; line-height: 1.45; margin-top: 2px; }
   .settings-actions { display: grid; gap: 8px; padding-top: 16px; }
   .settings-actions #analyzeBtn { width: 100%; min-height: 48px; font-size: 15px; }
   .secondary-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
@@ -1640,7 +1637,6 @@
     header { align-items: flex-start; }
     #input { min-height: 240px; }
     .editor-foot { padding: 12px 14px; }
-    .editor-tools .examples-lbl { margin-left: 0; padding-left: 0; border-left: 0; width: 100%; }
     .settings { padding: 16px 14px; }
   }
   /* Result header: three measured facts in one aligned row. */
@@ -1660,7 +1656,7 @@
   }
   /* Vision review pass. */
   .status.quiet { display: none; }
-  body:not(.has-text) #analyzeBtn:not(:disabled) { opacity: 0.5; }
+  body:not(.has-text) #analyzeBtn:disabled { background: transparent; color: var(--dim); border: 1px dashed color-mix(in srgb, var(--fg) 30%, transparent); cursor: not-allowed; }
   .ui-lang { display: flex; align-items: center; gap: 10px; flex: none; font-family: var(--sans); font-size: 12.5px; color: var(--dim); }
   .verdict-value { color: var(--fg) !important; font-style: normal; }
   .next-steps p { font-size: 15px; line-height: 1.6; max-width: 72ch; }
@@ -1680,6 +1676,14 @@
   .workspace-main { align-self: stretch; grid-template-rows: 1fr; grid-auto-rows: auto; }
   .workspace .editor { display: flex; flex-direction: column; }
   .workspace .editor #input { flex: 1; }
+  @media (min-width: 921px) {
+    main { display: flex; flex-direction: column; }
+    .workspace { flex: 1 0 auto; }
+  }
+  @media (max-width: 640px) {
+    header .lang-switch button, .editor-foot .btn, .examples .ex-chip, .setting select, .secondary-actions .btn,
+    footer .links a, footer .links button, footer .kofi-link, .review-options .option-row { min-height: 44px; }
+  }
   .index-note { font-family: var(--sans); font-size: 12.5px; color: var(--dim); margin-top: 4px; line-height: 1.4; }
   .style-reasons { padding: 18px 24px; border-bottom: 1px solid var(--line); font-family: var(--sans); }
   .style-reasons h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
@@ -1711,14 +1715,13 @@
   <section class="workspace">
     <div class="workspace-main">
     <div class="panel editor">
-      <div class="editor-head"><label for="input" data-i18n="editor_label">Tu texto</label><span id="inputCount"></span></div>
+      <div class="editor-head"><label for="input" data-i18n="editor_label">Tu texto</label><p class="editor-note" id="privacyNote" data-i18n="privacy_local">Análisis local. Tu texto no se envía ni se guarda.</p><span id="inputCount"></span></div>
       <textarea id="input" aria-describedby="privacyNote" placeholder="Pega tu texto, o suelta un archivo (.txt / .md / .docx / .pdf)."></textarea>
       <div class="editor-foot">
-        <p class="editor-note" id="privacyNote" data-i18n="privacy_local">Análisis local. Tu texto no se envía ni se guarda.</p>
-        <div class="editor-tools">
-          <input type="file" id="fileInput" accept=".txt,.md,.docx,.pdf" hidden>
-          <button type="button" class="btn ghost" id="fileBtn" data-i18n="upload" data-i18n-tip="uploadTip">Subir archivo</button>
-          <span class="examples-lbl" data-i18n="examples_lbl">Ejemplos</span>
+        <input type="file" id="fileInput" accept=".txt,.md,.docx,.pdf" hidden>
+        <button type="button" class="btn ghost" id="fileBtn" data-i18n="upload" data-i18n-tip="uploadTip">Subir archivo</button>
+        <div class="examples" role="group" aria-labelledby="examplesLbl">
+          <span class="examples-lbl" id="examplesLbl" data-i18n="examples_lbl">Ejemplos</span>
           <button type="button" class="ex-chip" data-example="ai" data-i18n="example_ai">Ensayo genérico</button>
           <button type="button" class="ex-chip" data-example="human" data-i18n="example_human">Relato</button>
           <button type="button" class="ex-chip" data-example="fakebib" data-i18n="example_fakebib">Referencias</button>
@@ -1764,7 +1767,7 @@
         <label class="option-row"><input type="checkbox" id="semanticSel" aria-describedby="semanticConsent"><span><strong data-i18n="semantic_label">Similitud entre párrafos</strong><small id="semanticConsent" data-i18n="semantic_note">Experimental y local. Descarga un modelo de más de 100 MB la primera vez.</small></span></label>
       </div>
       <div class="settings-actions">
-        <button class="btn primary" id="analyzeBtn" disabled aria-keyshortcuts="Control+Enter Meta+Enter" data-i18n="analyze" data-i18n-tip="analyzeTip">Analizar texto</button>
+        <button class="btn primary" id="analyzeBtn" disabled aria-keyshortcuts="Control+Enter Meta+Enter" data-i18n-tip="analyzeTip">Pega un texto para analizar</button>
         <div class="secondary-actions">
           <button class="btn ghost" id="stripBtn" aria-controls="stripPanel" aria-expanded="false" data-i18n="stripMarks" data-i18n-tip="stripTip">Limpiar caracteres</button>
           <button class="btn ghost" id="clearBtn" data-i18n="clear" data-i18n-tip="clearTip">Vaciar</button>
@@ -1780,7 +1783,7 @@
   <div class="links">
     <button type="button" id="aboutBtn" data-i18n="footer_about">sobre</button>
     <button type="button" id="disclaimerBtn" data-i18n="footer_disclaimer">descargo</button>
-    <span class="mit">· MIT</span>
+    <a href="https://github.com/brm-src/aismell/blob/main/LICENSE" target="_blank" rel="noopener" data-i18n="footer_license">Licencia MIT</a>
   </div>
   <div class="right-side">
     <a href="https://ko-fi.com/brmcl" target="_blank" rel="noopener" class="kofi-link" data-i18n="donate">☕ donar</a>
@@ -1806,7 +1809,7 @@
   </div>
 </dialog>
 
-<script src="app.js?v=worker-1"></script>
+<script src="app.js?v=ui-2"></script>
 
 </body>
 </html>
