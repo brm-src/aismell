@@ -42,6 +42,33 @@ def test_editorial_verdict_uses_the_engine_score_not_an_authorship_guess(page):
     assert "autoría" in result["html"]
 
 
+def test_many_segments_fit_in_results_on_desktop_and_mobile(page):
+    for width in (1280, 390, 320):
+        page.set_viewport_size({"width": width, "height": 900})
+        dimensions = page.evaluate("""() => {
+            const segments = Array.from({length: 284}, (_, i) => ({
+                index: i + 1, start_sentence: i + 1, end_sentence: i + 1,
+                findings: i < 87 ? 1 : 0, score: 0.2, label: 'bajo', text: 'Texto.'
+            }));
+            document.getElementById('findings').innerHTML = `<section class="result-details">${renderSegments({segments})}</section>`;
+            document.getElementById('resultPanel').hidden = false;
+            document.querySelector('.segments-more').open = true;
+            const strip = document.querySelector('.heat-strip');
+            const panel = document.querySelector('.segments-more');
+            return {count: strip.children.length, cards: panel.querySelectorAll('.segment-card').length,
+                    summary: panel.querySelector('summary').innerText, strip: strip.getBoundingClientRect().width,
+                    scroll: strip.scrollWidth, panel: panel.getBoundingClientRect().width,
+                    document: document.documentElement.scrollWidth};
+        }""")
+        assert dimensions['count'] == 284
+        assert dimensions['cards'] == 87
+        assert '87 de 284 con hallazgos' in dimensions['summary']
+        assert dimensions['scroll'] <= dimensions['strip'] + 1, dimensions
+        assert dimensions['strip'] <= dimensions['panel'], dimensions
+        assert dimensions['document'] <= width, dimensions
+    page.set_viewport_size({"width": 1280, "height": 900})
+
+
 def test_external_services_are_opt_in_and_rewrite_needs_a_separate_action(page):
     assert page.locator('#biblioSel').count() == 1
     assert not page.locator('#biblioSel').is_checked()
@@ -91,6 +118,26 @@ def test_keyboard_shortcut_does_not_start_a_second_run(page):
         } finally { analyzeFn = original; }
     }""")
     assert count == 1
+
+
+def test_long_analysis_keeps_scanner_and_event_loop_responsive(page):
+    page.set_viewport_size({"width": 390, "height": 844})
+    result = page.evaluate("""async () => {
+        input.value = ('Cabe destacar que este informe presenta datos importantes. ' +
+            'El equipo revisó los resultados antes de continuar.\\n').repeat(300);
+        let ticks = 0, visible = false;
+        const timer = setInterval(() => {
+            ticks++;
+            const scan = document.getElementById('scanning');
+            const rect = scan.getBoundingClientRect();
+            visible ||= !scan.hidden && rect.top < innerHeight && rect.bottom > 0;
+        }, 50);
+        await analyze();
+        clearInterval(timer);
+        return {ticks, visible, rendered: !document.getElementById('resultPanel').hidden};
+    }""")
+    page.set_viewport_size({"width": 1280, "height": 900})
+    assert result['visible'] and result['ticks'] >= 3 and result['rendered'], result
 
 
 def test_bibliography_never_calls_failed_checks_verified(page):

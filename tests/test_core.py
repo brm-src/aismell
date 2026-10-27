@@ -1058,16 +1058,16 @@ def test_web_wrapper_exposes_segment_fields():
     """The Pyodide wrapper must carry segment data to the browser explicitly."""
     from pathlib import Path
 
-    app = Path(__file__).resolve().parents[1] / "docs" / "app.js"
-    source = app.read_text(encoding="utf-8")
+    docs = Path(__file__).resolve().parents[1] / "docs"
+    source = (docs / "analyzer-worker.js").read_text(encoding="utf-8")
     for marker in (
         '"segments": [],',
         '"start_sentence": segment.start_sentence',
         '"end_sentence": segment.end_sentence',
         '"confidence": segment.confidence',
-        'function renderSegments(report)',
     ):
         assert marker in source, marker
+    assert 'function renderSegments(report)' in (docs / "app.js").read_text(encoding="utf-8")
 
 
 def test_curated_no_ai_slop_gaps_en():
